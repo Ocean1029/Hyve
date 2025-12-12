@@ -18,6 +18,21 @@ export const useSwipeNavigation = ({ currentPath, enabled = true }: SwipeNavigat
     const minSwipeDistance = 50; // Minimum distance for swipe
 
     const handleTouchStart = (e: TouchEvent) => {
+      // Ignore touch events on input, textarea, button, and select elements
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'BUTTON' ||
+        target.tagName === 'SELECT' ||
+        target.closest('input') ||
+        target.closest('textarea') ||
+        target.closest('button') ||
+        target.closest('select')
+      ) {
+        return;
+      }
+
       touchStartX.current = e.touches[0].clientX;
       isSwiping.current = true;
     };
@@ -36,7 +51,10 @@ export const useSwipeNavigation = ({ currentPath, enabled = true }: SwipeNavigat
 
       if (isLeftSwipe) {
         // Swipe left: go to next page
+        // Order: messages -> search -> home -> profile
         if (currentPath === '/messages') {
+          router.push('/search');
+        } else if (currentPath === '/search') {
           router.push('/');
         } else if (currentPath === '/') {
           router.push('/profile');
@@ -46,6 +64,8 @@ export const useSwipeNavigation = ({ currentPath, enabled = true }: SwipeNavigat
         if (currentPath === '/profile') {
           router.push('/');
         } else if (currentPath === '/') {
+          router.push('/search');
+        } else if (currentPath === '/search') {
           router.push('/messages');
         }
       }

@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, MessageCircle, User } from 'lucide-react';
+import { Home, MessageCircle, User, Search } from 'lucide-react';
 
 const BottomNav: React.FC = () => {
   const pathname = usePathname();
@@ -17,6 +17,13 @@ const BottomNav: React.FC = () => {
          className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-full transition-all duration-300 ${isActive('/messages') ? 'bg-zinc-800 shadow-md' : 'hover:bg-zinc-800/50'}`}
        >
          <MessageCircle className={`w-5 h-5 ${isActive('/messages') ? 'text-white fill-white' : 'text-zinc-500'}`} />
+       </Link>
+       
+       <Link 
+         href="/search"
+         className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-full transition-all duration-300 ${isActive('/search') ? 'bg-zinc-800 shadow-md' : 'hover:bg-zinc-800/50'}`}
+       >
+         <Search className={`w-5 h-5 ${isActive('/search') ? 'text-amber-400 fill-amber-400' : 'text-zinc-500'}`} />
        </Link>
        
        <Link 
