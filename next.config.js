@@ -2,9 +2,29 @@
 const nextConfig = {
   reactStrictMode: true,
   env: {},
-  // Image optimization settings
   images: {
-    domains: ['picsum.photos'], // Allow images from picsum.photos (used in mock data)
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+      },
+    ],
+  },
+  webpack: (config) => {
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: [
+        '**/node_modules',
+        '**/.git',
+        '**/OrbStack/**',
+        '/Users/huan_hsuan/OrbStack'
+      ]
+    };
+    return config;
   },
 };
 
