@@ -1,18 +1,24 @@
 import React, { useState, useMemo } from 'react';
 import { X, Music, Image as ImageIcon, Plus, MapPin, ChevronRight, Star } from 'lucide-react';
+import { Friend } from '@/lib/types';
 
 interface PostMemoryProps {
   durationSeconds: number;
   sessionEndTime: Date;
+  friend: Friend | null;
   onBack: () => void;
-  onPost: () => void;
+  onPost: (photoUrl: string, caption?: string, location?: string, mood?: string) => void;
+  isSaving?: boolean;
 }
 
 const CATEGORIES = ['📚 Study', '🍔 Eat', '🏋️ Gym', '🚗 Drive', '☕ Chill', '🎮 Game', '🎨 Create'];
 
-const PostMemory: React.FC<PostMemoryProps> = ({ durationSeconds, sessionEndTime, onBack, onPost }) => {
+const PostMemory: React.FC<PostMemoryProps> = ({ durationSeconds, sessionEndTime, friend, onBack, onPost, isSaving = false }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>(CATEGORIES[0]);
   const [rating, setRating] = useState(10);
+  const [caption, setCaption] = useState('');
+  const [location, setLocation] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('https://picsum.photos/800/600');
   
   // Calculate time details
   const timeDetails = useMemo(() => {
@@ -124,6 +130,8 @@ const PostMemory: React.FC<PostMemoryProps> = ({ durationSeconds, sessionEndTime
 
           <textarea 
             placeholder="Write a caption..." 
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
             className="w-full bg-zinc-900 p-4 rounded-2xl border border-zinc-800 text-white text-sm font-medium placeholder-zinc-600 focus:outline-none focus:border-zinc-700 min-h-[100px] resize-none"
           />
         </section>
@@ -172,10 +180,11 @@ const PostMemory: React.FC<PostMemoryProps> = ({ durationSeconds, sessionEndTime
       {/* Footer CTA */}
       <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-zinc-950 via-zinc-950 to-transparent z-40">
         <button 
-          onClick={onPost}
-          className="w-full bg-white text-black font-bold text-lg py-5 rounded-3xl shadow-lg shadow-white/10 hover:bg-stone-200 transition-colors active:scale-[0.98]"
+          onClick={() => onPost(photoUrl, caption, location, selectedCategory)}
+          disabled={isSaving}
+          className="w-full bg-white text-black font-bold text-lg py-5 rounded-3xl shadow-lg shadow-white/10 hover:bg-stone-200 transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Post to Vault
+          {isSaving ? 'Posting...' : 'Post to Vault'}
         </button>
       </div>
 

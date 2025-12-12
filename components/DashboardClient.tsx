@@ -14,13 +14,16 @@ import FocusMode from '@/components/FocusMode';
 import SessionSummary from '@/components/SessionSummary';
 import { generateIceBreaker } from '@/lib/services/geminiService';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
+import { createFocusSession } from '@/modules/sessions/actions';
+import { createPost } from '@/modules/posts/actions';
 
 interface DashboardClientProps {
   friends: Friend[];
   chartData: ChartDataPoint[];
+  userId: string;
 }
 
-const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData }) => {
+const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, userId }) => {
   // --- State ---
   const [appState, setAppState] = useState<AppState>(AppState.DASHBOARD);
   
@@ -36,6 +39,7 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData })
   const [iceBreaker, setIceBreaker] = useState<string | null>(null);
   const [loadingIceBreaker, setLoadingIceBreaker] = useState(false);
   const [isPhoneFaceDown, setIsPhoneFaceDown] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const timerRef = useRef<number | null>(null);
 
   // --- Effects ---
@@ -75,14 +79,46 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData })
     setIsPhoneFaceDown(false);
   };
 
-  const endSession = () => {
+  const endSession = async () => {
     setSessionEndTime(new Date());
+    
+    // Save focus session to database
+    if (selectedFriend && elapsedSeconds > 0) {
+      setIsSaving(true);
+      try {
+        await createFocusSession(userId, selectedFriend.id, elapsedSeconds);
+      } catch (error) {
+        console.error('Failed to save focus session:', error);
+      } finally {
+        setIsSaving(false);
+      }
+    }
+    
     setAppState(AppState.SUMMARY);
   };
 
   const handleUnlockPhotoMoment = () => {
     if (!sessionEndTime) setSessionEndTime(new Date()); // Fallback if missing
     setAppState(AppState.POST_MEMORY);
+  };
+
+  const handlePostToVault = async (photoUrl: string, caption?: string, location?: string, mood?: string) => {
+    if (!selectedFriend) return;
+    
+    setIsSaving(true);
+    try {
+      const result = await createPost(userId, selectedFriend.id, photoUrl, caption, location, mood);
+      if (result.success) {
+        setAppState(AppState.DASHBOARD);
+      } else {
+        console.error('Failed to create post:', result.error);
+        // You might want to show an error message to the user here
+      }
+    } catch (error) {
+      console.error('Failed to create post:', error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSparkConversation = async () => {
@@ -194,8 +230,10 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData })
             <PostMemory
               durationSeconds={elapsedSeconds}
               sessionEndTime={sessionEndTime || new Date()}
+              friend={selectedFriend}
               onBack={() => setAppState(AppState.SUMMARY)}
-              onPost={() => setAppState(AppState.DASHBOARD)}
+              onPost={handlePostToVault}
+              isSaving={isSaving}
             />
           </div>
         )}
