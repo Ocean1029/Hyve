@@ -38,17 +38,18 @@ const PostMemory: React.FC<PostMemoryProps> = ({ durationSeconds, sessionEndTime
   }, [durationSeconds, sessionEndTime]);
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950 overflow-y-auto animate-in slide-in-from-bottom duration-500 relative z-50">
+    <div className="flex flex-col h-full bg-zinc-950 relative z-50">
       
       {/* Header */}
-      <div className="p-6 flex justify-between items-center bg-zinc-950/90 backdrop-blur-md sticky top-0 z-30 border-b border-zinc-900">
+      <div className="p-6 flex justify-between items-center bg-zinc-950/90 backdrop-blur-md z-30 border-b border-zinc-900">
         <h2 className="text-lg font-bold text-white">New Memory</h2>
         <button onClick={onBack} className="p-2 bg-zinc-900 rounded-full hover:bg-zinc-800 transition-colors">
           <X className="w-5 h-5 text-zinc-400" />
         </button>
       </div>
 
-      <div className="px-6 pb-32 space-y-8 pt-6">
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto px-6 pb-32 space-y-8 pt-6">
         
         {/* 1. Highlight Stats Section */}
         <section className="bg-gradient-to-br from-zinc-900 to-zinc-950 border border-zinc-800 rounded-3xl p-6 text-center shadow-lg relative overflow-hidden">

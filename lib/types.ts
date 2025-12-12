@@ -46,6 +46,19 @@ export interface Message {
   unread: boolean;
 }
 
+export interface ChatMessage {
+  id: string;
+  senderId: string; // 'user' or friendId or 'system'
+  text: string;
+  timestamp: string;
+  type: 'text' | 'system';
+  systemMetadata?: {
+    duration: string;
+    location: string;
+    posts: string[];
+  };
+}
+
 export interface Friend {
   id: string;
   name: string;

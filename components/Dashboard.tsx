@@ -6,10 +6,11 @@ import {
   ChevronRight, 
   Flower2, 
   Smile, 
-  Flame 
+  Flame,
+  ArrowUpRight
 } from 'lucide-react';
-import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Friend, ChartDataPoint } from '../lib/types';
+import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { Friend, ChartDataPoint } from '@/lib/types';
 
 interface DashboardProps {
   friends: Friend[];
@@ -20,6 +21,46 @@ interface DashboardProps {
   onSpringRecap: () => void;
   onStartSession: () => void;
 }
+
+// Custom Dot to render Peak and Low icons
+const CustomDot = (props: any) => {
+  const { cx, cy, payload, data } = props;
+  
+  if (!data || data.length === 0) return null;
+
+  const values = data.map((d: any) => d.minutes);
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  
+  // High Peak
+  if (payload.minutes === max) {
+     return (
+        <g>
+           <circle cx={cx} cy={cy} r={6} fill="#fcd34d" stroke="#18181b" strokeWidth={3} />
+           <foreignObject x={cx - 20} y={cy - 28} width={40} height={20}>
+             <div className="text-[10px] font-bold text-amber-300 bg-amber-950/80 px-1 rounded-md text-center border border-amber-500/20">
+               {Math.floor(payload.minutes / 60)}h
+             </div>
+           </foreignObject>
+        </g>
+     );
+  }
+  
+  // Low Peak
+  if (payload.minutes === min) {
+      return (
+        <g>
+           <circle cx={cx} cy={cy} r={6} fill="#fb7185" stroke="#18181b" strokeWidth={3} />
+           <foreignObject x={cx - 20} y={cy + 10} width={40} height={20}>
+              <div className="text-[10px] font-bold text-rose-300 bg-rose-950/80 px-1 rounded-md text-center border border-rose-500/20">
+               {payload.minutes}m
+              </div>
+           </foreignObject>
+        </g>
+     );
+  }
+  return <circle cx={cx} cy={cy} r={0} />; 
+};
 
 const Dashboard: React.FC<DashboardProps> = ({ 
   friends, 
@@ -33,7 +74,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   return (
     <div className="relative w-full h-full flex flex-col bg-zinc-950 overflow-hidden">
        {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide pb-24">
+      <div className="flex-1 overflow-y-auto scrollbar-hide pb-32">
         
         {/* Sticky Header */}
         <header className="sticky top-0 z-30 flex justify-between items-center px-6 py-6 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-900/50">
@@ -44,35 +85,42 @@ const Dashboard: React.FC<DashboardProps> = ({
             <p className="text-zinc-500 text-sm mt-1 font-medium">Ready to disconnect?</p>
           </div>
           <div className="flex items-center gap-3 pointer-events-auto">
-            {/* Happy Index Button */}
+            {/* Spring Bloom Button (Seasonal) - Moved from Grid */}
             <button 
-              onClick={onOpenHappyIndex}
-              className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-500/20 to-yellow-500/10 border border-amber-400/50 flex items-center justify-center hover:bg-amber-500/30 transition-all group shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:shadow-[0_0_35px_rgba(245,158,11,0.6)] cursor-pointer active:scale-95"
+              onClick={onSpringRecap}
+              className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-400/30 flex items-center justify-center hover:bg-emerald-500/30 transition-all group shadow-[0_0_20px_rgba(16,185,129,0.2)] active:scale-95 relative overflow-hidden"
             >
-              <Smile className="w-6 h-6 text-amber-300 fill-amber-300/20 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300" />
+              <Flower2 className="w-5 h-5 text-emerald-300 group-hover:scale-110 group-hover:rotate-45 transition-all duration-500" />
             </button>
           </div>
         </header>
 
         <div className="px-6 pt-6">
-            {/* Action Grid (Spring & Find Friends) */}
+            {/* Action Grid */}
             <div className="grid grid-cols-2 gap-4 mb-8">
-            {/* Spring Recap Button */}
+            
+            {/* Happy Index (Weekly Vibe) - Moved from Header to Main Block */}
             <div 
-                onClick={onSpringRecap}
-                className="relative overflow-hidden bg-zinc-900 border border-zinc-800 rounded-[28px] p-5 cursor-pointer hover:border-emerald-500/30 transition-all active:scale-95 h-48 flex flex-col justify-between group"
+                onClick={onOpenHappyIndex}
+                className="relative overflow-hidden bg-zinc-900 border border-zinc-800 rounded-[28px] p-5 cursor-pointer hover:border-amber-500/30 transition-all active:scale-95 h-48 flex flex-col group shadow-lg shadow-black/20"
             >
-                <div className="absolute top-0 right-0 p-3 opacity-20 group-hover:opacity-40 transition-opacity">
-                <Flower2 className="w-24 h-24 text-emerald-400 rotate-12 blur-[1px]" />
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-25 transition-opacity duration-500">
+                    <Smile className="w-24 h-24 text-amber-400 -rotate-12" />
                 </div>
-                <div className="bg-emerald-900/40 text-emerald-300 border border-emerald-500/20 text-[10px] font-bold px-2 py-1 rounded-full w-fit uppercase tracking-wide z-10">
-                Seasonal
+                
+                <div className="flex justify-between items-start z-10 mb-8">
+                   <div className="bg-amber-900/30 text-amber-300 border border-amber-500/20 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
+                     Weekly
+                   </div>
+                   <div className="flex items-center gap-1 bg-zinc-950/50 rounded-full px-2 py-0.5 border border-zinc-800">
+                      <span className="text-xs font-bold text-stone-300">9.2</span>
+                      <ArrowUpRight className="w-3 h-3 text-emerald-400" />
+                   </div>
                 </div>
+
                 <div className="relative z-10">
-                <h3 className="text-white font-bold text-xl leading-tight">Spring<br/>Bloom 🌸</h3>
-                <div className="mt-2 w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                    <ChevronRight className="w-4 h-4 text-emerald-400" />
-                </div>
+                   <h2 className="text-3xl font-black text-white leading-none mb-1">Happy<br/>Index</h2>
+                   <p className="text-zinc-500 text-xs font-medium">Your vibe check</p>
                 </div>
             </div>
 
@@ -100,23 +148,50 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <History className="w-4 h-4 text-rose-300" />
                 Weekly Focus
             </h3>
-            <div className="h-40 w-full bg-zinc-900/50 rounded-3xl p-4 border border-zinc-800/50">
-                <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
+            <div className="w-full bg-zinc-900/50 rounded-3xl px-2 py-4 border border-zinc-800/50 relative">
+                <div className="w-full h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData} margin={{ top: 40, right: 10, left: 10, bottom: 0 }}>
                     <defs>
                     <linearGradient id="colorGradient" x1="0" y1="0" x2="1" y2="0">
                         <stop offset="0%" stopColor="#fb7185" />
                         <stop offset="100%" stopColor="#fcd34d" />
                     </linearGradient>
                     </defs>
-                    <XAxis dataKey="day" stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} dy={10} />
-                    <Tooltip 
-                    cursor={{ stroke: '#3f3f46', strokeWidth: 1 }}
-                    contentStyle={{ backgroundColor: '#18181b', border: 'none', borderRadius: '8px', color: '#fff' }}
+                    
+                    {/* Vertical blurred dotted lines */}
+                    <CartesianGrid 
+                        vertical={true} 
+                        horizontal={false} 
+                        stroke="#52525b" 
+                        strokeDasharray="4 4" 
+                        strokeOpacity={0.2} 
                     />
-                    <Line type="monotone" dataKey="minutes" stroke="url(#colorGradient)" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: '#fff' }} />
+
+                    <XAxis 
+                        dataKey="day" 
+                        stroke="#71717a" 
+                        fontSize={10} 
+                        tickLine={false} 
+                        axisLine={false} 
+                        dy={10} 
+                        fontWeight={600}
+                        interval={0} // Force show all days
+                        padding={{ left: 10, right: 10 }} // Ensure Mon/Sun aren't cut off
+                    />
+
+                    <Line 
+                        type="monotone" 
+                        dataKey="minutes" 
+                        stroke="url(#colorGradient)" 
+                        strokeWidth={3} 
+                        dot={<CustomDot data={chartData} />} // Custom Peak/Low dots
+                        activeDot={false}
+                        isAnimationActive={true}
+                    />
                 </LineChart>
                 </ResponsiveContainer>
+                </div>
             </div>
             </section>
 
@@ -152,7 +227,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       </div>
       
       {/* Floating Focus Button (Bottom Right) */}
-      <div className="absolute bottom-8 right-6 z-50 pointer-events-none">
+      <div className="absolute bottom-24 right-6 z-50 pointer-events-none">
         <button 
           onClick={onStartSession}
           className="pointer-events-auto w-14 h-14 bg-gradient-to-br from-rose-500 to-amber-500 rounded-full flex items-center justify-center shadow-[0_0_25px_rgba(251,113,133,0.5)] hover:scale-110 active:scale-95 transition-all border border-rose-300/20"

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
-import { Camera, Trophy } from 'lucide-react';
+import { Camera, Trophy, Sparkles } from 'lucide-react';
 import { AppState, FocusStatus, Friend, ChartDataPoint } from '@/lib/types';
 import Campfire from '@/components/Campfire';
 import Radar from '@/components/Radar';
@@ -14,6 +14,7 @@ import Messages from '@/components/Messages';
 import Dashboard from '@/components/Dashboard';
 import PostMemory from '@/components/PostMemory';
 import Settings from '@/components/Settings';
+import BottomNav from '@/components/BottomNav';
 import { generateIceBreaker } from '@/lib/services/geminiService';
 
 // Mock Data
@@ -68,6 +69,7 @@ const Home: React.FC = () => {
   const [iceBreaker, setIceBreaker] = useState<string | null>(null);
   const [loadingIceBreaker, setLoadingIceBreaker] = useState(false);
   const [isPhoneFaceDown, setIsPhoneFaceDown] = useState(false);
+  const [activeTab, setActiveTab] = useState(1); // 0: Messages, 1: Dashboard, 2: Profile
   const timerRef = useRef<number | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -110,6 +112,24 @@ const Home: React.FC = () => {
   }, [isPhoneFaceDown, appState]);
 
   // --- Handlers ---
+  const handleScroll = () => {
+    if (scrollContainerRef.current) {
+      const scrollLeft = scrollContainerRef.current.scrollLeft;
+      const width = scrollContainerRef.current.clientWidth;
+      const index = Math.round(scrollLeft / width);
+      if (index !== activeTab) {
+        setActiveTab(index);
+      }
+    }
+  };
+
+  const handleTabChange = (index: number) => {
+    if (scrollContainerRef.current) {
+      const width = scrollContainerRef.current.clientWidth;
+      scrollContainerRef.current.scrollTo({ left: width * index, behavior: 'smooth' });
+    }
+  };
+
   const startSearch = () => {
     setAppState(AppState.SEARCHING);
     setTimeout(() => {
@@ -241,6 +261,32 @@ const Home: React.FC = () => {
                 </div>
             )}
             </div>
+            
+            {/* Interaction Layer: Ice Breaker */}
+            {!isPhoneFaceDown && focusStatus === FocusStatus.PAUSED && (
+                <div className="absolute bottom-32 w-full px-8">
+                {iceBreaker ? (
+                    <div className="bg-zinc-900/90 backdrop-blur-md p-8 rounded-[32px] border border-zinc-800 animate-in fade-in slide-in-from-bottom-4 shadow-2xl">
+                    <p className="text-stone-200 text-center font-bold text-xl leading-relaxed">"{iceBreaker}"</p>
+                    <button 
+                        onClick={() => setIceBreaker(null)}
+                        className="mt-6 w-full text-zinc-500 text-xs font-bold hover:text-white uppercase tracking-widest"
+                    >
+                        Dismiss
+                    </button>
+                    </div>
+                ) : (
+                    <button 
+                    onClick={handleSparkConversation}
+                    disabled={loadingIceBreaker}
+                    className="w-full bg-zinc-900/50 border border-zinc-800/50 hover:border-rose-500/30 text-stone-400 py-4 rounded-3xl flex items-center justify-center gap-3 transition-all group font-bold backdrop-blur-sm"
+                    >
+                    <Sparkles className={`w-5 h-5 ${loadingIceBreaker ? 'animate-spin' : 'text-rose-400 group-hover:text-rose-300'}`} />
+                    {loadingIceBreaker ? 'Thinking...' : 'Awkward Silence? Spark a Topic'}
+                    </button>
+                )}
+                </div>
+            )}
         </div>
 
         {/* Footer Controls */}
@@ -303,12 +349,13 @@ const Home: React.FC = () => {
         {/* Only show this carousel structure when in standard nav states (DASHBOARD/MESSAGES/PROFILE) or overlay states that shouldn't unmount the main view */}
         <div
           ref={scrollContainerRef}
+          onScroll={handleScroll}
           className="w-full h-full flex overflow-x-auto snap-x snap-mandatory scrollbar-hide overscroll-contain"
         >
 
           {/* Page 1: Left - Messages */}
           <div className="w-full h-full flex-shrink-0 snap-center">
-            <Messages />
+            <Messages friends={MOCK_FRIENDS} onViewProfile={handleFriendClick} />
           </div>
 
           {/* Page 2: Center - Dashboard */}
@@ -334,6 +381,13 @@ const Home: React.FC = () => {
 
         </div>
 
+        {/* Bottom Navigation - Hidden during Focus, Summary, and Post Memory modes */}
+        {appState !== AppState.FOCUS && 
+         appState !== AppState.SUMMARY && 
+         appState !== AppState.POST_MEMORY && (
+          <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
+        )}
+
         {/* Global Modals (Absolute Positioned Overlaying the Scroll Container) */}
         {appState === AppState.HAPPY_INDEX && (
           <div className="absolute inset-0 z-50">
@@ -352,16 +406,16 @@ const Home: React.FC = () => {
         )}
 
         {/* Other Full Screen Overlays */}
-        {appState === AppState.SEARCHING && <div className="absolute inset-0 z-40 bg-zinc-950">{renderSearching()}</div>}
-        {appState === AppState.FOUND && <div className="absolute inset-0 z-40 bg-zinc-950">{renderFound()}</div>}
+        {appState === AppState.SEARCHING && <div className="absolute inset-0 z-[70] bg-zinc-950">{renderSearching()}</div>}
+        {appState === AppState.FOUND && <div className="absolute inset-0 z-[70] bg-zinc-950">{renderFound()}</div>}
         {appState === AppState.FOCUS && renderFocus()}
-        {appState === AppState.SUMMARY && <div className="absolute inset-0 z-40 bg-zinc-950">{renderSummary()}</div>}
+        {appState === AppState.SUMMARY && <div className="absolute inset-0 z-[70] bg-zinc-950">{renderSummary()}</div>}
         {appState === AppState.QUARTERLY_FEEDBACK && <SpringRecap onClose={() => setAppState(AppState.DASHBOARD)} />}
         {appState === AppState.TODAY_DETAILS && <TodayDetails onClose={() => setAppState(AppState.MY_PROFILE)} />}
         {appState === AppState.SETTINGS && <Settings onClose={() => setAppState(AppState.MY_PROFILE)} />}
 
         {appState === AppState.POST_MEMORY && (
-          <div className="absolute inset-0 z-50 bg-zinc-950">
+          <div className="absolute inset-0 z-[70] bg-zinc-950">
             <PostMemory
               durationSeconds={elapsedSeconds}
               sessionEndTime={sessionEndTime || new Date()}

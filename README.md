@@ -1,20 +1,91 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Campfire 🔥
 
-# Run and deploy your AI Studio app
+A Next.js app focused on helping friends connect and focus together in real-time.
 
-This contains everything you need to run your app locally.
+## Features
 
-View your app in AI Studio: https://ai.studio/apps/drive/18wIwLCRC7IVKALPRO5u9OwKzZiiNV6Dt
+- 📱 **Horizontal Navigation**: Swipe between Messages, Dashboard, and Profile
+- 💬 **Real-time Chat**: AI-powered chat interface with friends using Gemini AI
+- 🔥 **Focus Sessions**: Start campfire sessions and track focus time
+- 📊 **Analytics Dashboard**: Visualize weekly focus patterns with advanced charts
+- 😊 **Happy Index**: Track and rate your experiences
+- 🌸 **Seasonal Features**: Spring Recap and more
+- 📸 **Memory Posting**: Capture and share moments after focus sessions
 
-## Run Locally
+## Tech Stack
 
-**Prerequisites:**  Node.js
+- **Framework**: Next.js 15 with App Router
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Charts**: Recharts
+- **Icons**: Lucide React
+- **AI**: Google Gemini 2.5 Flash
 
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+ installed
+- A Google Gemini API key ([Get one here](https://ai.google.dev/))
+
+### Installation
 
 1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+   ```bash
+   npm install
+   ```
+
+2. Create a `.env.local` file in the root directory:
+   ```bash
+   GEMINI_API_KEY=your_gemini_api_key_here
+   ```
+
+3. Run the development server:
+   ```bash
+   npm run dev
+   ```
+
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## Project Structure
+
+```
+campfire/
+├── app/
+│   ├── api/
+│   │   ├── generate-icebreaker/    # API route for ice breaker generation
+│   │   └── generate-chat-response/ # API route for chat responses
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx                    # Main app component
+├── components/
+│   ├── BottomNav.tsx              # Bottom navigation bar
+│   ├── Campfire.tsx               # Animated campfire component
+│   ├── ChatInterface.tsx          # Real-time chat UI
+│   ├── Dashboard.tsx              # Main dashboard with charts
+│   ├── FriendProfile.tsx          # Friend profile view
+│   ├── HappyIndex.tsx             # Happiness tracking
+│   ├── Messages.tsx               # Messages list view
+│   ├── MyProfile.tsx              # User profile
+│   ├── PostMemory.tsx             # Post session memory
+│   ├── Radar.tsx                  # Friend discovery animation
+│   ├── Settings.tsx               # App settings
+│   ├── SpringRecap.tsx            # Seasonal recap
+│   └── TodayDetails.tsx           # Daily summary
+├── lib/
+│   ├── services/
+│   │   └── geminiService.ts       # Gemini AI integration
+│   └── types.ts                   # TypeScript type definitions
+└── package.json
+```
+
+## Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm start` - Start production server
+- `npm run lint` - Run ESLint
+
+## License
+
+MIT
