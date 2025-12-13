@@ -9,24 +9,25 @@ generator client {
 
 // NextAuth Models
 model User {
-  id            String          @id @default(cuid())
+  id            String    @id @default(cuid())
+  userId        String    @unique // Custom user ID (editable, defaults to id)
   name          String?
-  email         String?         @unique
+  email         String?   @unique
   emailVerified DateTime?
   image         String?
   accounts      Account[]
   sessions      Session[]
-  
+
   // Custom Relations
-  focusSessions FocusSession[]
-  posts         Post[]
-  friendsAsUser Friend[]        @relation("FriendUser")
-  friendsAsSource Friend[]     @relation("FriendSource")
-  heartbeats    Heartbeat[]
-  
+  focusSessions   FocusSession[]
+  posts           Post[]
+  friendsAsUser   Friend[]       @relation("FriendUser")
+  friendsAsSource Friend[]       @relation("FriendSource")
+  heartbeats      Heartbeat[]
+
   // Presence tracking
-  lastSeenAt    DateTime?
- 
+  lastSeenAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -44,12 +45,12 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
- 
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
- 
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
- 
+
   @@unique([provider, providerAccountId])
 }
 
@@ -59,7 +60,7 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
- 
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -68,32 +69,32 @@ model VerificationToken {
   identifier String
   token      String
   expires    DateTime
- 
+
   @@unique([identifier, token])
 }
 
 // Campfire Domain Models
 
 model Friend {
-  id        String   @id @default(cuid())
-  userId    String   // Reference to the User this friend represents
+  id           String @id @default(cuid())
+  userId       String // Reference to the User this friend represents
   sourceUserId String // Reference to the User who added this friend
-  
-  totalHours Float   @default(0)
-  streak    Int      @default(0)
-  
+
+  totalHours Float @default(0)
+  streak     Int   @default(0)
+
   // Relations
-  user      User     @relation("FriendUser", fields: [userId], references: [id], onDelete: Cascade)
-  sourceUser User    @relation("FriendSource", fields: [sourceUserId], references: [id], onDelete: Cascade)
-  
+  user       User @relation("FriendUser", fields: [userId], references: [id], onDelete: Cascade)
+  sourceUser User @relation("FriendSource", fields: [sourceUserId], references: [id], onDelete: Cascade)
+
   interactions  Interaction[]
   posts         Post[]
   focusSessions FocusSession[]
   messages      Message[]
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@unique([userId, sourceUserId]) // Prevent duplicate friend relationships
 }
 
@@ -102,15 +103,15 @@ model Interaction {
   type      String   @default("note") // 'message', 'call', 'meet', 'note'
   content   String?
   timestamp DateTime @default(now())
-  
+
   // Legacy fields for backward compatibility
-  activity  String?
-  date      String?
-  duration  String?
-  location  String?
-  
-  friendId  String
-  friend    Friend   @relation(fields: [friendId], references: [id], onDelete: Cascade)
+  activity String?
+  date     String?
+  duration String?
+  location String?
+
+  friendId String
+  friend   Friend @relation(fields: [friendId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 }
@@ -122,16 +123,16 @@ model Post {
   location  String?
   mood      String?
   timestamp DateTime @default(now())
-  
+
   // Legacy field
-  imageUrl  String?
-  
+  imageUrl String?
+
   // A post can belong to a Friend (from mock data) or the User (My Vault)
-  friendId  String?
-  friend    Friend?  @relation(fields: [friendId], references: [id], onDelete: Cascade)
-  
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  friendId String?
+  friend   Friend? @relation(fields: [friendId], references: [id], onDelete: Cascade)
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 }
@@ -141,42 +142,41 @@ model FocusSession {
   startTime       DateTime @default(now())
   endTime         DateTime @default(now())
   durationMinutes Int      @default(0)
-  
+
   // Legacy field
-  minutes   Int?
-  date      DateTime?
-  
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  friendId  String?
-  friend    Friend?  @relation(fields: [friendId], references: [id], onDelete: SetNull)
-  
+  minutes Int?
+  date    DateTime?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  friendId String?
+  friend   Friend? @relation(fields: [friendId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
 }
 
 model Message {
   id        String   @id @default(cuid())
   content   String
-  senderId  String   // userId who sent the message
+  senderId  String // userId who sent the message
   timestamp DateTime @default(now())
-  
-  friendId  String
-  friend    Friend   @relation(fields: [friendId], references: [id], onDelete: Cascade)
-  
+
+  friendId String
+  friend   Friend @relation(fields: [friendId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
 }
 
 model Heartbeat {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   timestamp DateTime @default(now())
-  
+
   createdAt DateTime @default(now())
-  
+
   @@index([userId, timestamp])
   @@index([timestamp])
 }
-
