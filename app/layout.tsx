@@ -1,4 +1,5 @@
 import './globals.css';
+import PresenceProvider from '@/components/PresenceProvider';
 
 export const metadata = {
   title: 'Campfire',
@@ -12,7 +13,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <PresenceProvider />
+        {children}
+      </body>
     </html>
   );
 }
