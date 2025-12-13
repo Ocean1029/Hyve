@@ -1,6 +1,15 @@
 import { signIn } from "@/auth"
+import { auth } from "@/auth"
+import { redirect } from "next/navigation"
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  // Check if user is already logged in
+  const session = await auth();
+  
+  if (session?.user?.id) {
+    redirect('/');
+  }
+
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm space-y-8 rounded-xl bg-white p-8 shadow-lg">
@@ -49,4 +58,5 @@ export default function LoginPage() {
     </div>
   )
 }
+
 
