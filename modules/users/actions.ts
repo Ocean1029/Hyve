@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import prisma from '@/lib/prisma';
+import { validateUserId } from './validation';
 
 export async function updateUserProfile(
   userId: string,
@@ -9,9 +10,27 @@ export async function updateUserProfile(
     name?: string;
     email?: string;
     image?: string;
+    userId?: string;
   }
 ) {
   try {
+    // If userId is being updated, validate it
+    if (data.userId !== undefined) {
+      const validation = validateUserId(data.userId);
+      if (!validation.isValid) {
+        return { success: false, error: validation.error };
+      }
+
+      // Check if userId is already taken by another user
+      const existingUser = await prisma.user.findUnique({
+        where: { userId: data.userId },
+      });
+
+      if (existingUser && existingUser.id !== userId) {
+        return { success: false, error: 'This userId is already taken' };
+      }
+    }
+
     const user = await prisma.user.update({
       where: { id: userId },
       data,
@@ -20,9 +39,15 @@ export async function updateUserProfile(
     revalidatePath('/profile');
 
     return { success: true, user };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to update user profile:', error);
-    return { success: false, error: 'Failed to update user profile' };
+    
+    // Handle unique constraint violation
+    if (error.code === 'P2002' && error.meta?.target?.includes('userId')) {
+      return { success: false, error: 'This userId is already taken' };
+    }
+    
+    return { success: false, error: error.message || 'Failed to update user profile' };
   }
 }
 
@@ -56,4 +81,5 @@ export async function getUserStats(userId: string) {
     return { success: false, error: 'Failed to get user stats' };
   }
 }
+
 
