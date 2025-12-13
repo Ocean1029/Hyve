@@ -14,6 +14,6 @@ export default async function MessagesPage() {
   const userId = session.user.id;
   const friends = await getFriendsForMessagesService(userId);
 
-  return <MessagesClient friends={friends} />;
+  return <MessagesClient friends={friends} userId={userId} />;
 }
 

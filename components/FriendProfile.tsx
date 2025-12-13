@@ -45,14 +45,7 @@ const FriendProfile: React.FC<FriendProfileProps> = ({ friend, onBack }) => {
 
       <div className="px-6 relative z-20 pb-24 space-y-10 mt-2">
         
-        {/* 1. Bio (Underneath Header) */}
-        <section>
-          <p className="text-stone-300 text-lg leading-relaxed font-medium border-l-2 border-rose-500 pl-4 py-1">
-            {friend.bio || "No bio yet."}
-          </p>
-        </section>
-
-        {/* 2. Total Hours */}
+        {/* 1. Total Hours */}
         <section>
           <div className="relative overflow-hidden bg-gradient-to-br from-zinc-900 to-zinc-950 border border-zinc-800 rounded-[32px] p-6">
             <div className="absolute top-0 right-0 p-8 opacity-10">

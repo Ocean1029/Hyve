@@ -2,11 +2,12 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { X, Mail, Calendar, Image as ImageIcon, UserPlus, Check } from 'lucide-react';
+import { X, Calendar, Image as ImageIcon, UserPlus, Check } from 'lucide-react';
 
 interface UserProfileProps {
   user: {
     id: string;
+    userId?: string;
     name: string | null;
     email?: string | null;
     image?: string | null;
@@ -17,7 +18,7 @@ interface UserProfileProps {
     };
   };
   onClose: () => void;
-  onAddFriend?: (userId: string, userName: string) => Promise<{ success: boolean; error?: string; alreadyExists?: boolean }>;
+  onAddFriend?: (userId: string) => Promise<{ success: boolean; error?: string; alreadyExists?: boolean }>;
   isAlreadyFriend?: boolean;
 }
 
@@ -30,7 +31,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onClose, onAddFriend, i
     
     setIsAdding(true);
     try {
-      const result = await onAddFriend(user.id, user.name || 'Unknown User');
+      const result = await onAddFriend(user.id);
       if (result.success) {
         setIsAdded(true);
       } else if (result.alreadyExists) {
@@ -74,7 +75,9 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onClose, onAddFriend, i
                 alt={user.name || 'User'}
                 fill
                 className="object-cover"
-                sizes="112px"
+                sizes="(max-width: 414px) 112px, 112px"
+                quality={100}
+                unoptimized={!user.image.includes('googleusercontent.com')}
               />
             </div>
           ) : (
@@ -89,17 +92,14 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onClose, onAddFriend, i
         {/* Content */}
         <div className="p-6 space-y-6">
           
-          {/* Name and Email */}
+          {/* Name and User ID */}
           <div className="text-center">
             <h2 className="text-2xl font-black text-white mb-2">
               {user.name || 'Unknown User'}
             </h2>
-            {user.email && (
-              <div className="flex items-center justify-center gap-2 text-zinc-500 text-sm">
-                <Mail className="w-4 h-4" />
-                <span>{user.email}</span>
-              </div>
-            )}
+            <div className="flex items-center justify-center gap-2 text-zinc-500 text-sm">
+              <span>{user.userId || user.id}</span>
+            </div>
           </div>
 
           {/* Stats */}
@@ -139,15 +139,6 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onClose, onAddFriend, i
                   </p>
                 </div>
               </div>
-            </div>
-
-            <div className="bg-zinc-800/30 rounded-2xl p-4 border border-zinc-800">
-              <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-2">
-                User ID
-              </p>
-              <p className="text-sm text-white font-mono">
-                {user.id}
-              </p>
             </div>
           </div>
 

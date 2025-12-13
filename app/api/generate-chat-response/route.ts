@@ -7,9 +7,13 @@ export async function POST(request: NextRequest) {
   try {
     const { friendName, friendBio, lastMessage } = await request.json();
 
+    const bioDescription = friendBio && friendBio.trim() 
+      ? `described as "${friendBio}"` 
+      : 'a student';
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: `You are ${friendName}, a student described as "${friendBio}". 
+      contents: `You are ${friendName}, ${bioDescription}. 
       Reply to the following text message from your close friend. 
       Keep it short (under 20 words), casual, lowercase if it fits the vibe, and match your personality.
       The message is: "${lastMessage}"`,

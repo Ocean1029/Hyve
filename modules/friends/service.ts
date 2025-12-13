@@ -2,38 +2,37 @@
 import { getFriendsWithDetails, getFriendsWithLastMessage } from './repository';
 import { Friend } from '@/lib/types';
 
-export const getFriendListService = async (): Promise<Friend[]> => {
-  const friends = await getFriendsWithDetails();
+export const getFriendListService = async (sourceUserId: string): Promise<Friend[]> => {
+  const friends = await getFriendsWithDetails(sourceUserId);
   
-  return friends.map(f => ({
+  return friends.map((f: any) => ({
     id: f.id,
-    name: f.name,
-    avatar: f.avatar || '',
+    name: f.user.name || 'Unknown User',
+    avatar: f.user.image || '',
     totalHours: f.totalHours,
     streak: f.streak,
-    bio: f.bio || '',
-    recentInteractions: f.interactions.map(i => ({
+    recentInteractions: f.interactions.map((i: any) => ({
       id: i.id,
-      activity: i.activity,
-      date: i.date,
-      duration: i.duration,
+      activity: i.activity || '',
+      date: i.date || '',
+      duration: i.duration || '',
       location: i.location || undefined,
     })),
-    posts: f.posts.map(p => ({
+    posts: f.posts.map((p: any) => ({
       id: p.id,
-      imageUrl: p.imageUrl || '',
+      imageUrl: p.imageUrl || p.photoUrl || '',
       caption: p.caption || '',
     })),
   }));
 };
 
-export const getFriendsForMessagesService = async (): Promise<Friend[]> => {
-  const friends = await getFriendsWithLastMessage();
+export const getFriendsForMessagesService = async (sourceUserId: string): Promise<Friend[]> => {
+  const friends = await getFriendsWithLastMessage(sourceUserId);
 
   // Sort friends by:
   // 1. Friends with messages (by last message timestamp, newest first)
   // 2. Friends without messages (by friend creation time, newest first)
-  const sortedFriends = friends.sort((a, b) => {
+  const sortedFriends = friends.sort((a: any, b: any) => {
     const aLastMessage = a.messages[0];
     const bLastMessage = b.messages[0];
 
@@ -56,25 +55,30 @@ export const getFriendsForMessagesService = async (): Promise<Friend[]> => {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
   
-  return sortedFriends.map(f => ({
+  return sortedFriends.map((f: any) => ({
     id: f.id,
-    name: f.name,
-    avatar: f.avatar || '',
+    name: f.user.name || 'Unknown User',
+    avatar: f.user.image || '',
     totalHours: f.totalHours,
     streak: f.streak,
-    bio: f.bio || '',
-    recentInteractions: f.interactions.map(i => ({
+    recentInteractions: f.interactions.map((i: any) => ({
       id: i.id,
-      activity: i.activity,
-      date: i.date,
-      duration: i.duration,
+      activity: i.activity || '',
+      date: i.date || '',
+      duration: i.duration || '',
       location: i.location || undefined,
     })),
-    posts: f.posts.map(p => ({
+    posts: f.posts.map((p: any) => ({
       id: p.id,
-      imageUrl: p.imageUrl || '',
+      imageUrl: p.imageUrl || p.photoUrl || '',
       caption: p.caption || '',
     })),
+    lastMessage: f.messages[0] ? {
+      id: f.messages[0].id,
+      content: f.messages[0].content,
+      senderId: f.messages[0].senderId,
+      timestamp: f.messages[0].timestamp,
+    } : undefined,
   }));
 };
 

@@ -33,12 +33,15 @@ const ProfileClient: React.FC<ProfileClientProps> = ({ user, posts }) => {
       <div className="w-full h-full max-w-[414px] bg-zinc-950 relative overflow-hidden shadow-2xl border-x border-zinc-900/50">
         
         <MyProfile 
+          user={user}
+          posts={posts}
+          stats={user?.stats}
           onViewDetails={() => setShowDetails(true)} 
           onSettingsClick={() => setShowSettings(true)}
         />
 
         {showDetails && <TodayDetails onClose={() => setShowDetails(false)} />}
-        {showSettings && <Settings onClose={() => setShowSettings(false)} />}
+        {showSettings && <Settings user={user} onClose={() => setShowSettings(false)} />}
 
         <BottomNav />
       </div>

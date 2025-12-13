@@ -15,6 +15,12 @@ import { Friend, ChartDataPoint } from '@/lib/types';
 interface DashboardProps {
   friends: Friend[];
   chartData: ChartDataPoint[];
+  user: {
+    id: string;
+    name: string | null;
+    email: string | null;
+    image: string | null;
+  } | null;
   onOpenHappyIndex: () => void;
   onFriendClick: (friend: Friend) => void;
   onSearch: () => void;
@@ -64,13 +70,16 @@ const CustomDot = (props: any) => {
 
 const Dashboard: React.FC<DashboardProps> = ({ 
   friends, 
-  chartData, 
+  chartData,
+  user,
   onOpenHappyIndex, 
   onFriendClick, 
   onSearch, 
   onSpringRecap, 
   onStartSession 
 }) => {
+  // Get first name from full name
+  const firstName = user?.name?.split(' ')[0] || 'User';
   return (
     <div className="relative w-full h-full flex flex-col bg-zinc-950 overflow-hidden">
        {/* Scrollable Content */}
@@ -80,7 +89,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         <header className="sticky top-0 z-30 flex justify-between items-center px-6 py-6 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-900/50">
           <div>
             <h1 className="text-3xl font-light text-stone-200 tracking-tight">
-              Hello, <span className="font-bold text-rose-200">Alex</span>
+              Hello, <span className="font-bold text-rose-200">{firstName}</span>
             </h1>
             <p className="text-zinc-500 text-sm mt-1 font-medium">Ready to disconnect?</p>
           </div>
@@ -203,25 +212,33 @@ const Dashboard: React.FC<DashboardProps> = ({
                 Your Circle
             </h3>
             <div className="space-y-3">
-                {friends.map(friend => (
-                <div 
-                    key={friend.id} 
-                    onClick={() => onFriendClick(friend)}
-                    className="bg-zinc-900/30 p-4 rounded-3xl flex items-center justify-between border border-zinc-800/50 hover:bg-zinc-900 transition-all active:scale-[0.98] cursor-pointer group"
-                >
-                    <div className="flex items-center gap-4">
-                    <img src={friend.avatar} alt={friend.name} className="w-14 h-14 rounded-full border-2 border-zinc-800 group-hover:border-rose-400/50 transition-colors" />
-                    <div>
-                        <h4 className="font-bold text-stone-200 text-lg">{friend.name}</h4>
-                        <p className="text-xs text-zinc-500 font-medium">🔥 {friend.streak} day streak</p>
+                {friends.length > 0 ? (
+                    friends.map(friend => (
+                    <div 
+                        key={friend.id} 
+                        onClick={() => onFriendClick(friend)}
+                        className="bg-zinc-900/30 p-4 rounded-3xl flex items-center justify-between border border-zinc-800/50 hover:bg-zinc-900 transition-all active:scale-[0.98] cursor-pointer group"
+                    >
+                        <div className="flex items-center gap-4">
+                        <img src={friend.avatar} alt={friend.name} className="w-14 h-14 rounded-full border-2 border-zinc-800 group-hover:border-rose-400/50 transition-colors" />
+                        <div>
+                            <h4 className="font-bold text-stone-200 text-lg">{friend.name}</h4>
+                            <p className="text-xs text-zinc-500 font-medium">🔥 {friend.streak} day streak</p>
+                        </div>
+                        </div>
+                        <div className="text-right">
+                        <div className="text-xl font-black text-stone-200">{friend.totalHours}h</div>
+                        <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Hours this week</div>
+                        </div>
                     </div>
+                    ))
+                ) : (
+                    <div className="bg-zinc-900/20 rounded-3xl p-8 flex flex-col items-center justify-center border border-zinc-800/30">
+                        <p className="text-zinc-500 text-sm font-medium text-center">
+                            Add friends to unlock this feature
+                        </p>
                     </div>
-                    <div className="text-right">
-                    <div className="text-xl font-black text-stone-200">{friend.totalHours}h</div>
-                    <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Hours this week</div>
-                    </div>
-                </div>
-                ))}
+                )}
             </div>
             </section>
         </div>

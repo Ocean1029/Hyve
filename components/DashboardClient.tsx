@@ -21,9 +21,15 @@ interface DashboardClientProps {
   friends: Friend[];
   chartData: ChartDataPoint[];
   userId: string;
+  user: {
+    id: string;
+    name: string | null;
+    email: string | null;
+    image: string | null;
+  } | null;
 }
 
-const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, userId }) => {
+const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, userId, user }) => {
   // --- State ---
   const [appState, setAppState] = useState<AppState>(AppState.DASHBOARD);
   
@@ -152,6 +158,7 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
             <Dashboard
               friends={friends}
               chartData={chartData}
+              user={user}
               onOpenHappyIndex={() => setAppState(AppState.HAPPY_INDEX)}
               onFriendClick={handleFriendClick}
               onSearch={startSearch}

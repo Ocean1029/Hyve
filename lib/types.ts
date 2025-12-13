@@ -65,10 +65,14 @@ export interface Friend {
   avatar: string;
   totalHours: number;
   streak: number;
-  // Removed compatibility, added profile details
-  bio: string; 
   recentInteractions: Interaction[];
   posts: Post[];
+  lastMessage?: {
+    id: string;
+    content: string;
+    senderId: string;
+    timestamp: Date;
+  };
 }
 
 export interface SessionData {

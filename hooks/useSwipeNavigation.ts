@@ -11,6 +11,7 @@ export const useSwipeNavigation = ({ currentPath, enabled = true }: SwipeNavigat
   const touchStartX = useRef<number>(0);
   const touchEndX = useRef<number>(0);
   const isSwiping = useRef<boolean>(false);
+  const hasMoved = useRef<boolean>(false);
 
   useEffect(() => {
     if (!enabled) return;
@@ -28,24 +29,53 @@ export const useSwipeNavigation = ({ currentPath, enabled = true }: SwipeNavigat
         target.closest('input') ||
         target.closest('textarea') ||
         target.closest('button') ||
-        target.closest('select')
+        target.closest('select') ||
+        target.closest('img') || // Ignore touch on images (avatars)
+        target.closest('a') // Ignore touch on links
       ) {
         return;
       }
 
       touchStartX.current = e.touches[0].clientX;
+      touchEndX.current = e.touches[0].clientX;
       isSwiping.current = true;
+      hasMoved.current = false;
     };
 
     const handleTouchMove = (e: TouchEvent) => {
       if (!isSwiping.current) return;
       touchEndX.current = e.touches[0].clientX;
+      const moveDistance = Math.abs(touchStartX.current - touchEndX.current);
+      // Only mark as moved if the distance is significant
+      if (moveDistance > 5) {
+        hasMoved.current = true;
+      }
     };
 
     const handleTouchEnd = () => {
       if (!isSwiping.current) return;
       
+      // Only trigger swipe if there was actual movement
+      if (!hasMoved.current) {
+        isSwiping.current = false;
+        touchStartX.current = 0;
+        touchEndX.current = 0;
+        hasMoved.current = false;
+        return;
+      }
+      
       const swipeDistance = touchStartX.current - touchEndX.current;
+      const absSwipeDistance = Math.abs(swipeDistance);
+      
+      // Only trigger navigation if swipe distance exceeds minimum
+      if (absSwipeDistance < minSwipeDistance) {
+        isSwiping.current = false;
+        touchStartX.current = 0;
+        touchEndX.current = 0;
+        hasMoved.current = false;
+        return;
+      }
+
       const isLeftSwipe = swipeDistance > minSwipeDistance;
       const isRightSwipe = swipeDistance < -minSwipeDistance;
 
@@ -73,6 +103,7 @@ export const useSwipeNavigation = ({ currentPath, enabled = true }: SwipeNavigat
       isSwiping.current = false;
       touchStartX.current = 0;
       touchEndX.current = 0;
+      hasMoved.current = false;
     };
 
     document.addEventListener('touchstart', handleTouchStart, { passive: true });

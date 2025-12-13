@@ -2,25 +2,47 @@
 
 import { revalidatePath } from 'next/cache';
 import prisma from '@/lib/prisma';
+import { auth } from '@/auth';
 
-export async function addFriendFromUser(userId: string, userName: string) {
+export async function addFriendFromUser(userId: string) {
   try {
-    // Get user details
-    const user = await prisma.user.findUnique({
+    // Get current user session
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: 'Unauthorized: Please log in' };
+    }
+    const sourceUserId = session.user.id;
+
+    // Prevent adding yourself as a friend
+    if (userId === sourceUserId) {
+      return { success: false, error: 'Cannot add yourself as a friend' };
+    }
+
+    // Get target user details
+    const targetUser = await prisma.user.findUnique({
       where: { id: userId },
     });
 
-    if (!user) {
+    if (!targetUser) {
       return { success: false, error: 'User not found' };
     }
 
-    // Check if friend already exists (by name or email in bio)
-    const existingFriend = await prisma.friend.findFirst({
+    // Verify source user exists
+    const sourceUser = await prisma.user.findUnique({
+      where: { id: sourceUserId },
+    });
+
+    if (!sourceUser) {
+      return { success: false, error: 'Source user not found' };
+    }
+
+    // Check if friend relationship already exists using unique constraint
+    const existingFriend = await prisma.friend.findUnique({
       where: {
-        OR: [
-          { name: user.name || userName },
-          ...(user.email ? [{ bio: { contains: user.email } }] : []),
-        ],
+        userId_sourceUserId: {
+          userId: userId,
+          sourceUserId: sourceUserId,
+        },
       },
     });
 
@@ -28,42 +50,66 @@ export async function addFriendFromUser(userId: string, userName: string) {
       return { success: false, error: 'Friend already exists', alreadyExists: true };
     }
 
-    // Create a friend entry
-    const friend = await prisma.friend.create({
-      data: {
-        name: user.name || userName,
-        avatar: user.image || undefined,
-        bio: `Friend added from user: ${user.email || user.id}`,
-      },
+    // Create friend relationship using transaction to prevent race conditions
+    const friend = await prisma.$transaction(async (tx: typeof prisma) => {
+      // Double-check within transaction
+      const existing = await tx.friend.findUnique({
+        where: {
+          userId_sourceUserId: {
+            userId: userId,
+            sourceUserId: sourceUserId,
+          },
+        },
+      });
+
+      if (existing) {
+        throw new Error('Friend relationship already exists');
+      }
+
+      // Create the friend entry
+      return await tx.friend.create({
+        data: {
+          userId: userId,
+          sourceUserId: sourceUserId,
+        },
+        include: {
+          user: true,
+        },
+      });
     });
 
     revalidatePath('/');
     revalidatePath('/messages');
 
     return { success: true, friend };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to add friend from user:', error);
-    return { success: false, error: 'Failed to add friend' };
+    
+    // Handle unique constraint violation
+    if (error.code === 'P2002' || error.message?.includes('already exists')) {
+      return { success: false, error: 'Friend already exists', alreadyExists: true };
+    }
+    
+    return { success: false, error: error.message || 'Failed to add friend' };
   }
 }
 
 export async function checkIfUserIsFriend(userId: string) {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
+    // Get current user session
+    const session = await auth();
+    if (!session?.user?.id) {
       return { success: false, isFriend: false };
     }
+    const sourceUserId = session.user.id;
 
-    // Check if friend exists
-    const existingFriend = await prisma.friend.findFirst({
+    // Check if friend relationship exists using unique constraint
+    const existingFriend = await prisma.friend.findUnique({
       where: {
-        OR: [
-          { name: user.name || '' },
-          ...(user.email ? [{ bio: { contains: user.email } }] : []),
-        ],
+        userId_sourceUserId: {
+          userId: userId,
+          sourceUserId: sourceUserId,
+        },
       },
     });
 
@@ -74,56 +120,86 @@ export async function checkIfUserIsFriend(userId: string) {
   }
 }
 
-export async function createFriend(data: {
-  name: string;
-  bio: string;
-  school?: string;
-  major?: string;
-  avatarUrl?: string;
-}) {
+export async function createFriend(userId: string) {
   try {
-    const friend = await prisma.friend.create({
-      data: {
-        ...data,
-        createdAt: new Date(),
+    // Get current user session
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: 'Unauthorized: Please log in' };
+    }
+    const sourceUserId = session.user.id;
+
+    // Prevent adding yourself as a friend
+    if (userId === sourceUserId) {
+      return { success: false, error: 'Cannot add yourself as a friend' };
+    }
+
+    // Verify target user exists
+    const targetUser = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!targetUser) {
+      return { success: false, error: 'User not found' };
+    }
+
+    // Check if friend relationship already exists
+    const existingFriend = await prisma.friend.findUnique({
+      where: {
+        userId_sourceUserId: {
+          userId: userId,
+          sourceUserId: sourceUserId,
+        },
       },
     });
 
-    revalidatePath('/');
-    revalidatePath('/messages');
+    if (existingFriend) {
+      return { success: false, error: 'Friend already exists', alreadyExists: true };
+    }
 
-    return { success: true, friend };
-  } catch (error) {
-    console.error('Failed to create friend:', error);
-    return { success: false, error: 'Failed to create friend' };
-  }
-}
+    // Create friend relationship using transaction
+    const friend = await prisma.$transaction(async (tx: typeof prisma) => {
+      const existing = await tx.friend.findUnique({
+        where: {
+          userId_sourceUserId: {
+            userId: userId,
+            sourceUserId: sourceUserId,
+          },
+        },
+      });
 
-export async function updateFriend(
-  friendId: string,
-  data: {
-    name?: string;
-    bio?: string;
-    school?: string;
-    major?: string;
-    avatarUrl?: string;
-  }
-) {
-  try {
-    const friend = await prisma.friend.update({
-      where: { id: friendId },
-      data,
+      if (existing) {
+        throw new Error('Friend relationship already exists');
+      }
+
+      return await tx.friend.create({
+        data: {
+          userId: userId,
+          sourceUserId: sourceUserId,
+        },
+        include: {
+          user: true,
+        },
+      });
     });
 
     revalidatePath('/');
     revalidatePath('/messages');
 
     return { success: true, friend };
-  } catch (error) {
-    console.error('Failed to update friend:', error);
-    return { success: false, error: 'Failed to update friend' };
+  } catch (error: any) {
+    console.error('Failed to create friend:', error);
+    
+    if (error.code === 'P2002' || error.message?.includes('already exists')) {
+      return { success: false, error: 'Friend already exists', alreadyExists: true };
+    }
+    
+    return { success: false, error: error.message || 'Failed to create friend' };
   }
 }
+
+// Note: updateFriend is removed as Friend no longer has mutable fields
+// User data (name, avatar) should be updated in User model instead
 
 export async function deleteFriend(friendId: string) {
   try {

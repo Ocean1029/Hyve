@@ -1,18 +1,26 @@
 import prisma from '@/lib/prisma';
 
-export const getFriendsWithDetails = async () => {
+export const getFriendsWithDetails = async (sourceUserId: string) => {
   return await prisma.friend.findMany({
+    where: {
+      sourceUserId: sourceUserId,
+    },
     include: {
+      user: true, // Include User data for name, avatar
       interactions: true,
       posts: true,
     },
   });
 };
 
-export const getFriendsWithLastMessage = async () => {
+export const getFriendsWithLastMessage = async (sourceUserId: string) => {
   // Get all friends with their last message
   const friends = await prisma.friend.findMany({
+    where: {
+      sourceUserId: sourceUserId,
+    },
     include: {
+      user: true, // Include User data for name, avatar, bio
       interactions: true,
       posts: true,
       messages: {
@@ -30,14 +38,12 @@ export const getFriendsWithLastMessage = async () => {
   return friends;
 };
 
-export const checkIfFriendExists = async (userName: string, userEmail?: string) => {
-  // Check if a friend with the same name or email already exists
+export const checkIfFriendExists = async (userId: string, sourceUserId: string) => {
+  // Check if a friend relationship already exists
   const existingFriend = await prisma.friend.findFirst({
     where: {
-      OR: [
-        { name: userName },
-        ...(userEmail ? [{ bio: { contains: userEmail } }] : []),
-      ],
+      userId: userId,
+      sourceUserId: sourceUserId,
     },
   });
 

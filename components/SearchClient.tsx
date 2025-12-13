@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Search, X, Loader2, Copy, Check } from 'lucide-react';
-import { searchUsers } from '@/modules/search/actions';
+import { searchUsers, getRecommendedUsers } from '@/modules/search/actions';
 import { addFriendFromUser, checkIfUserIsFriend } from '@/modules/friends/actions';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import BottomNav from './BottomNav';
@@ -11,10 +12,10 @@ import UserProfile from './UserProfile';
 
 type SearchResult = {
   id: string;
+  userId?: string;
   name: string | null;
   email?: string | null;
   image?: string | null;
-  bio?: string | null;
   avatar?: string | null;
   createdAt: Date;
   _count?: {
@@ -27,16 +28,40 @@ type SearchResult = {
 const SearchClient: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [recommendedUsers, setRecommendedUsers] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<SearchResult | null>(null);
   const [isAlreadyFriend, setIsAlreadyFriend] = useState(false);
+  const router = useRouter();
 
   useSwipeNavigation({ 
     currentPath: '/search', 
     enabled: true 
   });
+
+  // Load recommended users on component mount and when search is cleared
+  useEffect(() => {
+    const loadRecommendations = async () => {
+      if (searchQuery.trim().length === 0 && !hasSearched) {
+        setIsLoadingRecommendations(true);
+        try {
+          const result = await getRecommendedUsers();
+          if (result.success) {
+            setRecommendedUsers(result.users as SearchResult[]);
+          }
+        } catch (error) {
+          console.error('Failed to load recommendations:', error);
+        } finally {
+          setIsLoadingRecommendations(false);
+        }
+      }
+    };
+
+    loadRecommendations();
+  }, []);
 
   // Debounced search
   useEffect(() => {
@@ -46,6 +71,21 @@ const SearchClient: React.FC = () => {
       } else {
         setResults([]);
         setHasSearched(false);
+        // Reload recommendations when search is cleared
+        const loadRecommendations = async () => {
+          setIsLoadingRecommendations(true);
+          try {
+            const result = await getRecommendedUsers();
+            if (result.success) {
+              setRecommendedUsers(result.users as SearchResult[]);
+            }
+          } catch (error) {
+            console.error('Failed to load recommendations:', error);
+          } finally {
+            setIsLoadingRecommendations(false);
+          }
+        };
+        loadRecommendations();
       }
     }, 300);
 
@@ -72,6 +112,21 @@ const SearchClient: React.FC = () => {
     setSearchQuery('');
     setResults([]);
     setHasSearched(false);
+    // Reload recommendations when search is cleared
+    const loadRecommendations = async () => {
+      setIsLoadingRecommendations(true);
+      try {
+        const result = await getRecommendedUsers();
+        if (result.success) {
+          setRecommendedUsers(result.users as SearchResult[]);
+        }
+      } catch (error) {
+        console.error('Failed to load recommendations:', error);
+      } finally {
+        setIsLoadingRecommendations(false);
+      }
+    };
+    loadRecommendations();
   };
 
   const handleResultClick = async (result: SearchResult, e: React.MouseEvent) => {
@@ -86,11 +141,13 @@ const SearchClient: React.FC = () => {
     setSelectedUser(result);
   };
 
-  const handleAddFriend = async (userId: string, userName: string) => {
-    const result = await addFriendFromUser(userId, userName);
+  const handleAddFriend = async (userId: string) => {
+    const result = await addFriendFromUser(userId);
     if (result.success) {
       // Update the friend status
       setIsAlreadyFriend(true);
+      // Refresh pages to show the new friend
+      router.refresh();
       // Optionally close the modal or show success message
       setTimeout(() => setSelectedUser(null), 1500);
     }
@@ -128,10 +185,12 @@ const SearchClient: React.FC = () => {
 
         {/* Results */}
         <div className="flex-1 overflow-y-auto pb-32">
-          {isSearching ? (
+          {isSearching || isLoadingRecommendations ? (
             <div className="flex flex-col items-center justify-center h-64">
               <Loader2 className="w-8 h-8 text-zinc-500 animate-spin mb-3" />
-              <p className="text-zinc-500 text-sm font-medium">Searching...</p>
+              <p className="text-zinc-500 text-sm font-medium">
+                {isSearching ? 'Searching...' : 'Loading recommendations...'}
+              </p>
             </div>
           ) : hasSearched && results.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64">
@@ -175,11 +234,81 @@ const SearchClient: React.FC = () => {
                       <h3 className="text-white font-bold text-sm truncate">
                         {result.name || 'Unknown User'}
                       </h3>
-                      {result.bio && (
-                        <p className="text-zinc-500 text-xs truncate">{result.bio}</p>
-                      )}
                       <div className="flex items-center gap-2 mt-1">
-                        <p className="text-zinc-700 text-xs font-mono">{result.id}</p>
+                        <p className="text-zinc-700 text-xs font-mono">{result.userId || result.id}</p>
+                        {copiedId === result.id ? (
+                          <Check className="w-3 h-3 text-green-500" />
+                        ) : (
+                          <Copy className="w-3 h-3 text-zinc-700 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Stats */}
+                    {result._count && (
+                      <div className="flex flex-col items-end gap-1">
+                        {result._count.posts !== undefined && (
+                          <div className="text-xs text-zinc-500 flex items-center gap-1">
+                            <span className="font-bold text-white tabular-nums w-6 text-right">{result._count.posts}</span>
+                            <span>posts</span>
+                          </div>
+                        )}
+                        {result._count.focusSessions !== undefined && (
+                          <div className="text-xs text-zinc-500 flex items-center gap-1">
+                            <span className="font-bold text-white tabular-nums w-6 text-right">{result._count.focusSessions}</span>
+                            <span>sessions</span>
+                          </div>
+                        )}
+                        {result._count.interactions !== undefined && (
+                          <div className="text-xs text-zinc-500 flex items-center gap-1">
+                            <span className="font-bold text-white tabular-nums w-6 text-right">{result._count.interactions}</span>
+                            <span>interactions</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : recommendedUsers.length > 0 ? (
+            <div className="px-6 pt-4 space-y-3">
+              {recommendedUsers.map((result) => (
+                <div
+                  key={result.id}
+                  onClick={(e) => handleResultClick(result, e)}
+                  className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all cursor-pointer group active:scale-[0.98]"
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Avatar */}
+                    <div className="flex-shrink-0">
+                      {(result.image || result.avatar) ? (
+                        <div className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-zinc-800 group-hover:border-zinc-700">
+                          <Image
+                            src={result.image || result.avatar || ''}
+                            alt={result.name || 'User'}
+                            fill
+                            className="object-cover"
+                            sizes="48px"
+                            unoptimized={!(result.image || result.avatar)?.includes('googleusercontent.com')}
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-rose-500 to-purple-600 flex items-center justify-center">
+                          <span className="text-white font-bold text-lg">
+                            {(result.name || 'U').charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-white font-bold text-sm truncate">
+                        {result.name || 'Unknown User'}
+                      </h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-zinc-700 text-xs font-mono">{result.userId || result.id}</p>
                         {copiedId === result.id ? (
                           <Check className="w-3 h-3 text-green-500" />
                         ) : (
@@ -219,7 +348,6 @@ const SearchClient: React.FC = () => {
             <div className="flex flex-col items-center justify-center h-64">
               <Search className="w-12 h-12 text-zinc-700 mb-3" />
               <p className="text-zinc-500 text-sm font-medium">Start searching</p>
-              
             </div>
           )}
         </div>

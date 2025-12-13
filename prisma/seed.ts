@@ -16,6 +16,7 @@ async function main() {
   const alex = await prisma.user.create({
     data: {
       id: 'alex-chen',
+      userId: 'alex-chen', // Set userId to id by default
       name: 'Alex Chen',
       email: 'alex@example.com',
       image: 'https://picsum.photos/100/100?random=99',
@@ -119,6 +120,7 @@ async function main() {
         name: f.name,
         email: f.email,
         image: f.image,
+        userId: f.email.split('@')[0], // Use email prefix as default userId
       },
     });
 

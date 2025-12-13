@@ -34,7 +34,7 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ onClose }) => {
   const totalHours = "2h 42m";
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950 overflow-y-auto animate-in slide-in-from-bottom duration-300">
+    <div className="absolute inset-0 flex flex-col h-full bg-zinc-950 overflow-y-auto animate-in slide-in-from-bottom duration-300 z-[60]">
       
       {/* Header */}
       <div className="p-6 flex justify-between items-center bg-zinc-950 sticky top-0 z-20 border-b border-zinc-900">
