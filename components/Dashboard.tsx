@@ -151,7 +151,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div className="w-full bg-zinc-900/50 rounded-3xl px-2 py-4 border border-zinc-800/50 relative">
                 <div className="w-full h-48">
                   <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ top: 40, right: 10, left: 10, bottom: 0 }}>
+                  <LineChart data={chartData} margin={{ top: 40, right: 20, left: 20, bottom: 0 }}>
                     <defs>
                     <linearGradient id="colorGradient" x1="0" y1="0" x2="1" y2="0">
                         <stop offset="0%" stopColor="#fb7185" />
@@ -177,7 +177,8 @@ const Dashboard: React.FC<DashboardProps> = ({
                         dy={10} 
                         fontWeight={600}
                         interval={0} // Force show all days
-                        padding={{ left: 10, right: 10 }} // Ensure Mon/Sun aren't cut off
+                        padding={{ left: 0, right: 0 }}
+                        domain={['dataMin - 0.5', 'dataMax + 0.5']} // Extend domain to hide edge grid lines
                     />
 
                     <Line 
