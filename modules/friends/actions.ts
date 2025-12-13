@@ -3,6 +3,77 @@
 import { revalidatePath } from 'next/cache';
 import prisma from '@/lib/prisma';
 
+export async function addFriendFromUser(userId: string, userName: string) {
+  try {
+    // Get user details
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return { success: false, error: 'User not found' };
+    }
+
+    // Check if friend already exists (by name or email in bio)
+    const existingFriend = await prisma.friend.findFirst({
+      where: {
+        OR: [
+          { name: user.name || userName },
+          ...(user.email ? [{ bio: { contains: user.email } }] : []),
+        ],
+      },
+    });
+
+    if (existingFriend) {
+      return { success: false, error: 'Friend already exists', alreadyExists: true };
+    }
+
+    // Create a friend entry
+    const friend = await prisma.friend.create({
+      data: {
+        name: user.name || userName,
+        avatar: user.image || undefined,
+        bio: `Friend added from user: ${user.email || user.id}`,
+      },
+    });
+
+    revalidatePath('/');
+    revalidatePath('/messages');
+
+    return { success: true, friend };
+  } catch (error) {
+    console.error('Failed to add friend from user:', error);
+    return { success: false, error: 'Failed to add friend' };
+  }
+}
+
+export async function checkIfUserIsFriend(userId: string) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return { success: false, isFriend: false };
+    }
+
+    // Check if friend exists
+    const existingFriend = await prisma.friend.findFirst({
+      where: {
+        OR: [
+          { name: user.name || '' },
+          ...(user.email ? [{ bio: { contains: user.email } }] : []),
+        ],
+      },
+    });
+
+    return { success: true, isFriend: !!existingFriend };
+  } catch (error) {
+    console.error('Failed to check if user is friend:', error);
+    return { success: false, isFriend: false };
+  }
+}
+
 export async function createFriend(data: {
   name: string;
   bio: string;

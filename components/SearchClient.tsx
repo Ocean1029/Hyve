@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Search, User, Users, X, Loader2, Copy, Check } from 'lucide-react';
-import { searchUsers, searchFriends } from '@/modules/search/actions';
+import { Search, X, Loader2, Copy, Check } from 'lucide-react';
+import { searchUsers } from '@/modules/search/actions';
+import { addFriendFromUser, checkIfUserIsFriend } from '@/modules/friends/actions';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
-import { useRouter } from 'next/navigation';
 import BottomNav from './BottomNav';
+import UserProfile from './UserProfile';
 
 type SearchResult = {
   id: string;
@@ -23,16 +24,14 @@ type SearchResult = {
   };
 };
 
-type SearchType = 'users' | 'friends';
-
 const SearchClient: React.FC = () => {
-  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchType, setSearchType] = useState<SearchType>('users');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<SearchResult | null>(null);
+  const [isAlreadyFriend, setIsAlreadyFriend] = useState(false);
 
   useSwipeNavigation({ 
     currentPath: '/search', 
@@ -51,23 +50,16 @@ const SearchClient: React.FC = () => {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, searchType]);
+  }, [searchQuery]);
 
   const performSearch = async () => {
     setIsSearching(true);
     setHasSearched(true);
 
     try {
-      if (searchType === 'users') {
-        const result = await searchUsers(searchQuery);
-        if (result.success) {
-          setResults(result.users as SearchResult[]);
-        }
-      } else {
-        const result = await searchFriends(searchQuery);
-        if (result.success) {
-          setResults(result.friends as SearchResult[]);
-        }
+      const result = await searchUsers(searchQuery);
+      if (result.success) {
+        setResults(result.users as SearchResult[]);
       }
     } catch (error) {
       console.error('Search error:', error);
@@ -82,27 +74,27 @@ const SearchClient: React.FC = () => {
     setHasSearched(false);
   };
 
-  const handleResultClick = async (result: SearchResult) => {
-    if (searchType === 'users') {
-      // For users, copy their ID to clipboard
-      try {
-        await navigator.clipboard.writeText(result.id);
-        setCopiedId(result.id);
-        setTimeout(() => setCopiedId(null), 2000);
-      } catch (error) {
-        console.error('Failed to copy ID:', error);
-      }
-    } else {
-      // For friends, you could navigate to their profile or messages
-      // For now, let's copy the ID as well
-      try {
-        await navigator.clipboard.writeText(result.id);
-        setCopiedId(result.id);
-        setTimeout(() => setCopiedId(null), 2000);
-      } catch (error) {
-        console.error('Failed to copy ID:', error);
-      }
+  const handleResultClick = async (result: SearchResult, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Check if user is already a friend
+    const checkResult = await checkIfUserIsFriend(result.id);
+    setIsAlreadyFriend(checkResult.isFriend);
+    
+    // Open user profile modal
+    setSelectedUser(result);
+  };
+
+  const handleAddFriend = async (userId: string, userName: string) => {
+    const result = await addFriendFromUser(userId, userName);
+    if (result.success) {
+      // Update the friend status
+      setIsAlreadyFriend(true);
+      // Optionally close the modal or show success message
+      setTimeout(() => setSelectedUser(null), 1500);
     }
+    return result;
   };
 
   return (
@@ -113,41 +105,15 @@ const SearchClient: React.FC = () => {
         <div className="p-6 border-b border-zinc-900 bg-zinc-950/90 backdrop-blur-md">
           <h1 className="text-2xl font-black text-white mb-4">Search</h1>
           
-          {/* Search Type Toggle */}
-          <div className="flex gap-2 mb-4">
-            <button
-              onClick={() => setSearchType('users')}
-              className={`flex-1 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-                searchType === 'users'
-                  ? 'bg-white text-black'
-                  : 'bg-zinc-900 text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              <User className="w-4 h-4 inline mr-2" />
-              Users
-            </button>
-            <button
-              onClick={() => setSearchType('friends')}
-              className={`flex-1 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-                searchType === 'friends'
-                  ? 'bg-white text-black'
-                  : 'bg-zinc-900 text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              <Users className="w-4 h-4 inline mr-2" />
-              Friends
-            </button>
-          </div>
-
           {/* Search Input */}
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={`Search by ID, name${searchType === 'users' ? ', email' : ', bio'}...`}
-              className="w-full bg-zinc-900 text-white pl-12 pr-12 py-4 rounded-2xl border border-zinc-800 focus:outline-none focus:border-zinc-700 placeholder-zinc-600"
+              placeholder={`Search by ID or name`}
+              className="w-full bg-zinc-900 text-white pl-11 pr-11 py-2.5 rounded-3xl border border-zinc-800 focus:outline-none focus:border-zinc-700 placeholder-zinc-600 text-sm"
             />
             {searchQuery && (
               <button
@@ -178,7 +144,7 @@ const SearchClient: React.FC = () => {
               {results.map((result) => (
                 <div
                   key={result.id}
-                  onClick={() => handleResultClick(result)}
+                  onClick={(e) => handleResultClick(result, e)}
                   className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all cursor-pointer group active:scale-[0.98]"
                 >
                   <div className="flex items-center gap-4">
@@ -209,14 +175,11 @@ const SearchClient: React.FC = () => {
                       <h3 className="text-white font-bold text-sm truncate">
                         {result.name || 'Unknown User'}
                       </h3>
-                      {result.email && (
-                        <p className="text-zinc-500 text-xs truncate">{result.email}</p>
-                      )}
                       {result.bio && (
                         <p className="text-zinc-500 text-xs truncate">{result.bio}</p>
                       )}
                       <div className="flex items-center gap-2 mt-1">
-                        <p className="text-zinc-700 text-xs font-mono">ID: {result.id}</p>
+                        <p className="text-zinc-700 text-xs font-mono">{result.id}</p>
                         {copiedId === result.id ? (
                           <Check className="w-3 h-3 text-green-500" />
                         ) : (
@@ -229,18 +192,21 @@ const SearchClient: React.FC = () => {
                     {result._count && (
                       <div className="flex flex-col items-end gap-1">
                         {result._count.posts !== undefined && (
-                          <div className="text-xs text-zinc-500">
-                            <span className="font-bold text-white">{result._count.posts}</span> posts
+                          <div className="text-xs text-zinc-500 flex items-center gap-1">
+                            <span className="font-bold text-white tabular-nums w-6 text-right">{result._count.posts}</span>
+                            <span>posts</span>
                           </div>
                         )}
                         {result._count.focusSessions !== undefined && (
-                          <div className="text-xs text-zinc-500">
-                            <span className="font-bold text-white">{result._count.focusSessions}</span> sessions
+                          <div className="text-xs text-zinc-500 flex items-center gap-1">
+                            <span className="font-bold text-white tabular-nums w-6 text-right">{result._count.focusSessions}</span>
+                            <span>sessions</span>
                           </div>
                         )}
                         {result._count.interactions !== undefined && (
-                          <div className="text-xs text-zinc-500">
-                            <span className="font-bold text-white">{result._count.interactions}</span> interactions
+                          <div className="text-xs text-zinc-500 flex items-center gap-1">
+                            <span className="font-bold text-white tabular-nums w-6 text-right">{result._count.interactions}</span>
+                            <span>interactions</span>
                           </div>
                         )}
                       </div>
@@ -253,12 +219,23 @@ const SearchClient: React.FC = () => {
             <div className="flex flex-col items-center justify-center h-64">
               <Search className="w-12 h-12 text-zinc-700 mb-3" />
               <p className="text-zinc-500 text-sm font-medium">Start searching</p>
-              <p className="text-zinc-700 text-xs mt-1">
-                Enter ID, name, or {searchType === 'users' ? 'email' : 'bio'} to find {searchType}
-              </p>
+              
             </div>
           )}
         </div>
+
+        {/* User Profile Modal */}
+        {selectedUser && (
+          <UserProfile
+            user={selectedUser}
+            onClose={() => {
+              setSelectedUser(null);
+              setIsAlreadyFriend(false);
+            }}
+            onAddFriend={handleAddFriend}
+            isAlreadyFriend={isAlreadyFriend}
+          />
+        )}
 
         {/* Bottom Navigation */}
         <BottomNav />
