@@ -71,13 +71,14 @@ async function main() {
   console.log('Created focus sessions');
 
   // 4. Create Friends (from page.tsx MOCK_FRIENDS)
+  // First, create User records for each friend
   const friendsData = [
     {
       name: 'Kai',
-      avatar: 'https://picsum.photos/100/100?random=1',
+      email: 'kai@example.com',
+      image: 'https://picsum.photos/100/100?random=1',
       totalHours: 42,
       streak: 5,
-      bio: 'Architecture student. Coffee addict.',
       interactions: [
         { activity: 'Studio Late Night', date: 'Yesterday', duration: '3h 15m' },
         { activity: 'Lunch', date: '2 days ago', duration: '45m' }
@@ -89,10 +90,10 @@ async function main() {
     },
     {
       name: 'Sarah',
-      avatar: 'https://picsum.photos/100/100?random=2',
+      email: 'sarah@example.com',
+      image: 'https://picsum.photos/100/100?random=2',
       totalHours: 28,
       streak: 2,
-      bio: 'Hiking & Photography.',
       interactions: [
         { activity: 'Morning Hike', date: 'Sunday', duration: '2h 30m' }
       ],
@@ -102,21 +103,30 @@ async function main() {
     },
     {
       name: 'Leo',
-      avatar: 'https://picsum.photos/100/100?random=3',
+      email: 'leo@example.com',
+      image: 'https://picsum.photos/100/100?random=3',
       totalHours: 12,
       streak: 0,
-      bio: 'Music production.',
       interactions: [],
       posts: []
     }
   ];
 
   for (const f of friendsData) {
-    const friend = await prisma.friend.create({
+    // Create User for this friend
+    const friendUser = await prisma.user.create({
       data: {
         name: f.name,
-        avatar: f.avatar,
-        bio: f.bio,
+        email: f.email,
+        image: f.image,
+      },
+    });
+
+    // Create Friend relationship (Alex added this user as a friend)
+    const friend = await prisma.friend.create({
+      data: {
+        userId: friendUser.id,
+        sourceUserId: alex.id, // Alex is the one who added these friends
         totalHours: f.totalHours,
         streak: f.streak,
       },

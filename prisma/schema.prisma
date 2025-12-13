@@ -20,6 +20,12 @@ model User {
   // Custom Relations
   focusSessions FocusSession[]
   posts         Post[]
+  friendsAsUser Friend[]        @relation("FriendUser")
+  friendsAsSource Friend[]     @relation("FriendSource")
+  heartbeats    Heartbeat[]
+  
+  // Presence tracking
+  lastSeenAt    DateTime?
  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -70,11 +76,15 @@ model VerificationToken {
 
 model Friend {
   id        String   @id @default(cuid())
-  name      String
-  avatar    String?
-  bio       String?
+  userId    String   // Reference to the User this friend represents
+  sourceUserId String // Reference to the User who added this friend
+  
   totalHours Float   @default(0)
   streak    Int      @default(0)
+  
+  // Relations
+  user      User     @relation("FriendUser", fields: [userId], references: [id], onDelete: Cascade)
+  sourceUser User    @relation("FriendSource", fields: [sourceUserId], references: [id], onDelete: Cascade)
   
   interactions  Interaction[]
   posts         Post[]
@@ -83,6 +93,8 @@ model Friend {
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  
+  @@unique([userId, sourceUserId]) // Prevent duplicate friend relationships
 }
 
 model Interaction {
@@ -153,5 +165,18 @@ model Message {
   friend    Friend   @relation(fields: [friendId], references: [id], onDelete: Cascade)
   
   createdAt DateTime @default(now())
+}
+
+model Heartbeat {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  timestamp DateTime @default(now())
+  
+  createdAt DateTime @default(now())
+  
+  @@index([userId, timestamp])
+  @@index([timestamp])
 }
 
