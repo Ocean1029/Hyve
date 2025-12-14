@@ -2,8 +2,25 @@ import {
   createUserLocation,
   getUserLocation,
   findNearbyUsers,
+  getUsersLatestLocations,
 } from './repository';
 import { isUserOnline } from '@/modules/presence/repository';
+
+// Type for user location with user relation and distance
+type UserLocationWithDistance = Awaited<ReturnType<typeof getUsersLatestLocations>>[0] & {
+  distance: number;
+};
+
+// Type for the mapped user object with online status
+type NearbyUserWithStatus = {
+  id: string;
+  userId: string;
+  name: string | null;
+  image: string | null;
+  distance: number;
+  isOnline: boolean;
+  lastSeenAt: Date | null;
+};
 
 /**
  * Create a new user location record
@@ -44,7 +61,7 @@ export async function getNearbyOnlineUsers(
 
     // Filter to only online users and add online status
     const nearbyOnlineUsers = nearbyUsers
-      .map((userLocation) => {
+      .map((userLocation: UserLocationWithDistance) => {
         const isOnline = userLocation.user.lastSeenAt
           ? isUserOnline(userLocation.user.lastSeenAt)
           : false;
@@ -58,7 +75,7 @@ export async function getNearbyOnlineUsers(
           lastSeenAt: userLocation.user.lastSeenAt,
         };
       })
-      .filter((user) => user.isOnline); // Only return online users
+      .filter((user: NearbyUserWithStatus) => user.isOnline); // Only return online users
 
     return { success: true, users: nearbyOnlineUsers };
   } catch (error) {

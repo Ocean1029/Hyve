@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Smartphone, Mail, Globe, Bell, Shield, LogOut, ChevronRight, User, Edit2, Check, X as XIcon } from 'lucide-react';
+import { X, Smartphone, Mail, Globe, Bell, Shield, LogOut, ChevronRight, User, Edit2, Check, X as XIcon, Lock, Unlock } from 'lucide-react';
 import { updateUserProfile, logout } from '@/modules/users/actions';
 
 interface SettingsProps {
@@ -11,6 +11,7 @@ interface SettingsProps {
     userId?: string;
     name?: string | null;
     email?: string | null;
+    privacy?: string | null;
   };
   onClose: () => void;
 }
@@ -30,12 +31,15 @@ const Settings: React.FC<SettingsProps> = ({ user, onClose }) => {
   const [nameError, setNameError] = useState<string | null>(null);
   const [nameSuccess, setNameSuccess] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [privacy, setPrivacy] = useState<'public' | 'private'>((user?.privacy as 'public' | 'private') || 'public');
+  const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
 
-  // Update userIdValue and nameValue when user changes
+  // Update userIdValue, nameValue, and privacy when user changes
   useEffect(() => {
     if (user) {
       setUserIdValue(user.userId || user.id || '');
       setNameValue(user.name || '');
+      setPrivacy((user.privacy as 'public' | 'private') || 'public');
     }
   }, [user]);
 
@@ -103,6 +107,25 @@ const Settings: React.FC<SettingsProps> = ({ user, onClose }) => {
     setIsEditingName(false);
     setNameError(null);
     setNameSuccess(false);
+  };
+
+  const handlePrivacyChange = async (newPrivacy: 'public' | 'private') => {
+    if (!user?.id || isSavingPrivacy || newPrivacy === privacy) return;
+    
+    setIsSavingPrivacy(true);
+    try {
+      const result = await updateUserProfile(user.id, { privacy: newPrivacy });
+      if (result.success) {
+        setPrivacy(newPrivacy);
+        router.refresh();
+      } else {
+        console.error('Failed to update privacy:', result.error);
+      }
+    } catch (error) {
+      console.error('Failed to update privacy:', error);
+    } finally {
+      setIsSavingPrivacy(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -326,6 +349,38 @@ const Settings: React.FC<SettingsProps> = ({ user, onClose }) => {
           <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4 pl-2">Privacy & Sync</h3>
           <div className="bg-zinc-900/50 rounded-3xl border border-zinc-800 overflow-hidden">
             
+            {/* Account Privacy Toggle */}
+            <div className="p-5 flex items-center justify-between border-b border-zinc-800/50">
+              <div className="flex items-start gap-4">
+                 <div className={`p-2 ${privacy === 'private' ? 'bg-amber-500/10' : 'bg-emerald-500/10'} rounded-lg ${privacy === 'private' ? 'text-amber-500' : 'text-emerald-500'} mt-1`}>
+                   {privacy === 'private' ? <Lock className="w-5 h-5" /> : <Unlock className="w-5 h-5" />}
+                 </div>
+                 <div>
+                    <h4 className="text-sm font-bold text-white">Account Privacy</h4>
+                    <p className="text-xs text-zinc-500 mt-1 leading-relaxed max-w-[200px]">
+                      {privacy === 'private' 
+                        ? 'Others can find you, but need approval to add you as a friend.' 
+                        : 'Others can find and add you as a friend directly.'}
+                    </p>
+                 </div>
+              </div>
+              <button 
+                onClick={() => handlePrivacyChange(privacy === 'public' ? 'private' : 'public')}
+                disabled={isSavingPrivacy}
+                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-all duration-200 ease-in-out focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${
+                  privacy === 'private' ? 'bg-amber-500/90' : 'bg-emerald-500/90'
+                }`}
+                role="switch"
+                aria-checked={privacy === 'private'}
+              >
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-all duration-200 ease-in-out ${
+                    privacy === 'private' ? 'translate-x-6' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+
             {/* Passive Tracking Toggle */}
             <div className="p-5 flex items-center justify-between border-b border-zinc-800/50">
               <div className="flex items-start gap-4">

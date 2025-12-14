@@ -12,6 +12,7 @@ export async function updateUserProfile(
     email?: string;
     image?: string;
     userId?: string;
+    privacy?: 'public' | 'private';
   }
 ) {
   try {

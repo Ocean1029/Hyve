@@ -103,7 +103,7 @@ export async function acceptFriendRequestService(
     }
 
     // Use transaction to create friend relationship and update request
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: typeof prisma) => {
       // Check if friend relationship already exists
       const existingFriend = await tx.friend.findUnique({
         where: {

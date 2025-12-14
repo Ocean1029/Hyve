@@ -12,6 +12,7 @@ interface SettingsClientProps {
     userId?: string;
     name?: string | null;
     email?: string | null;
+    privacy?: string | null;
   };
 }
 
