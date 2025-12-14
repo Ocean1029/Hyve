@@ -3,12 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Search, X, Loader2, Copy, Check } from 'lucide-react';
+import { Search, Loader2, Copy, Check } from 'lucide-react';
 import { searchUsers, getRecommendedUsers } from '@/modules/search/actions';
 import { addFriendFromUser, checkIfUserIsFriend } from '@/modules/friends/actions';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import BottomNav from './BottomNav';
 import UserProfile from './UserProfile';
+import SearchBar from './SearchBar';
 
 type SearchResult = {
   id: string;
@@ -108,27 +109,6 @@ const SearchClient: React.FC = () => {
     }
   };
 
-  const clearSearch = () => {
-    setSearchQuery('');
-    setResults([]);
-    setHasSearched(false);
-    // Reload recommendations when search is cleared
-    const loadRecommendations = async () => {
-      setIsLoadingRecommendations(true);
-      try {
-        const result = await getRecommendedUsers();
-        if (result.success) {
-          setRecommendedUsers(result.users as SearchResult[]);
-        }
-      } catch (error) {
-        console.error('Failed to load recommendations:', error);
-      } finally {
-        setIsLoadingRecommendations(false);
-      }
-    };
-    loadRecommendations();
-  };
-
   const handleResultClick = async (result: SearchResult, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -163,24 +143,14 @@ const SearchClient: React.FC = () => {
           <h1 className="text-2xl font-black text-white mb-4">Search</h1>
           
           {/* Search Input */}
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={`Search by ID or name`}
-              className="w-full bg-zinc-900 text-white pl-11 pr-11 py-2.5 rounded-3xl border border-zinc-800 focus:outline-none focus:border-zinc-700 placeholder-zinc-600 text-sm"
-            />
-            {searchQuery && (
-              <button
-                onClick={clearSearch}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            )}
-          </div>
+          <SearchBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search by ID or name"
+            showClearButton={true}
+            showGradient={true}
+            inputClassName="rounded-3xl"
+          />
         </div>
 
         {/* Results */}

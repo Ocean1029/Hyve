@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Edit, Flame } from 'lucide-react';
 import { Message, Friend } from '@/lib/types';
 import { usePresence } from '@/hooks/usePresence';
+import SearchBar from './SearchBar';
 
 interface MessagesProps {
     friends: Friend[];
@@ -105,37 +105,21 @@ const Messages: React.FC<MessagesProps> = ({ friends, onViewProfile, userId }) =
       {/* Header */}
       <div className="px-6 flex justify-between items-center mb-6">
         <h1 className="text-3xl font-black text-stone-200 tracking-tight">Messages</h1>
-        <button className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center hover:bg-zinc-800 transition-colors active:scale-95">
-          <Edit className="w-5 h-5 text-zinc-400" />
-        </button>
       </div>
 
       {/* Search Bar */}
       <div className="px-6 mb-6">
-        <div className="relative group">
-            <div className="absolute inset-0 bg-gradient-to-r from-rose-500/20 to-amber-500/20 rounded-2xl blur-md opacity-0 group-focus-within:opacity-100 transition-opacity"></div>
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-rose-400 transition-colors z-10" />
-            <input 
-            type="text" 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search friends" 
-            className="relative z-10 w-full bg-zinc-900 border border-zinc-800 rounded-2xl py-3 pl-10 pr-4 text-stone-300 placeholder-zinc-600 focus:outline-none focus:border-zinc-700 transition-all text-sm font-medium"
-            />
-        </div>
+        <SearchBar
+          value={searchTerm}
+          onChange={setSearchTerm}
+          placeholder="Search friends"
+          showGradient={true}
+        />
       </div>
 
       {/* Active / Focusing Now (Stories Style) */}
       <div className="mb-6 pl-6 overflow-x-auto scrollbar-hide">
         <div className="flex gap-4 pr-6">
-            {/* Create New Story Node */}
-            <div className="flex flex-col items-center gap-2 flex-shrink-0">
-                <div className="w-16 h-16 rounded-full bg-zinc-900 border-2 border-dashed border-zinc-700 flex items-center justify-center cursor-pointer hover:bg-zinc-800 transition-colors">
-                    <Flame className="w-6 h-6 text-zinc-600" />
-                </div>
-                <span className="text-[10px] font-bold text-zinc-500">Your Turn</span>
-            </div>
-
             {onlineFriends.map((friend) => {
                 return (
                 <div 
