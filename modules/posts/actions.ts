@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma';
 
 export async function createPost(
   userId: string,
-  friendId: string,
+  friendId: string | null,
   photoUrl: string,
   caption?: string,
   location?: string,
@@ -15,7 +15,7 @@ export async function createPost(
     const post = await prisma.post.create({
       data: {
         userId,
-        friendId,
+        friendId: friendId || null, // Allow null for user's vault posts
         photoUrl,
         caption,
         location,

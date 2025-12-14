@@ -124,19 +124,23 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
   };
 
   const handlePostToVault = async (photoUrl: string, caption?: string, location?: string, mood?: string) => {
-    if (!selectedFriend) return;
-    
     setIsSaving(true);
     try {
-      const result = await createPost(userId, selectedFriend.id, photoUrl, caption, location, mood);
+      // Post to vault can be with or without a friend
+      // If selectedFriend exists, include it; otherwise post to user's vault only
+      const friendId: string | null = selectedFriend?.id || null;
+      const result = await createPost(userId, friendId, photoUrl, caption, location, mood);
       if (result.success) {
         setAppState(AppState.DASHBOARD);
+        // Reset selected friend after posting
+        setSelectedFriend(null);
       } else {
         console.error('Failed to create post:', result.error);
-        // You might want to show an error message to the user here
+        alert(result.error || 'Failed to create post. Please try again.');
       }
     } catch (error) {
       console.error('Failed to create post:', error);
+      alert('An error occurred while creating the post. Please try again.');
     } finally {
       setIsSaving(false);
     }
