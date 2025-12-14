@@ -196,7 +196,7 @@ const Messages: React.FC<MessagesProps> = ({ friends, onViewProfile, userId }) =
         ))}
         {filteredMessages.length === 0 && (
             <div className="text-center py-10 text-zinc-600 font-medium text-sm">
-                {searchTerm ? `No friends found matching "${searchTerm}"` : 'No friends yet. Start adding friends to see messages here!'}
+                {searchTerm ? `No friends found matching "${searchTerm}"` : 'Start adding friends to see messages here!'}
             </div>
         )}
       </div>
