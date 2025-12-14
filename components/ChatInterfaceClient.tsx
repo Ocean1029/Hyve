@@ -14,14 +14,14 @@ interface ChatInterfaceClientProps {
 const ChatInterfaceClient: React.FC<ChatInterfaceClientProps> = ({ friend, userId }) => {
   const router = useRouter();
   
-  // Enable swipe navigation to go back to messages list
+  // Enable swipe navigation to go back to friends list
   useSwipeNavigation({ 
-    currentPath: `/messages/${friend.id}`, 
+    currentPath: `/friends/${friend.id}`, 
     enabled: true 
   });
 
   const handleBack = () => {
-    router.push('/messages');
+    router.push('/friends');
   };
 
   return (

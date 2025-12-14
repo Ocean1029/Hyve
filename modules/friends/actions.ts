@@ -79,7 +79,7 @@ export async function addFriendFromUser(userId: string) {
     });
 
     revalidatePath('/');
-    revalidatePath('/messages');
+    revalidatePath('/friends');
 
     return { success: true, friend };
   } catch (error: any) {
@@ -184,7 +184,7 @@ export async function createFriend(userId: string) {
     });
 
     revalidatePath('/');
-    revalidatePath('/messages');
+    revalidatePath('/friends');
 
     return { success: true, friend };
   } catch (error: any) {
@@ -222,7 +222,7 @@ export async function deleteFriend(friendId: string) {
     });
 
     revalidatePath('/');
-    revalidatePath('/messages');
+    revalidatePath('/friends');
 
     return { success: true };
   } catch (error) {

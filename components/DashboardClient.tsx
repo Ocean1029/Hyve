@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { AppState, FocusStatus, Friend, ChartDataPoint } from '@/lib/types';
 import SpringRecap from '@/components/SpringRecap';
 import HappyIndex from '@/components/HappyIndex';
@@ -31,6 +32,7 @@ interface DashboardClientProps {
 }
 
 const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, userId, user }) => {
+  const router = useRouter();
   // --- State ---
   const [appState, setAppState] = useState<AppState>(AppState.DASHBOARD);
   
@@ -88,11 +90,7 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
 
   // --- Handlers ---
   const startSearch = () => {
-    setAppState(AppState.SEARCHING);
-    setTimeout(() => {
-      setAppState(AppState.FOUND);
-      setSelectedFriend(friends[0]);
-    }, 2500);
+    router.push('/find-friends');
   };
 
   const startSession = () => {

@@ -81,8 +81,8 @@ export const useSwipeNavigation = ({ currentPath, enabled = true }: SwipeNavigat
 
       if (isLeftSwipe) {
         // Swipe left: go to next page
-        // Order: messages -> search -> home -> profile
-        if (currentPath === '/messages') {
+        // Order: friends -> search -> home -> profile
+        if (currentPath === '/friends') {
           router.push('/search');
         } else if (currentPath === '/search') {
           router.push('/');
@@ -91,15 +91,15 @@ export const useSwipeNavigation = ({ currentPath, enabled = true }: SwipeNavigat
         }
       } else if (isRightSwipe) {
         // Swipe right: go to previous page
-        // Handle dynamic routes: messages/[id] -> messages
-        if (currentPath.startsWith('/messages/')) {
-          router.push('/messages');
+        // Handle dynamic routes: friends/[id] -> friends
+        if (currentPath.startsWith('/friends/')) {
+          router.push('/friends');
         } else if (currentPath === '/profile') {
           router.push('/');
         } else if (currentPath === '/') {
           router.push('/search');
         } else if (currentPath === '/search') {
-          router.push('/messages');
+          router.push('/friends');
         }
       }
 

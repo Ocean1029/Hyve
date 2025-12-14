@@ -1,8 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { X, Calendar, Image as ImageIcon, UserPlus, Check } from 'lucide-react';
+import { X, Calendar, Image as ImageIcon, UserPlus, Check, Clock } from 'lucide-react';
+import { checkFriendRequestStatus } from '@/modules/friend-requests/actions';
+import { sendFriendRequest } from '@/modules/friend-requests/actions';
+import { acceptFriendRequest, rejectFriendRequest } from '@/modules/friend-requests/actions';
 
 interface UserProfileProps {
   user: {
@@ -11,6 +14,7 @@ interface UserProfileProps {
     name: string | null;
     email?: string | null;
     image?: string | null;
+    avatar?: string | null;
     createdAt: Date;
     _count?: {
       posts: number;
@@ -25,20 +29,76 @@ interface UserProfileProps {
 const UserProfile: React.FC<UserProfileProps> = ({ user, onClose, onAddFriend, isAlreadyFriend = false }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [isAdded, setIsAdded] = useState(isAlreadyFriend);
+  const [requestStatus, setRequestStatus] = useState<'none' | 'sent' | 'received' | 'accepted' | 'rejected'>('none');
+  const [requestId, setRequestId] = useState<string | null>(null);
+  const [isLoadingStatus, setIsLoadingStatus] = useState(true);
+
+  // Check friend request status on mount
+  useEffect(() => {
+    const checkStatus = async () => {
+      setIsLoadingStatus(true);
+      const status = await checkFriendRequestStatus(user.id);
+      setRequestStatus(status.status as 'none' | 'sent' | 'received' | 'accepted' | 'rejected');
+      if (status.requestId) {
+        setRequestId(status.requestId);
+      }
+      setIsLoadingStatus(false);
+    };
+    checkStatus();
+  }, [user.id]);
 
   const handleAddFriend = async () => {
-    if (!onAddFriend || isAdding || isAdded) return;
+    if (isAdding || isAdded || requestStatus !== 'none') return;
     
     setIsAdding(true);
     try {
-      const result = await onAddFriend(user.id);
+      const result = await sendFriendRequest(user.id);
       if (result.success) {
-        setIsAdded(true);
-      } else if (result.alreadyExists) {
-        setIsAdded(true);
+        setRequestStatus('sent');
+        if (result.request?.id) {
+          setRequestId(result.request.id);
+        }
       }
     } catch (error) {
-      console.error('Failed to add friend:', error);
+      console.error('Failed to send friend request:', error);
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleAcceptRequest = async () => {
+    if (!requestId || isAdding) return;
+    
+    setIsAdding(true);
+    try {
+      const result = await acceptFriendRequest(requestId);
+      if (result.success) {
+        setRequestStatus('accepted');
+        setIsAdded(true);
+        // Refresh the page to show updated friend list
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('Failed to accept friend request:', error);
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleRejectRequest = async () => {
+    if (!requestId || isAdding) return;
+    
+    setIsAdding(true);
+    try {
+      const result = await rejectFriendRequest(requestId);
+      if (result.success) {
+        setRequestStatus('rejected');
+        setRequestId(null);
+      }
+    } catch (error) {
+      console.error('Failed to reject friend request:', error);
     } finally {
       setIsAdding(false);
     }
@@ -142,31 +202,68 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onClose, onAddFriend, i
             </div>
           </div>
 
-          {/* Add Friend Button */}
-          {onAddFriend && (
-            <button
-              onClick={handleAddFriend}
-              disabled={isAdding || isAdded}
-              className={`w-full py-4 rounded-2xl font-bold text-base transition-all ${
-                isAdded
-                  ? 'bg-green-600 text-white'
-                  : 'bg-white text-black hover:bg-zinc-200 active:scale-[0.98]'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              {isAdding ? (
-                'Adding...'
-              ) : isAdded || isAlreadyFriend ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Check className="w-5 h-5" />
-                  {isAlreadyFriend ? 'Already Friends' : 'Added as Friend'}
-                </span>
+          {/* Friend Action Buttons */}
+          {!isLoadingStatus && (
+            <div className="space-y-2">
+              {isAdded || isAlreadyFriend ? (
+                <button
+                  disabled
+                  className="w-full py-4 rounded-2xl font-bold text-base bg-green-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <Check className="w-5 h-5" />
+                    Already Friends
+                  </span>
+                </button>
+              ) : requestStatus === 'sent' ? (
+                <button
+                  disabled
+                  className="w-full py-4 rounded-2xl font-bold text-base bg-amber-500/20 text-amber-400 border border-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <Clock className="w-5 h-5" />
+                    Request Sent
+                  </span>
+                </button>
+              ) : requestStatus === 'received' && requestId ? (
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleAcceptRequest}
+                    disabled={isAdding}
+                    className="flex-1 py-4 rounded-2xl font-bold text-base bg-emerald-500 text-white hover:bg-emerald-600 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isAdding ? 'Accepting...' : (
+                      <span className="flex items-center justify-center gap-2">
+                        <Check className="w-5 h-5" />
+                        Accept
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={handleRejectRequest}
+                    disabled={isAdding}
+                    className="flex-1 py-4 rounded-2xl font-bold text-base bg-zinc-800 text-zinc-400 hover:bg-zinc-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <X className="w-5 h-5 mx-auto" />
+                  </button>
+                </div>
               ) : (
-                <span className="flex items-center justify-center gap-2">
-                  <UserPlus className="w-5 h-5" />
-                  Add as Friend
-                </span>
+                <button
+                  onClick={handleAddFriend}
+                  disabled={isAdding}
+                  className="w-full py-4 rounded-2xl font-bold text-base bg-white text-black hover:bg-zinc-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isAdding ? (
+                    'Sending...'
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <UserPlus className="w-5 h-5" />
+                      Send Friend Request
+                    </span>
+                  )}
+                </button>
               )}
-            </button>
+            </div>
           )}
         </div>
       </div>

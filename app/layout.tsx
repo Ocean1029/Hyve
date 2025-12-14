@@ -1,5 +1,6 @@
 import './globals.css';
 import PresenceProvider from '@/components/PresenceProvider';
+import LocationTracker from '@/components/LocationTracker';
 
 export const metadata = {
   title: 'Hyve',
@@ -15,6 +16,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <PresenceProvider />
+        <LocationTracker />
         {children}
       </body>
     </html>

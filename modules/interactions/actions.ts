@@ -12,7 +12,7 @@ export async function addInteraction(
     const interaction = await createInteraction(friendId, type, content);
 
     // Revalidate relevant pages
-    revalidatePath('/messages');
+    revalidatePath('/friends');
     revalidatePath('/');
 
     return { success: true, interaction };

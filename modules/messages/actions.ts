@@ -11,9 +11,9 @@ export async function sendMessage(
   try {
     const message = await createMessage(friendId, senderId, content);
 
-    // Revalidate the messages page and the specific chat page
-    revalidatePath('/messages');
-    revalidatePath(`/messages/${friendId}`);
+    // Revalidate the friends page and the specific chat page
+    revalidatePath('/friends');
+    revalidatePath(`/friends/${friendId}`);
 
     return { success: true, message };
   } catch (error) {

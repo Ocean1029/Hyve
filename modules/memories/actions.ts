@@ -18,7 +18,7 @@ export async function createMemoryAction(
     const memory = await createMemory(focusSessionId, type, content, location, happyIndex);
 
     // Revalidate relevant pages
-    revalidatePath('/messages');
+    revalidatePath('/friends');
     revalidatePath('/');
 
     return { success: true, memory };
@@ -44,7 +44,7 @@ export async function addPhotoToMemory(
     });
 
     // Revalidate relevant pages
-    revalidatePath('/messages');
+    revalidatePath('/friends');
     revalidatePath('/');
 
     return { success: true, photo };
@@ -95,7 +95,7 @@ export async function createMemoryWithPhoto(
     });
 
     // Revalidate relevant pages
-    revalidatePath('/messages');
+    revalidatePath('/friends');
     revalidatePath('/');
     revalidatePath('/profile');
 
