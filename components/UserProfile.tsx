@@ -42,7 +42,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onClose, onAddFriend, i
       setIsLoadingStatus(true);
       const status = await checkFriendRequestStatus(targetUserId);
       setRequestStatus(status.status as 'none' | 'sent' | 'received' | 'accepted' | 'rejected');
-      if (status.requestId) {
+      if ('requestId' in status && status.requestId) {
         setRequestId(status.requestId);
       }
       setIsLoadingStatus(false);
@@ -276,7 +276,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onClose, onAddFriend, i
               ) : (
                 <button
                   onClick={handleAddFriend}
-                  disabled={isAdding || requestStatus === 'sent'}
+                  disabled={isAdding || requestStatus !== 'none'}
                   className="w-full py-4 rounded-2xl font-bold text-base bg-white text-black hover:bg-zinc-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
                 >
                   {isAdding ? (

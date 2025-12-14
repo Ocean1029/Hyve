@@ -69,7 +69,7 @@ export const getWeeklyHappyIndexData = async (
   const daysMap = new Map<string, { dayName: string; scores: number[]; date: Date }>();
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  memories.forEach((memory) => {
+  memories.forEach((memory: { timestamp: Date; happyIndex: number | null }) => {
     if (memory.happyIndex !== null) {
       const memoryDate = new Date(memory.timestamp);
       memoryDate.setHours(0, 0, 0, 0); // Normalize to start of day
@@ -151,13 +151,34 @@ export const getPeakHappinessMemories = async (
     take: limit,
   });
 
-  return memories.map((memory) => ({
+  return memories.map((memory: {
+    id: string;
+    content: string | null;
+    location: string | null;
+    timestamp: Date;
+    happyIndex: number | null;
+    photos: Array<{ id: string; photoUrl: string }>;
+    focusSession: {
+      id: string;
+      startTime: Date;
+      endTime: Date;
+      friends: Array<{
+        friend: {
+          id: string;
+          user: {
+            name: string | null;
+            image: string | null;
+          };
+        };
+      }>;
+    };
+  }) => ({
     id: memory.id,
     content: memory.content,
     location: memory.location,
     timestamp: memory.timestamp,
     happyIndex: memory.happyIndex,
-    photos: memory.photos.map((photo) => ({
+    photos: memory.photos.map((photo: { id: string; photoUrl: string }) => ({
       id: photo.id,
       photoUrl: photo.photoUrl,
     })),
@@ -165,7 +186,15 @@ export const getPeakHappinessMemories = async (
       id: memory.focusSession.id,
       startTime: memory.focusSession.startTime,
       endTime: memory.focusSession.endTime,
-      friends: memory.focusSession.friends.map((fsf) => ({
+      friends: memory.focusSession.friends.map((fsf: {
+        friend: {
+          id: string;
+          user: {
+            name: string | null;
+            image: string | null;
+          };
+        };
+      }) => ({
         friend: {
           id: fsf.friend.id,
           user: {
