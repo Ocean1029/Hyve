@@ -1,11 +1,14 @@
 
+'use client';
+
 import React, { useEffect, useState } from 'react';
-import { X, Clock, MapPin, Users, Activity, Flame, Camera } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, Clock, MapPin, Users, Activity, Flame, Camera } from 'lucide-react';
 import { getTodayFocusSessions } from '@/modules/sessions/actions';
 
 interface TodayDetailsProps {
   userId: string;
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 interface TodaySession {
@@ -34,9 +37,19 @@ interface TodaySession {
 }
 
 const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
+  const router = useRouter();
   const [sessions, setSessions] = useState<TodaySession[]>([]);
   const [totalMinutes, setTotalMinutes] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Handle back navigation
+  const handleBack = () => {
+    if (onClose) {
+      onClose();
+    } else {
+      router.back();
+    }
+  };
 
   useEffect(() => {
     const loadTodaySessions = async () => {
@@ -115,7 +128,7 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
   const totalScore = calculateTotalScore();
 
   return (
-    <div className="absolute inset-0 z-[120] flex flex-col h-full bg-zinc-950 overflow-y-auto animate-in slide-in-from-bottom duration-300 scrollbar-hide">
+    <div className="w-full h-full flex flex-col bg-zinc-950 overflow-y-auto scrollbar-hide">
       
       {/* Immersive Header */}
       <div className="relative h-64 flex-shrink-0">
@@ -127,10 +140,10 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
             <h1 className="text-3xl font-black text-white tracking-tight">Today's<br/>Focus</h1>
           </div>
           <button 
-            onClick={onClose} 
+            onClick={handleBack} 
             className="p-2 bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-colors border border-white/10"
           >
-            <X className="w-6 h-6 text-white" />
+            <ArrowLeft className="w-6 h-6 text-white" />
           </button>
         </div>
 
