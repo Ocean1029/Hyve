@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createMessage, getMessages } from './repository';
+import { createMessage, getMessages, getFocusSessionsByFriendId } from './repository';
 
 export async function sendMessage(
   friendId: string,
@@ -30,6 +30,37 @@ export async function getConversation(friendId: string, limit = 50) {
   } catch (error) {
     console.error('Failed to get messages:', error);
     return { success: false, error: 'Failed to get messages' };
+  }
+}
+
+/**
+ * Get all FocusSessions for a friend, including memories and photos
+ */
+export async function getFriendFocusSessions(friendId: string) {
+  try {
+    const focusSessionFriends = await getFocusSessionsByFriendId(friendId);
+    
+    return { 
+      success: true, 
+      sessions: focusSessionFriends.map((fsf: any) => ({
+        id: fsf.focusSession.id,
+        startTime: fsf.focusSession.startTime,
+        endTime: fsf.focusSession.endTime,
+        minutes: fsf.focusSession.minutes,
+        createdAt: fsf.focusSession.createdAt,
+        memories: fsf.focusSession.memories.map((m: any) => ({
+          id: m.id,
+          type: m.type,
+          content: m.content,
+          timestamp: m.timestamp,
+          location: m.location,
+          photos: m.photos.map((p: any) => p.photoUrl),
+        })),
+      })),
+    };
+  } catch (error) {
+    console.error('Failed to get focus sessions:', error);
+    return { success: false, error: 'Failed to get focus sessions' };
   }
 }
 

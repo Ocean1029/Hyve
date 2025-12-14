@@ -5,12 +5,12 @@ export const getRecentFocusSessions = async (userId: string, startDate: Date) =>
   return await prisma.focusSession.findMany({
     where: {
       userId: userId,
-      date: {
+      startTime: {
         gte: startDate,
       },
     },
     orderBy: {
-      date: 'asc',
+      startTime: 'asc',
     },
   });
 };

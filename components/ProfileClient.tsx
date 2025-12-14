@@ -44,7 +44,12 @@ const ProfileClient: React.FC<ProfileClientProps> = ({ user, posts }) => {
           onSettingsClick={handleSettingsClick}
         />
 
-        {showDetails && <TodayDetails onClose={() => setShowDetails(false)} />}
+        {showDetails && user?.id && (
+          <TodayDetails 
+            userId={user.id} 
+            onClose={() => setShowDetails(false)} 
+          />
+        )}
 
         <BottomNav />
       </div>

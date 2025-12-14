@@ -33,5 +33,34 @@ export const getRecentMessages = async (limit = 10) => {
   });
 };
 
+/**
+ * Get all FocusSessions for a specific friend relationship
+ * Includes memories and photos for each session
+ */
+export const getFocusSessionsByFriendId = async (friendId: string) => {
+  return await prisma.focusSessionFriend.findMany({
+    where: {
+      friendId,
+    },
+    include: {
+      focusSession: {
+        include: {
+          memories: {
+            include: {
+              photos: true,
+            },
+            orderBy: {
+              timestamp: 'desc',
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+};
+
 
 

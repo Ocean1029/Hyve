@@ -66,17 +66,21 @@ async function main() {
   const today = new Date();
   const chartData = [45, 120, 30, 90, 180, 240, 60]; // Mon to Sun
   
+  // Store created sessions for later use in creating memories
+  const createdSessions: any[] = [];
   let createdSessionsCount = 0;
+  
   for (let i = 0; i < 7; i++) {
     const dayOffset = 6 - i; // 0 is today (Sun), 6 is Mon
     const date = new Date(today);
     date.setDate(date.getDate() - dayOffset);
+    date.setHours(14, 0, 0, 0); // Set to 2 PM
     
     // Check if session for this date and user already exists
     const existingSession = await prisma.focusSession.findFirst({
       where: {
         userId: alex.id,
-        date: {
+        startTime: {
           gte: new Date(date.setHours(0, 0, 0, 0)),
           lt: new Date(date.setHours(23, 59, 59, 999)),
         },
@@ -84,14 +88,18 @@ async function main() {
     });
 
     if (!existingSession) {
-      await prisma.focusSession.create({
+      const session = await prisma.focusSession.create({
         data: {
           minutes: chartData[i],
-          date: date,
+          startTime: date,
+          endTime: new Date(date.getTime() + chartData[i] * 60 * 1000),
           userId: alex.id,
         },
       });
+      createdSessions.push(session);
       createdSessionsCount++;
+    } else {
+      createdSessions.push(existingSession);
     }
   }
   console.log(`Created ${createdSessionsCount} new focus sessions (${7 - createdSessionsCount} already existed)`);
@@ -177,21 +185,61 @@ async function main() {
       },
     });
 
-    // Create Interactions - only if they don't exist
+    // Create FocusSessionFriend relationships and Memories
+    // For each interaction, create a focus session and link it to the friend
     for (const interaction of f.interactions) {
-      const existingInteraction = await prisma.interaction.findFirst({
+      // Find or create a focus session for this interaction
+      // Use the most recent session or create a new one
+      let focusSession = createdSessions[createdSessions.length - 1]; // Use the most recent session
+      
+      if (!focusSession) {
+        // Create a new focus session if none exists
+        const sessionDate = new Date();
+        sessionDate.setDate(sessionDate.getDate() - 1); // Yesterday
+        focusSession = await prisma.focusSession.create({
+          data: {
+            minutes: 30, // Default duration
+            startTime: sessionDate,
+            endTime: new Date(sessionDate.getTime() + 30 * 60 * 1000),
+            userId: alex.id,
+          },
+        });
+        createdSessions.push(focusSession);
+      }
+      
+      // Create FocusSessionFriend relationship if it doesn't exist
+      const existingFSF = await prisma.focusSessionFriend.findFirst({
         where: {
+          focusSessionId: focusSession.id,
           friendId: friend.id,
-          activity: interaction.activity,
-          date: interaction.date,
         },
       });
-
-      if (!existingInteraction) {
-        await prisma.interaction.create({
+      
+      if (!existingFSF) {
+        await prisma.focusSessionFriend.create({
           data: {
-            ...interaction,
+            focusSessionId: focusSession.id,
             friendId: friend.id,
+          },
+        });
+      }
+      
+      // Create Memory for this interaction
+      const existingMemory = await prisma.memory.findFirst({
+        where: {
+          focusSessionId: focusSession.id,
+          type: 'note',
+          content: interaction.activity,
+        },
+      });
+      
+      if (!existingMemory) {
+        await prisma.memory.create({
+          data: {
+            type: 'note',
+            content: interaction.activity,
+            timestamp: focusSession.startTime,
+            focusSessionId: focusSession.id,
           },
         });
       }

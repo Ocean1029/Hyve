@@ -25,7 +25,7 @@ export const getMyProfileService = async (userId: string) => {
     }),
     prisma.focusSession.aggregate({
       where: { userId },
-      _sum: { durationMinutes: true },
+      _sum: { minutes: true },
     }),
     prisma.focusSession.aggregate({
       where: {
@@ -35,7 +35,7 @@ export const getMyProfileService = async (userId: string) => {
           lt: tomorrow,
         },
       },
-      _sum: { durationMinutes: true },
+      _sum: { minutes: true },
     }),
     // Calculate total focus hours by summing all friends' totalHours
     prisma.friend.aggregate({
@@ -71,8 +71,8 @@ export const getMyProfileService = async (userId: string) => {
     stats: {
       totalFriends,
       totalHours: Math.floor(totalFocusHours._sum.totalHours || 0),
-      totalMinutes: totalMinutes._sum.durationMinutes || 0,
-      todayMinutes: todayMinutes._sum.durationMinutes || 0,
+      totalMinutes: totalMinutes._sum.minutes || 0,
+      todayMinutes: todayMinutes._sum.minutes || 0,
       topBuddy: topFriend,
     },
   };

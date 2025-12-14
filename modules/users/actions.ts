@@ -66,7 +66,7 @@ export async function getUserStats(userId: string) {
       prisma.focusSession.aggregate({
         where: { userId },
         _sum: {
-          durationMinutes: true,
+          minutes: true,
         },
       }),
     ]);
@@ -76,7 +76,7 @@ export async function getUserStats(userId: string) {
       stats: {
         totalSessions,
         totalPosts,
-        totalMinutes: totalMinutes._sum.durationMinutes || 0,
+        totalMinutes: totalMinutes._sum.minutes || 0,
       },
     };
   } catch (error) {

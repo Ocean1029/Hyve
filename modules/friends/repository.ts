@@ -7,7 +7,23 @@ export const getFriendsWithDetails = async (sourceUserId: string) => {
     },
     include: {
       user: true, // Include User data for name, avatar
-      interactions: true,
+      focusSessionFriends: {
+        include: {
+          focusSession: {
+            include: {
+              memories: {
+                include: {
+                  photos: true,
+                },
+                orderBy: {
+                  timestamp: 'desc',
+                },
+                take: 5, // Get recent memories
+              },
+            },
+          },
+        },
+      },
       posts: true,
     },
   });
@@ -21,7 +37,23 @@ export const getFriendsWithLastMessage = async (sourceUserId: string) => {
     },
     include: {
       user: true, // Include User data for name, avatar, bio
-      interactions: true,
+      focusSessionFriends: {
+        include: {
+          focusSession: {
+            include: {
+              memories: {
+                include: {
+                  photos: true,
+                },
+                orderBy: {
+                  timestamp: 'desc',
+                },
+                take: 5, // Get recent memories
+              },
+            },
+          },
+        },
+      },
       posts: true,
       messages: {
         orderBy: {
@@ -59,7 +91,23 @@ export const getFriendById = async (friendId: string, sourceUserId: string) => {
     },
     include: {
       user: true, // Include User data for name, avatar
-      interactions: true,
+      focusSessionFriends: {
+        include: {
+          focusSession: {
+            include: {
+              memories: {
+                include: {
+                  photos: true,
+                },
+                orderBy: {
+                  timestamp: 'desc',
+                },
+                take: 10, // Get recent memories for profile
+              },
+            },
+          },
+        },
+      },
       posts: true,
     },
   });

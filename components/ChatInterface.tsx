@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, Send, Flame, MapPin, Clock } from 'lucide-react';
 import { Friend, ChatMessage } from '@/lib/types';
-import { sendMessage, getConversation } from '@/modules/messages/actions';
+import { sendMessage, getConversation, getFriendFocusSessions } from '@/modules/messages/actions';
 
 interface ChatInterfaceProps {
   friend: Friend;
@@ -22,43 +22,97 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ friend, userId, onBack })
     const loadMessages = async () => {
       setIsLoadingMessages(true);
       try {
-        const result = await getConversation(friend.id);
+        // Load both regular messages and focus sessions in parallel
+        const [messagesResult, sessionsResult] = await Promise.all([
+          getConversation(friend.id),
+          getFriendFocusSessions(friend.id),
+        ]);
         
-        if (result.success && result.messages) {
-          // Convert database messages to ChatMessage format
-          const chatMessages: ChatMessage[] = result.messages.map((msg: any) => ({
+        const allMessages: ChatMessage[] = [];
+        
+        // Convert database messages to ChatMessage format
+        if (messagesResult.success && messagesResult.messages) {
+          const textMessages: ChatMessage[] = messagesResult.messages.map((msg: any) => ({
             id: msg.id,
             senderId: msg.senderId === userId ? 'user' : friend.id,
             text: msg.content,
-            timestamp: formatMessageTime(msg.timestamp),
+            timestamp: msg.timestamp, // Keep as Date for sorting
+            timestampDisplay: formatMessageTime(msg.timestamp),
             type: 'text' as const,
           }));
+          allMessages.push(...textMessages);
+        }
 
-          // Add system message if there's a recent interaction
-          const lastInteraction = friend.recentInteractions && friend.recentInteractions.length > 0 
-              ? friend.recentInteractions[0] 
+        // Create system messages for each FocusSession
+        if (sessionsResult.success && sessionsResult.sessions) {
+          const systemMessages: ChatMessage[] = sessionsResult.sessions.map((session: any) => {
+            // Find the first memory for this session (if any) for photos and location
+            const firstMemory = session.memories && session.memories.length > 0 
+              ? session.memories[0] 
               : null;
-
-          if (lastInteraction) {
-            chatMessages.unshift({
-              id: 'msg-0',
+            
+            // Get all photos from all memories in this session
+            const allPhotoUrls: string[] = [];
+            if (session.memories && session.memories.length > 0) {
+              session.memories.forEach((mem: any) => {
+                if (mem.photos && mem.photos.length > 0) {
+                  allPhotoUrls.push(...mem.photos);
+                }
+              });
+            }
+            
+            // Use photos from memory, or fallback to placeholder
+            const photoUrls = allPhotoUrls.length > 0 
+              ? allPhotoUrls 
+              : ['https://picsum.photos/200/200?random=201', 'https://picsum.photos/200/200?random=202'];
+            
+            // Format duration
+            const durationMinutes = session.minutes ?? 0;
+            const formattedDuration = durationMinutes > 0 
+              ? durationMinutes >= 60 
+                ? `${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m`
+                : `${durationMinutes}m`
+              : 'N/A';
+            
+            // Get location from memory if available, otherwise use default
+            const location = firstMemory?.location || 'Unknown Location';
+            
+            // Use session endTime as the timestamp for the system message
+            const sessionTimestamp = new Date(session.endTime || session.createdAt);
+            
+            return {
+              id: `session-${session.id}`,
               senderId: 'system',
               text: 'Session Complete',
-              timestamp: lastInteraction.date,
-              type: 'system',
+              timestamp: sessionTimestamp, // Keep as Date for sorting
+              timestampDisplay: formatMessageTime(sessionTimestamp),
+              type: 'system' as const,
               systemMetadata: {
-                duration: lastInteraction.duration,
-                location: lastInteraction.location || 'Unknown Location',
-                posts: [
-                  'https://picsum.photos/200/200?random=201',
-                  'https://picsum.photos/200/200?random=202'
-                ]
-              }
-            });
-          }
-
-          setMessages(chatMessages);
+                duration: formattedDuration,
+                location: location,
+                posts: photoUrls,
+                memoryType: firstMemory?.type || 'Memory',
+              },
+            };
+          });
+          
+          allMessages.push(...systemMessages);
         }
+
+        // Sort all messages by timestamp (oldest first for chronological display)
+        allMessages.sort((a, b) => {
+          const timeA = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
+          const timeB = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
+          return timeA - timeB;
+        });
+
+        // Convert timestamp to display format for all messages
+        const finalMessages: ChatMessage[] = allMessages.map(msg => ({
+          ...msg,
+          timestamp: msg.timestampDisplay || formatMessageTime(msg.timestamp),
+        }));
+
+        setMessages(finalMessages);
       } catch (error) {
         console.error('Failed to load messages:', error);
         // On error, show empty messages list
@@ -69,7 +123,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ friend, userId, onBack })
     };
 
     loadMessages();
-  }, [friend.id, friend.recentInteractions, userId]);
+  }, [friend.id, userId]);
 
   // Helper to format timestamp to relative time string
   const formatMessageTime = (timestamp: Date | string): string => {
@@ -200,7 +254,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ friend, userId, onBack })
                              <Flame className="w-4 h-4 text-amber-500 fill-amber-500 animate-pulse" />
                              <span className="text-amber-500 text-xs font-black uppercase tracking-wider">Session Complete</span>
                            </div>
-                           <span className="text-zinc-500 text-[10px] font-bold">{msg.timestamp}</span>
+                           <span className="text-zinc-500 text-[10px] font-bold">{typeof msg.timestamp === 'string' ? msg.timestamp : formatMessageTime(msg.timestamp)}</span>
                         </div>
                       </div>
                       
@@ -220,7 +274,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ friend, userId, onBack })
                           </div>
                         </div>
 
-                        <div className="text-center text-xs font-bold text-zinc-500 mb-2 uppercase tracking-wide">{friend.recentInteractions[0]?.activity}</div>
+                        <div className="text-center text-xs font-bold text-zinc-500 mb-2 uppercase tracking-wide capitalize">{msg.systemMetadata?.memoryType || 'Memory'}</div>
 
                         {msg.systemMetadata?.posts && msg.systemMetadata.posts.length > 0 && (
                           <div className="grid grid-cols-2 gap-2">

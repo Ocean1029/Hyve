@@ -42,11 +42,13 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
   const [focusStatus, setFocusStatus] = useState<FocusStatus>(FocusStatus.PAUSED);
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
   const [sessionEndTime, setSessionEndTime] = useState<Date | null>(null);
   const [iceBreaker, setIceBreaker] = useState<string | null>(null);
   const [loadingIceBreaker, setLoadingIceBreaker] = useState(false);
   const [isPhoneFaceDown, setIsPhoneFaceDown] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [sessionRecorded, setSessionRecorded] = useState(false);
   const timerRef = useRef<number | null>(null);
 
   // Device orientation sensor hook
@@ -95,28 +97,87 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
   const startSession = () => {
     setAppState(AppState.FOCUS);
     setElapsedSeconds(0);
+    setSessionStartTime(new Date()); // Record actual start time
     setSessionEndTime(null);
     setIceBreaker(null);
     setIsPhoneFaceDown(false);
+    setSessionRecorded(false); // Reset session recorded flag when starting new session
   };
 
   const endSession = async () => {
-    setSessionEndTime(new Date());
+    const endTime = new Date();
+    setSessionEndTime(endTime);
     
     // Save focus session to database
-    if (selectedFriend && elapsedSeconds > 0) {
+    // Support multiple friends in a session (friendIds can be empty array)
+    if (elapsedSeconds > 0 && sessionStartTime) {
       setIsSaving(true);
       try {
-        await createFocusSession(userId, selectedFriend.id, elapsedSeconds);
+        // Pass friendIds as an array (empty if no friend selected)
+        const friendIds = selectedFriend ? [selectedFriend.id] : [];
+        const result = await createFocusSession(
+          userId, 
+          friendIds, 
+          elapsedSeconds,
+          sessionStartTime,
+          endTime
+        );
+        if (result.success) {
+          setSessionRecorded(true);
+          console.log('Focus session recorded successfully:', result.session);
+        } else {
+          console.error('Failed to save focus session:', result.error);
+        }
       } catch (error) {
         console.error('Failed to save focus session:', error);
       } finally {
         setIsSaving(false);
       }
+    } else {
+      if (!sessionStartTime) {
+        console.warn('Session not recorded: sessionStartTime is missing');
+      } else {
+        console.warn('Session not recorded: elapsedSeconds is 0');
+      }
     }
     
+    // Only switch to SUMMARY state after attempting to save
     setAppState(AppState.SUMMARY);
   };
+
+  // Ensure session is recorded when SessionSummary is displayed (backup mechanism)
+  useEffect(() => {
+    if (appState === AppState.SUMMARY && !sessionRecorded && elapsedSeconds > 0 && sessionStartTime) {
+      const ensureSessionRecorded = async () => {
+        setIsSaving(true);
+        try {
+          // Pass friendIds as an array (empty if no friend selected)
+          const friendIds = selectedFriend ? [selectedFriend.id] : [];
+          const endTime = sessionEndTime || new Date();
+          const result = await createFocusSession(
+            userId, 
+            friendIds, 
+            elapsedSeconds,
+            sessionStartTime,
+            endTime
+          );
+          if (result.success) {
+            setSessionRecorded(true);
+            console.log('Focus session recorded successfully (backup):', result.session);
+          } else {
+            console.error('Failed to save focus session (backup):', result.error);
+          }
+        } catch (error) {
+          console.error('Failed to save focus session (backup):', error);
+        } finally {
+          setIsSaving(false);
+        }
+      };
+      // Small delay to ensure endSession has completed
+      const timeoutId = setTimeout(ensureSessionRecorded, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [appState, sessionRecorded, selectedFriend, elapsedSeconds, userId, sessionStartTime, sessionEndTime]);
 
   const handleUnlockPhotoMoment = () => {
     if (!sessionEndTime) setSessionEndTime(new Date()); // Fallback if missing

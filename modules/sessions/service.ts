@@ -26,8 +26,8 @@ export const getWeeklyFocusChartData = async (userId: string): Promise<ChartData
   }
 
   // Aggregate minutes
-  sessions.forEach((session: { date: Date; minutes: number }) => {
-    const dayName = daysOfWeek[session.date.getDay()];
+  sessions.forEach((session: { startTime: Date; minutes: number }) => {
+    const dayName = daysOfWeek[session.startTime.getDay()];
     if (daysMap.has(dayName)) {
         daysMap.set(dayName, (daysMap.get(dayName) || 0) + session.minutes);
     }

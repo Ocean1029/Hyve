@@ -19,15 +19,22 @@ export enum FocusStatus {
   PAUSED = 'PAUSED'  // Phone is up / embers
 }
 
-export interface Interaction {
+export interface Memory {
   id: string;
-  activity: string;
-  date: string;
-  duration: string;
-  startTime?: string;
-  endTime?: string;
-  location?: string;
-  participants?: string[];
+  type: string;
+  content?: string;
+  timestamp: Date;
+  focusSessionId: string;
+  photos?: Photo[];
+  focusSessionMinutes?: number; // Duration in minutes from the related FocusSession
+  location?: string; // Location where the memory was created
+}
+
+export interface Photo {
+  id: string;
+  photoUrl: string;
+  memoryId: string;
+  createdAt: Date;
 }
 
 export interface Post {
@@ -50,12 +57,14 @@ export interface ChatMessage {
   id: string;
   senderId: string; // 'user' or friendId or 'system'
   text: string;
-  timestamp: string;
+  timestamp: string | Date; // Can be Date for sorting, then converted to string for display
+  timestampDisplay?: string; // Formatted timestamp string for display
   type: 'text' | 'system';
   systemMetadata?: {
     duration: string;
     location: string;
     posts: string[];
+    memoryType?: string; // Type of memory associated with the session
   };
 }
 
@@ -65,7 +74,7 @@ export interface Friend {
   avatar: string;
   totalHours: number;
   streak: number;
-  recentInteractions: Interaction[];
+  recentMemories: Memory[]; // Memories from focus sessions with this friend
   posts: Post[];
   lastMessage?: {
     id: string;

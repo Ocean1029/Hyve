@@ -64,7 +64,7 @@ const FriendProfile: React.FC<FriendProfileProps> = ({ friend, onBack }) => {
           </div>
         </section>
 
-        {/* 3. Recent Interactions */}
+        {/* 3. Recent Memories */}
         <section>
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-amber-500/10 rounded-lg">
@@ -74,24 +74,41 @@ const FriendProfile: React.FC<FriendProfileProps> = ({ friend, onBack }) => {
           </div>
           
           <div className="space-y-4 pl-2">
-            {friend.recentInteractions.length > 0 ? (
-              friend.recentInteractions.map((interaction, idx) => (
-                <div key={interaction.id} className="relative pl-6 border-l-2 border-zinc-800 hover:border-amber-500/50 transition-colors pb-2 last:pb-0">
+            {friend.recentMemories && friend.recentMemories.length > 0 ? (
+              friend.recentMemories.map((memory, idx) => (
+                <div key={memory.id} className="relative pl-6 border-l-2 border-zinc-800 hover:border-amber-500/50 transition-colors pb-2 last:pb-0">
                    <div className="absolute -left-[5px] top-2 w-2.5 h-2.5 rounded-full bg-zinc-800 border-2 border-zinc-950 ring-2 ring-zinc-950"></div>
                    
                    <div className="flex justify-between items-start">
                       <div>
-                        <h4 className="font-bold text-stone-200 text-lg">{interaction.activity}</h4>
-                        <p className="text-xs text-zinc-500 font-bold mt-1 uppercase">{interaction.date}</p>
+                        <h4 className="font-bold text-stone-200 text-lg capitalize">{memory.type}</h4>
+                        <p className="text-xs text-zinc-500 font-bold mt-1 uppercase">
+                          {new Date(memory.timestamp).toLocaleDateString()}
+                        </p>
+                        {memory.content && (
+                          <p className="text-sm text-zinc-400 mt-1">{memory.content}</p>
+                        )}
                       </div>
                       <div className="px-3 py-1 bg-zinc-900 rounded-lg border border-zinc-800 text-xs font-mono font-bold text-zinc-400">
-                        {interaction.duration}
+                        {new Date(memory.timestamp).toLocaleTimeString()}
                       </div>
                    </div>
+                   {memory.photos && memory.photos.length > 0 && (
+                     <div className="mt-2 flex gap-2">
+                       {memory.photos.map((photo) => (
+                         <img 
+                           key={photo.id} 
+                           src={photo.photoUrl} 
+                           alt="Memory photo" 
+                           className="w-16 h-16 rounded-lg object-cover"
+                         />
+                       ))}
+                     </div>
+                   )}
                 </div>
               ))
             ) : (
-              <div className="text-zinc-600 text-sm font-medium italic pl-4">No recent sessions recorded.</div>
+              <div className="text-zinc-600 text-sm font-medium italic pl-4">No recent memories recorded.</div>
             )}
           </div>
         </section>
