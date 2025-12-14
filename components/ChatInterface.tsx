@@ -247,18 +247,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ friend, userId, onBack })
               if (isSystem) {
                 return (
                   <div key={msg.id} className="flex flex-col items-center my-6 animate-in zoom-in-95 duration-500">
-                    <div className="w-full max-w-xs bg-gradient-to-br from-zinc-900 to-zinc-950 border border-amber-500/30 rounded-3xl overflow-hidden shadow-[0_0_30px_rgba(251,146,60,0.1)]">
-                      <div className="bg-gradient-to-r from-rose-500 to-amber-500 p-0.5">
-                        <div className="bg-zinc-900 px-4 py-3 flex items-center justify-between">
-                           <div className="flex items-center gap-2">
-                             <Flame className="w-4 h-4 text-amber-500 fill-amber-500 animate-pulse" />
-                             <span className="text-amber-500 text-xs font-black uppercase tracking-wider">Session Complete</span>
-                           </div>
-                           <span className="text-zinc-500 text-[10px] font-bold">{typeof msg.timestamp === 'string' ? msg.timestamp : formatMessageTime(msg.timestamp)}</span>
+                    {/* Gradient border wrapper */}
+                    <div className="w-full max-w-xs bg-gradient-to-r from-rose-500 to-amber-500 p-[2px] rounded-3xl shadow-[0_0_30px_rgba(251,146,60,0.1)]">
+                      {/* Inner content container */}
+                      <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 rounded-[22px] overflow-hidden">
+                        {/* Header section */}
+                        <div className="px-4 py-3 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Flame className="w-4 h-4 text-amber-500 fill-amber-500 animate-pulse" />
+                            <span className="text-amber-500 text-xs font-black uppercase tracking-wider">Session Complete</span>
+                          </div>
+                          <span className="text-zinc-500 text-[10px] font-bold">{typeof msg.timestamp === 'string' ? msg.timestamp : formatMessageTime(msg.timestamp)}</span>
                         </div>
-                      </div>
-                      
-                      <div className="p-5">
+                        {/* Separator line */}
+                        <div className="h-[1px] bg-gradient-to-r from-rose-500 to-amber-500"></div>
+                        
+                        <div className="p-5">
                         <h3 className="text-white font-bold text-lg mb-4 text-center">
                           The fire is out, but the<br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-amber-400">vibes remain!</span> 🔥
                         </h3>
@@ -283,6 +287,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ friend, userId, onBack })
                              ))}
                           </div>
                         )}
+                        </div>
                       </div>
                     </div>
                   </div>
