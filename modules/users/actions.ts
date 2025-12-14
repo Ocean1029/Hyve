@@ -36,7 +36,9 @@ export async function updateUserProfile(
       data,
     });
 
+    // Revalidate both profile and settings pages
     revalidatePath('/profile');
+    revalidatePath('/settings');
 
     return { success: true, user };
   } catch (error: any) {

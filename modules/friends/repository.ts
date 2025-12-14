@@ -49,3 +49,18 @@ export const checkIfFriendExists = async (userId: string, sourceUserId: string) 
 
   return !!existingFriend;
 };
+
+export const getFriendById = async (friendId: string, sourceUserId: string) => {
+  // Get a friend by ID, ensuring it belongs to the source user
+  return await prisma.friend.findFirst({
+    where: {
+      id: friendId,
+      sourceUserId: sourceUserId,
+    },
+    include: {
+      user: true, // Include User data for name, avatar
+      interactions: true,
+      posts: true,
+    },
+  });
+};

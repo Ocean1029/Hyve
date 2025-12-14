@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { Search, Edit, Flame } from 'lucide-react';
 import { Message, Friend } from '@/lib/types';
-import ChatInterface from './ChatInterface';
 import { usePresence } from '@/hooks/usePresence';
 
 interface MessagesProps {
@@ -64,7 +64,7 @@ const generateMessagesFromFriends = (friends: Friend[]): Message[] => {
 };
 
 const Messages: React.FC<MessagesProps> = ({ friends, onViewProfile, userId }) => {
-  const [selectedChatFriend, setSelectedChatFriend] = useState<Friend | null>(null);
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   
   // Get real-time presence status
@@ -76,10 +76,7 @@ const Messages: React.FC<MessagesProps> = ({ friends, onViewProfile, userId }) =
   }, [friends, isOnline]);
 
   const handleOpenChat = (friendId: string) => {
-      const friend = friends.find(f => f.id === friendId);
-      if (friend) {
-          setSelectedChatFriend(friend);
-      }
+    router.push(`/messages/${friendId}`);
   };
 
   const handleAvatarClick = (e: React.MouseEvent | React.TouchEvent, friendId: string) => {
@@ -104,13 +101,6 @@ const Messages: React.FC<MessagesProps> = ({ friends, onViewProfile, userId }) =
 
   return (
     <div className="w-full h-full bg-zinc-950 flex flex-col pt-12 pb-32 overflow-y-auto scrollbar-hide relative">
-      
-      {/* Chat Overlay */}
-      {selectedChatFriend && (
-          <div className="absolute inset-0 z-[250]">
-            <ChatInterface friend={selectedChatFriend} userId={userId} onBack={() => setSelectedChatFriend(null)} />
-          </div>
-      )}
       
       {/* Header */}
       <div className="px-6 flex justify-between items-center mb-6">

@@ -158,7 +158,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ friend, userId, onBack })
   };
 
   return (
-    <div className="absolute inset-0 z-[250] bg-zinc-950 flex flex-col animate-in slide-in-from-right duration-300">
+    <div className="w-full h-full bg-zinc-950 flex flex-col">
       
       {/* Header - Fixed Height, High Z-Index, Solid Background */}
       <div className="flex-none px-4 py-4 flex items-center gap-3 border-b border-zinc-900 bg-zinc-950 z-50 shadow-sm relative">

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Smartphone, Mail, Globe, Bell, Shield, LogOut, ChevronRight, ToggleLeft, ToggleRight, User, Edit2, Check, X as XIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { X, Smartphone, Mail, Globe, Bell, Shield, LogOut, ChevronRight, User, Edit2, Check, X as XIcon } from 'lucide-react';
 import { updateUserProfile } from '@/modules/users/actions';
 
 interface SettingsProps {
@@ -15,6 +16,7 @@ interface SettingsProps {
 }
 
 const Settings: React.FC<SettingsProps> = ({ user, onClose }) => {
+  const router = useRouter();
   const [passiveTracking, setPassiveTracking] = useState(true);
   const [notifications, setNotifications] = useState(true);
   const [isEditingUserId, setIsEditingUserId] = useState(false);
@@ -51,7 +53,7 @@ const Settings: React.FC<SettingsProps> = ({ user, onClose }) => {
         setIsEditingUserId(false);
         setTimeout(() => setSuccess(false), 2000);
         // Refresh the page to show updated userId
-        window.location.reload();
+        router.refresh();
       } else {
         setError(result.error || 'Failed to update userId');
       }
@@ -77,7 +79,7 @@ const Settings: React.FC<SettingsProps> = ({ user, onClose }) => {
         setIsEditingName(false);
         setTimeout(() => setNameSuccess(false), 2000);
         // Refresh the page to show updated name
-        window.location.reload();
+        router.refresh();
       } else {
         setNameError(result.error || 'Failed to update name');
       }
@@ -103,7 +105,7 @@ const Settings: React.FC<SettingsProps> = ({ user, onClose }) => {
   };
 
   return (
-    <div className="absolute inset-0 flex flex-col h-full bg-zinc-950 overflow-y-auto animate-in slide-in-from-right duration-300 z-[60]">
+    <div className="w-full h-full flex flex-col bg-zinc-950 overflow-y-auto">
       
       {/* Header */}
       <div className="p-6 flex justify-between items-center sticky top-0 bg-zinc-950/90 backdrop-blur-md z-30 border-b border-zinc-900">
@@ -316,12 +318,19 @@ const Settings: React.FC<SettingsProps> = ({ user, onClose }) => {
                     </p>
                  </div>
               </div>
-              <button onClick={() => setPassiveTracking(!passiveTracking)} className="transition-colors">
-                {passiveTracking ? (
-                  <ToggleRight className="w-10 h-10 text-emerald-400 fill-emerald-400/20" />
-                ) : (
-                  <ToggleLeft className="w-10 h-10 text-zinc-600" />
-                )}
+              <button 
+                onClick={() => setPassiveTracking(!passiveTracking)}
+                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-all duration-200 ease-in-out focus:outline-none  ${
+                  passiveTracking ? 'bg-emerald-500/90' : 'bg-zinc-800'
+                }`}
+                role="switch"
+                aria-checked={passiveTracking}
+              >
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-all duration-200 ease-in-out ${
+                    passiveTracking ? 'translate-x-6' : 'translate-x-0.5'
+                  }`}
+                />
               </button>
             </div>
 
@@ -332,17 +341,24 @@ const Settings: React.FC<SettingsProps> = ({ user, onClose }) => {
                  </div>
                  <div>
                     <h4 className="text-sm font-bold text-white">Notifications</h4>
-                    <p className="text-xs text-zinc-500 mt-1">
+                    <p className="text-xs text-zinc-500 mt-1 leading-relaxed max-w-[200px]">
                       Get alerted when friends start a campfire nearby.
                     </p>
                  </div>
               </div>
-               <button onClick={() => setNotifications(!notifications)} className="transition-colors">
-                {notifications ? (
-                  <ToggleRight className="w-10 h-10 text-emerald-400 fill-emerald-400/20" />
-                ) : (
-                  <ToggleLeft className="w-10 h-10 text-zinc-600" />
-                )}
+              <button 
+                onClick={() => setNotifications(!notifications)}
+                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-all duration-200 ease-in-out focus:outline-none  ${
+                  notifications ? 'bg-emerald-500/90' : 'bg-zinc-800'
+                }`}
+                role="switch"
+                aria-checked={notifications}
+              >
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-all duration-200 ease-in-out ${
+                    notifications ? 'translate-x-6' : 'translate-x-0.5'
+                  }`}
+                />
               </button>
             </div>
           </div>

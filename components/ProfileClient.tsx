@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Post } from '@/lib/types';
 import MyProfile from '@/components/MyProfile';
 import TodayDetails from '@/components/TodayDetails';
-import Settings from '@/components/Settings';
 import BottomNav from '@/components/BottomNav';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 
@@ -14,14 +14,18 @@ interface ProfileClientProps {
 }
 
 const ProfileClient: React.FC<ProfileClientProps> = ({ user, posts }) => {
+  const router = useRouter();
   const [showDetails, setShowDetails] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   
   // Enable swipe navigation only when no overlays are shown
   useSwipeNavigation({ 
     currentPath: '/profile', 
-    enabled: !showDetails && !showSettings 
+    enabled: !showDetails
   });
+
+  const handleSettingsClick = () => {
+    router.push('/settings');
+  };
 
   // Note: MyProfile component currently uses hardcoded posts internally or props?
   // Let's check MyProfile component. It uses MY_POSTS constant.
@@ -37,11 +41,10 @@ const ProfileClient: React.FC<ProfileClientProps> = ({ user, posts }) => {
           posts={posts}
           stats={user?.stats}
           onViewDetails={() => setShowDetails(true)} 
-          onSettingsClick={() => setShowSettings(true)}
+          onSettingsClick={handleSettingsClick}
         />
 
         {showDetails && <TodayDetails onClose={() => setShowDetails(false)} />}
-        {showSettings && <Settings user={user} onClose={() => setShowSettings(false)} />}
 
         <BottomNav />
       </div>

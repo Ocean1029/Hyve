@@ -120,7 +120,7 @@ const MyProfile: React.FC<MyProfileProps> = ({
             <div className="bg-zinc-900/30 border border-zinc-800/50 rounded-2xl p-3 flex flex-col items-center justify-center gap-1">
                 <Trophy className="w-4 h-4 text-rose-500 mb-1 fill-rose-500/20" />
                 <span className="text-xl font-black text-stone-200">{stats?.topBuddy || '-'}</span>
-                <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">#1 Buddy</span>
+                <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Best Buddy</span>
             </div>
         </div>
 

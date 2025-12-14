@@ -1,5 +1,5 @@
 // modules/friends/service.ts
-import { getFriendsWithDetails, getFriendsWithLastMessage } from './repository';
+import { getFriendsWithDetails, getFriendsWithLastMessage, getFriendById } from './repository';
 import { Friend } from '@/lib/types';
 
 export const getFriendListService = async (sourceUserId: string): Promise<Friend[]> => {
@@ -80,5 +80,33 @@ export const getFriendsForMessagesService = async (sourceUserId: string): Promis
       timestamp: f.messages[0].timestamp,
     } : undefined,
   }));
+};
+
+export const getFriendByIdService = async (friendId: string, sourceUserId: string): Promise<Friend | null> => {
+  const friend = await getFriendById(friendId, sourceUserId);
+  
+  if (!friend) {
+    return null;
+  }
+  
+  return {
+    id: friend.id,
+    name: friend.user.name || 'Unknown User',
+    avatar: friend.user.image || '',
+    totalHours: friend.totalHours,
+    streak: friend.streak,
+    recentInteractions: friend.interactions.map((i: any) => ({
+      id: i.id,
+      activity: i.activity || '',
+      date: i.date || '',
+      duration: i.duration || '',
+      location: i.location || undefined,
+    })),
+    posts: friend.posts.map((p: any) => ({
+      id: p.id,
+      imageUrl: p.imageUrl || p.photoUrl || '',
+      caption: p.caption || '',
+    })),
+  };
 };
 

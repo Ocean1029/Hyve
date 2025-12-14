@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Friend } from '@/lib/types';
 import Messages from '@/components/Messages';
-import ChatInterface from '@/components/ChatInterface';
 import BottomNav from '@/components/BottomNav';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 
@@ -14,13 +13,12 @@ interface MessagesClientProps {
 }
 
 const MessagesClient: React.FC<MessagesClientProps> = ({ friends, userId }) => {
-  const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const router = useRouter();
   
-  // Enable swipe navigation only when not in chat
+  // Enable swipe navigation for messages list page
   useSwipeNavigation({ 
     currentPath: '/messages', 
-    enabled: !selectedFriend 
+    enabled: true 
   });
 
   // Refresh data when page becomes visible (e.g., after adding a friend from another page)
@@ -47,24 +45,14 @@ const MessagesClient: React.FC<MessagesClientProps> = ({ friends, userId }) => {
   }, [router]);
 
   const handleFriendClick = (friend: Friend) => {
-    setSelectedFriend(friend);
+    router.push(`/messages/${friend.id}`);
   };
 
   return (
     <div className="w-full h-screen bg-black flex items-center justify-center">
       <div className="w-full h-full max-w-[414px] bg-zinc-950 relative overflow-hidden shadow-2xl border-x border-zinc-900/50">
-        
-        {selectedFriend ? (
-          <div className="absolute inset-0 z-[250]">
-            <ChatInterface friend={selectedFriend} userId={userId} onBack={() => setSelectedFriend(null)} />
-          </div>
-        ) : (
-          <>
-            <Messages friends={friends} onViewProfile={handleFriendClick} userId={userId} />
-            {/* Bottom Navigation - Only show when not in chat */}
-            <BottomNav />
-          </>
-        )}
+        <Messages friends={friends} onViewProfile={handleFriendClick} userId={userId} />
+        <BottomNav />
       </div>
     </div>
   );
