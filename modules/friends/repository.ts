@@ -1,5 +1,10 @@
 import prisma from '@/lib/prisma';
 
+/**
+ * Get friends list for a user with details
+ * Note: With bidirectional friend relationships, we only query records where
+ * sourceUserId = currentUserId to get the current user's friend list (no duplicates)
+ */
 export const getFriendsWithDetails = async (sourceUserId: string) => {
   return await prisma.friend.findMany({
     where: {
@@ -29,6 +34,11 @@ export const getFriendsWithDetails = async (sourceUserId: string) => {
   });
 };
 
+/**
+ * Get friends list for a user with their last message
+ * Note: With bidirectional friend relationships, we only query records where
+ * sourceUserId = currentUserId to get the current user's friend list (no duplicates)
+ */
 export const getFriendsWithLastMessage = async (sourceUserId: string) => {
   // Get all friends with their last message
   const friends = await prisma.friend.findMany({

@@ -17,6 +17,10 @@ export const getMyProfileService = async (userId: string) => {
   // Get statistics
   const [totalFriends, totalSessions, totalMinutes, todayMinutes, totalFocusHours, topFriend] = await Promise.all([
     // Count friends for the current user
+    // Note: With bidirectional friend relationships, each friendship has two records:
+    // - userId: friendId, sourceUserId: currentUserId (current user can see friend)
+    // - userId: currentUserId, sourceUserId: friendId (friend can see current user)
+    // We only count records where sourceUserId = currentUserId to get the current user's friend list
     prisma.friend.count({
       where: { sourceUserId: userId },
     }),

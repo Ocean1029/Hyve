@@ -22,8 +22,8 @@ export async function sendFriendRequestService(
       return { success: false, error: 'Cannot send request to yourself' };
     }
 
-    // Check if users are already friends
-    const existingFriend = await prisma.friend.findUnique({
+    // Check if users are already friends (bidirectional check)
+    const existingFriend1 = await prisma.friend.findUnique({
       where: {
         userId_sourceUserId: {
           userId: receiverId,
@@ -32,7 +32,17 @@ export async function sendFriendRequestService(
       },
     });
 
-    if (existingFriend) {
+    const existingFriend2 = await prisma.friend.findUnique({
+      where: {
+        userId_sourceUserId: {
+          userId: senderId,
+          sourceUserId: receiverId,
+        },
+      },
+    });
+
+    // If either relationship exists, they are already friends
+    if (existingFriend1 || existingFriend2) {
       return { success: false, error: 'Users are already friends' };
     }
 
@@ -75,7 +85,7 @@ export async function sendFriendRequestService(
 
 /**
  * Accept a friend request
- * Creates Friend relationship and updates request status
+ * Creates bidirectional Friend relationships and updates request status
  */
 export async function acceptFriendRequestService(
   requestId: string,
@@ -102,32 +112,56 @@ export async function acceptFriendRequestService(
       };
     }
 
-    // Use transaction to create friend relationship and update request
+    // Use transaction to create bidirectional friend relationships and update request
     const result = await prisma.$transaction(async (tx: typeof prisma) => {
-      // Check if friend relationship already exists
-      const existingFriend = await tx.friend.findUnique({
+      const senderId = request.senderId;
+      const receiverId = request.receiverId;
+
+      // Check if friend relationships already exist (bidirectional check)
+      const existingFriend1 = await tx.friend.findUnique({
         where: {
           userId_sourceUserId: {
-            userId: request.senderId,
-            sourceUserId: request.receiverId,
+            userId: senderId,
+            sourceUserId: receiverId,
           },
         },
       });
 
-      if (existingFriend) {
-        // Update request status even if friend already exists
+      const existingFriend2 = await tx.friend.findUnique({
+        where: {
+          userId_sourceUserId: {
+            userId: receiverId,
+            sourceUserId: senderId,
+          },
+        },
+      });
+
+      // If both relationships exist, just update request status
+      if (existingFriend1 && existingFriend2) {
         await tx.friendRequest.update({
           where: { id: requestId },
           data: { status: 'accepted' },
         });
-        return { friend: existingFriend, requestUpdated: true };
+        return { friend: existingFriend2, requestUpdated: true };
       }
 
-      // Create friend relationship
-      const friend = await tx.friend.create({
+      // Create bidirectional friend relationships
+      // Relationship 1: receiver -> sender (receiver can see sender as friend)
+      const friend1 = existingFriend1 || await tx.friend.create({
         data: {
-          userId: request.senderId,
-          sourceUserId: request.receiverId,
+          userId: senderId,
+          sourceUserId: receiverId,
+        },
+        include: {
+          user: true,
+        },
+      });
+
+      // Relationship 2: sender -> receiver (sender can see receiver as friend)
+      const friend2 = existingFriend2 || await tx.friend.create({
+        data: {
+          userId: receiverId,
+          sourceUserId: senderId,
         },
         include: {
           user: true,
@@ -140,7 +174,8 @@ export async function acceptFriendRequestService(
         data: { status: 'accepted' },
       });
 
-      return { friend, requestUpdated: true };
+      // Return the friend relationship from receiver's perspective
+      return { friend: friend1, requestUpdated: true };
     });
 
     revalidatePath('/friends');

@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppState, FocusStatus, Friend, ChartDataPoint } from '@/lib/types';
 import SpringRecap from '@/components/SpringRecap';
-import HappyIndex from '@/components/HappyIndex';
 import FriendProfile from '@/components/FriendProfile';
 import Dashboard from '@/components/Dashboard';
 import PostMemory from '@/components/PostMemory';
@@ -254,7 +253,7 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
               friends={friends}
               chartData={chartData}
               user={user}
-              onOpenHappyIndex={() => setAppState(AppState.HAPPY_INDEX)}
+              onOpenHappyIndex={() => router.push('/happy-index')}
               onFriendClick={handleFriendClick}
               onSearch={startSearch}
               onSpringRecap={() => setAppState(AppState.QUARTERLY_FEEDBACK)}
@@ -270,16 +269,6 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
         )}
 
         {/* Global Modals */}
-        {appState === AppState.HAPPY_INDEX && (
-          <div className="absolute inset-0 z-50">
-            <HappyIndex
-              onClose={() => setAppState(AppState.DASHBOARD)}
-              friends={friends}
-              onFriendClick={handleFriendClick}
-            />
-          </div>
-        )}
-
         {appState === AppState.FRIEND_PROFILE && selectedFriend && (
           <div className="absolute inset-0 z-50">
             <FriendProfile friend={selectedFriend} onBack={() => setAppState(AppState.DASHBOARD)} />

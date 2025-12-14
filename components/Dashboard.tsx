@@ -6,8 +6,7 @@ import {
   ChevronRight, 
   Flower2, 
   Smile, 
-  Flame,
-  ArrowUpRight
+  Flame
 } from 'lucide-react';
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Friend, ChartDataPoint } from '@/lib/types';
@@ -111,20 +110,10 @@ const Dashboard: React.FC<DashboardProps> = ({
             {/* Happy Index (Weekly Vibe) - Moved from Header to Main Block */}
             <div 
                 onClick={onOpenHappyIndex}
-                className="relative overflow-hidden bg-zinc-900 border border-zinc-800 rounded-[28px] p-5 cursor-pointer hover:border-amber-500/30 transition-all active:scale-95 h-48 flex flex-col group shadow-lg shadow-black/20"
+                className="relative overflow-hidden bg-zinc-900 border border-zinc-800 rounded-[28px] p-5 cursor-pointer hover:border-amber-500/30 transition-all active:scale-95 h-48 flex flex-col justify-end group shadow-lg shadow-black/20"
             >
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-25 transition-opacity duration-500">
                     <Smile className="w-24 h-24 text-amber-400 -rotate-12" />
-                </div>
-                
-                <div className="flex justify-between items-start z-10 mb-8">
-                   <div className="bg-amber-900/30 text-amber-300 border border-amber-500/20 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
-                     Weekly
-                   </div>
-                   <div className="flex items-center gap-1 bg-zinc-950/50 rounded-full px-2 py-0.5 border border-zinc-800">
-                      <span className="text-xs font-bold text-stone-300">9.2</span>
-                      <ArrowUpRight className="w-3 h-3 text-emerald-400" />
-                   </div>
                 </div>
 
                 <div className="relative z-10">

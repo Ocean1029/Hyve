@@ -33,7 +33,7 @@ export default function TestLoginButton() {
         <button
           type="submit"
           disabled={isLoading}
-          className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:text-gray-600"
+          className="text-xs text-zinc-400 hover:text-stone-200 px-3 py-1.5 rounded-lg bg-zinc-900/50 border border-zinc-800 hover:border-zinc-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:ring-offset-2 focus:ring-offset-zinc-950 font-medium backdrop-blur-sm"
           title="Test Login as Alex"
         >
           {isLoading ? '...' : 'Test'}
@@ -42,3 +42,4 @@ export default function TestLoginButton() {
     </div>
   );
 }
+

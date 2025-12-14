@@ -33,11 +33,14 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onClose, onAddFriend, i
   const [requestId, setRequestId] = useState<string | null>(null);
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
 
+  // Get the correct user ID (userId if available, otherwise id)
+  const targetUserId = user.userId || user.id;
+
   // Check friend request status on mount
   useEffect(() => {
     const checkStatus = async () => {
       setIsLoadingStatus(true);
-      const status = await checkFriendRequestStatus(user.id);
+      const status = await checkFriendRequestStatus(targetUserId);
       setRequestStatus(status.status as 'none' | 'sent' | 'received' | 'accepted' | 'rejected');
       if (status.requestId) {
         setRequestId(status.requestId);
@@ -45,22 +48,39 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onClose, onAddFriend, i
       setIsLoadingStatus(false);
     };
     checkStatus();
-  }, [user.id]);
+  }, [targetUserId]);
 
-  const handleAddFriend = async () => {
-    if (isAdding || isAdded || requestStatus !== 'none') return;
+  const handleAddFriend = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    
+    console.log('handleAddFriend called', { isAdding, isAdded, requestStatus, targetUserId });
+    
+    if (isAdding || isAdded || requestStatus !== 'none') {
+      console.log('Request blocked by condition:', { isAdding, isAdded, requestStatus });
+      return;
+    }
     
     setIsAdding(true);
+    console.log('Sending friend request to:', targetUserId);
+    
     try {
-      const result = await sendFriendRequest(user.id);
+      const result = await sendFriendRequest(targetUserId);
+      console.log('Friend request result:', result);
+      
       if (result.success) {
         setRequestStatus('sent');
         if (result.request?.id) {
           setRequestId(result.request.id);
         }
+      } else {
+        // Log error for debugging
+        console.error('Failed to send friend request:', result.error);
+        alert(result.error || 'Failed to send friend request');
       }
     } catch (error) {
       console.error('Failed to send friend request:', error);
+      alert('An error occurred while sending the friend request');
     } finally {
       setIsAdding(false);
     }
@@ -203,9 +223,15 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onClose, onAddFriend, i
           </div>
 
           {/* Friend Action Buttons */}
-          {!isLoadingStatus && (
-            <div className="space-y-2">
-              {isAdded || isAlreadyFriend ? (
+          <div className="space-y-2">
+            {isLoadingStatus ? (
+              <button
+                disabled
+                className="w-full py-4 rounded-2xl font-bold text-base bg-zinc-800 text-zinc-400 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Loading...
+              </button>
+            ) : isAdded || isAlreadyFriend ? (
                 <button
                   disabled
                   className="w-full py-4 rounded-2xl font-bold text-base bg-green-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
@@ -218,7 +244,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onClose, onAddFriend, i
               ) : requestStatus === 'sent' ? (
                 <button
                   disabled
-                  className="w-full py-4 rounded-2xl font-bold text-base bg-amber-500/20 text-amber-400 border border-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-4 rounded-2xl font-bold text-base bg-amber-500/20 text-amber-400 border-2 border-amber-500/50 disabled:opacity-100 disabled:cursor-not-allowed transition-all duration-300"
                 >
                   <span className="flex items-center justify-center gap-2">
                     <Clock className="w-5 h-5" />
@@ -250,11 +276,14 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onClose, onAddFriend, i
               ) : (
                 <button
                   onClick={handleAddFriend}
-                  disabled={isAdding}
-                  className="w-full py-4 rounded-2xl font-bold text-base bg-white text-black hover:bg-zinc-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isAdding || requestStatus === 'sent'}
+                  className="w-full py-4 rounded-2xl font-bold text-base bg-white text-black hover:bg-zinc-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
                 >
                   {isAdding ? (
-                    'Sending...'
+                    <span className="flex items-center justify-center gap-2">
+                      <Clock className="w-5 h-5 animate-spin" />
+                      Sending...
+                    </span>
                   ) : (
                     <span className="flex items-center justify-center gap-2">
                       <UserPlus className="w-5 h-5" />
@@ -264,7 +293,6 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onClose, onAddFriend, i
                 </button>
               )}
             </div>
-          )}
         </div>
       </div>
     </div>

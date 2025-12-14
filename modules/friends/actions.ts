@@ -103,8 +103,8 @@ export async function checkIfUserIsFriend(userId: string) {
     }
     const sourceUserId = session.user.id;
 
-    // Check if friend relationship exists using unique constraint
-    const existingFriend = await prisma.friend.findUnique({
+    // Check if friend relationship exists (bidirectional check)
+    const existingFriend1 = await prisma.friend.findUnique({
       where: {
         userId_sourceUserId: {
           userId: userId,
@@ -113,7 +113,17 @@ export async function checkIfUserIsFriend(userId: string) {
       },
     });
 
-    return { success: true, isFriend: !!existingFriend };
+    const existingFriend2 = await prisma.friend.findUnique({
+      where: {
+        userId_sourceUserId: {
+          userId: sourceUserId,
+          sourceUserId: userId,
+        },
+      },
+    });
+
+    // If either relationship exists, they are friends
+    return { success: true, isFriend: !!(existingFriend1 || existingFriend2) };
   } catch (error) {
     console.error('Failed to check if user is friend:', error);
     return { success: false, isFriend: false };
