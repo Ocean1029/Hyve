@@ -243,6 +243,9 @@ const SearchClient: React.FC = () => {
             </div>
           ) : recommendedUsers.length > 0 ? (
             <div className="px-6 pt-4 space-y-3">
+              <div className="mb-3">
+                <h2 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Recommended</h2>
+              </div>
               {recommendedUsers.map((result) => (
                 <div
                   key={result.id}
