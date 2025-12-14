@@ -7,7 +7,8 @@ export const createMemory = async (
   focusSessionId: string,
   type: string,
   content?: string,
-  location?: string
+  location?: string,
+  happyIndex?: number
 ) => {
   return await prisma.memory.create({
     data: {
@@ -15,6 +16,7 @@ export const createMemory = async (
       type,
       content,
       location,
+      happyIndex,
       timestamp: new Date(),
     },
   });

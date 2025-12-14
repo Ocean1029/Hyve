@@ -7,7 +7,7 @@ interface PostMemoryProps {
   sessionEndTime: Date;
   friend: Friend | null;
   onBack: () => void;
-  onPost: (photoUrl: string, caption?: string, location?: string, mood?: string) => void;
+  onPost: (photoUrl?: string, eventName?: string, caption?: string, location?: string, mood?: string, happyIndex?: number) => void;
   isSaving?: boolean;
 }
 
@@ -16,9 +16,10 @@ const CATEGORIES = ['📚 Study', '🍔 Eat', '🏋️ Gym', '🚗 Drive', '☕ 
 const PostMemory: React.FC<PostMemoryProps> = ({ durationSeconds, sessionEndTime, friend, onBack, onPost, isSaving = false }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>(CATEGORIES[0]);
   const [rating, setRating] = useState(10);
+  const [eventName, setEventName] = useState('');
   const [caption, setCaption] = useState('');
   const [location, setLocation] = useState('');
-  const [photoUrl, setPhotoUrl] = useState('https://picsum.photos/800/600');
+  const [photoUrl, setPhotoUrl] = useState('');
   
   // Calculate time details
   const timeDetails = useMemo(() => {
@@ -57,7 +58,7 @@ const PostMemory: React.FC<PostMemoryProps> = ({ durationSeconds, sessionEndTime
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto px-6 pb-32 space-y-8 pt-6">
         
-        {/* 1. Highlight Stats Section */}
+        {/* 1. Duration */}
         <section className="bg-gradient-to-br from-zinc-900 to-zinc-950 border border-zinc-800 rounded-3xl p-6 text-center shadow-lg relative overflow-hidden">
           <div className="absolute top-0 right-0 p-8 opacity-5">
              <Star className="w-32 h-32 text-rose-500 rotate-12" />
@@ -78,65 +79,7 @@ const PostMemory: React.FC<PostMemoryProps> = ({ durationSeconds, sessionEndTime
           </div>
         </section>
 
-        {/* 2. Category Selector */}
-        <section>
-          <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 block">Vibe Check</label>
-          <div className="flex flex-wrap gap-2">
-            {CATEGORIES.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-3 rounded-xl text-xs font-bold transition-all border ${
-                  selectedCategory === cat 
-                    ? 'bg-stone-100 text-black border-white shadow-lg shadow-white/10 scale-105' 
-                    : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-            <button className="px-4 py-3 rounded-xl text-xs font-bold bg-zinc-900 text-zinc-500 border border-zinc-800 border-dashed hover:text-white">
-              + Custom
-            </button>
-          </div>
-        </section>
-
-        {/* 3. Media Placeholder */}
-        <section>
-           <div className="w-full aspect-[4/3] rounded-3xl border-2 border-dashed border-zinc-800 bg-zinc-900/30 flex flex-col items-center justify-center gap-4 hover:bg-zinc-900/50 transition-colors cursor-pointer group">
-              <div className="w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <ImageIcon className="w-8 h-8 text-zinc-500" />
-              </div>
-              <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Tap to add photos/video</p>
-           </div>
-        </section>
-
-        {/* 4. Song & Caption */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-3 bg-zinc-900 p-4 rounded-2xl border border-zinc-800">
-             <div className="w-10 h-10 bg-gradient-to-tr from-purple-500 to-indigo-500 rounded-lg flex items-center justify-center">
-                <Music className="w-5 h-5 text-white" />
-             </div>
-             <div className="flex-1">
-               <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Soundtrack</div>
-               <input 
-                 type="text" 
-                 placeholder="Search for a song..." 
-                 className="w-full bg-transparent text-white text-sm font-bold placeholder-zinc-700 focus:outline-none"
-               />
-             </div>
-             <ChevronRight className="w-5 h-5 text-zinc-700" />
-          </div>
-
-          <textarea 
-            placeholder="Write a caption..." 
-            value={caption}
-            onChange={(e) => setCaption(e.target.value)}
-            className="w-full bg-zinc-900 p-4 rounded-2xl border border-zinc-800 text-white text-sm font-medium placeholder-zinc-600 focus:outline-none focus:border-zinc-700 min-h-[100px] resize-none"
-          />
-        </section>
-
-        {/* 5. Rating Slider */}
+        {/* 2. Happy Index */}
         <section className="bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800/50">
            <div className="flex justify-between items-end mb-6">
               <div>
@@ -175,12 +118,86 @@ const PostMemory: React.FC<PostMemoryProps> = ({ durationSeconds, sessionEndTime
            </div>
         </section>
 
+        {/* 3. Vibe Check */}
+        <section>
+          <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 block">Vibe Check</label>
+          <div className="flex flex-wrap gap-2">
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-4 py-3 rounded-xl text-xs font-bold transition-all border ${
+                  selectedCategory === cat 
+                    ? 'bg-stone-100 text-black border-white shadow-lg shadow-white/10 scale-105' 
+                    : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+            <button className="px-4 py-3 rounded-xl text-xs font-bold bg-zinc-900 text-zinc-500 border border-zinc-800 border-dashed hover:text-white">
+              + Custom
+            </button>
+          </div>
+        </section>
+
+        {/* 4. Event Name */}
+        <section>
+          <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 block">Event Name</label>
+          <input 
+            type="text" 
+            placeholder="e.g., Late Night Drive & Burgers" 
+            value={eventName}
+            onChange={(e) => setEventName(e.target.value)}
+            className="w-full bg-zinc-900 p-4 rounded-2xl border border-zinc-800 text-white text-sm font-medium placeholder-zinc-600 focus:outline-none focus:border-zinc-700"
+          />
+        </section>
+
+        {/* 5. Caption */}
+        <section>
+          <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 block">Caption</label>
+          <textarea 
+            placeholder="Write a caption..." 
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+            className="w-full bg-zinc-900 p-4 rounded-2xl border border-zinc-800 text-white text-sm font-medium placeholder-zinc-600 focus:outline-none focus:border-zinc-700 min-h-[100px] resize-none"
+          />
+        </section>
+
+        {/* 6. Soundtrack */}
+        <section>
+          <div className="flex items-center gap-3 bg-zinc-900 p-4 rounded-2xl border border-zinc-800">
+             <div className="w-10 h-10 bg-gradient-to-tr from-purple-500 to-indigo-500 rounded-lg flex items-center justify-center">
+                <Music className="w-5 h-5 text-white" />
+             </div>
+             <div className="flex-1">
+               <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1">Soundtrack</div>
+               <input 
+                 type="text" 
+                 placeholder="Search for a song..." 
+                 className="w-full bg-transparent text-white text-sm font-bold placeholder-zinc-700 focus:outline-none"
+               />
+             </div>
+             <ChevronRight className="w-5 h-5 text-zinc-700" />
+          </div>
+        </section>
+
+        {/* 7. Photos */}
+        <section>
+           <div className="w-full aspect-[4/3] rounded-3xl border-2 border-dashed border-zinc-800 bg-zinc-900/30 flex flex-col items-center justify-center gap-4 hover:bg-zinc-900/50 transition-colors cursor-pointer group">
+              <div className="w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <ImageIcon className="w-8 h-8 text-zinc-500" />
+              </div>
+              <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Tap to add photos/video</p>
+           </div>
+        </section>
+
       </div>
 
       {/* Footer CTA */}
       <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-zinc-950 via-zinc-950 to-transparent z-40">
         <button 
-          onClick={() => onPost(photoUrl, caption, location, selectedCategory)}
+          onClick={() => onPost(photoUrl, eventName, caption, location, selectedCategory, rating)}
           disabled={isSaving}
           className="w-full bg-white text-black font-bold text-lg py-5 rounded-3xl shadow-lg shadow-white/10 hover:bg-stone-200 transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
         >

@@ -16,7 +16,7 @@ import { generateIceBreaker } from '@/lib/services/geminiService';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { useDeviceOrientation } from '@/hooks/useDeviceOrientation';
 import { createFocusSession } from '@/modules/sessions/actions';
-import { createPost } from '@/modules/posts/actions';
+import { createMemoryWithPhoto } from '@/modules/memories/actions';
 
 interface DashboardClientProps {
   friends: Friend[];
@@ -49,6 +49,7 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
   const [isPhoneFaceDown, setIsPhoneFaceDown] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [sessionRecorded, setSessionRecorded] = useState(false);
+  const [currentFocusSessionId, setCurrentFocusSessionId] = useState<string | null>(null);
   const timerRef = useRef<number | null>(null);
 
   // Device orientation sensor hook
@@ -102,6 +103,7 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
     setIceBreaker(null);
     setIsPhoneFaceDown(false);
     setSessionRecorded(false); // Reset session recorded flag when starting new session
+    setCurrentFocusSessionId(null); // Reset focus session ID when starting new session
   };
 
   const endSession = async () => {
@@ -110,7 +112,8 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
     
     // Save focus session to database
     // Support multiple friends in a session (friendIds can be empty array)
-    if (elapsedSeconds > 0 && sessionStartTime) {
+    // Allow 0 second sessions to be recorded
+    if (elapsedSeconds >= 0 && sessionStartTime) {
       setIsSaving(true);
       try {
         // Pass friendIds as an array (empty if no friend selected)
@@ -124,6 +127,7 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
         );
         if (result.success) {
           setSessionRecorded(true);
+          setCurrentFocusSessionId(result.session.id);
           console.log('Focus session recorded successfully:', result.session);
         } else {
           console.error('Failed to save focus session:', result.error);
@@ -136,8 +140,6 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
     } else {
       if (!sessionStartTime) {
         console.warn('Session not recorded: sessionStartTime is missing');
-      } else {
-        console.warn('Session not recorded: elapsedSeconds is 0');
       }
     }
     
@@ -146,8 +148,9 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
   };
 
   // Ensure session is recorded when SessionSummary is displayed (backup mechanism)
+  // Allow 0 second sessions to be recorded
   useEffect(() => {
-    if (appState === AppState.SUMMARY && !sessionRecorded && elapsedSeconds > 0 && sessionStartTime) {
+    if (appState === AppState.SUMMARY && !sessionRecorded && elapsedSeconds >= 0 && sessionStartTime) {
       const ensureSessionRecorded = async () => {
         setIsSaving(true);
         try {
@@ -163,6 +166,7 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
           );
           if (result.success) {
             setSessionRecorded(true);
+            setCurrentFocusSessionId(result.session.id);
             console.log('Focus session recorded successfully (backup):', result.session);
           } else {
             console.error('Failed to save focus session (backup):', result.error);
@@ -184,24 +188,37 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
     setAppState(AppState.POST_MEMORY);
   };
 
-  const handlePostToVault = async (photoUrl: string, caption?: string, location?: string, mood?: string) => {
+  const handleCreateMemory = async (photoUrl?: string, eventName?: string, caption?: string, location?: string, mood?: string, happyIndex?: number) => {
     setIsSaving(true);
     try {
-      // Post to vault can be with or without a friend
-      // If selectedFriend exists, include it; otherwise post to user's vault only
-      const friendId: string | null = selectedFriend?.id || null;
-      const result = await createPost(userId, friendId, photoUrl, caption, location, mood);
+      // Check if focus session ID exists
+      if (!currentFocusSessionId) {
+        alert('Focus session not found. Please complete a focus session first.');
+        setAppState(AppState.DASHBOARD);
+        return;
+      }
+
+      // Create memory with photo
+      // eventName is stored as content, caption is for additional description
+      const result = await createMemoryWithPhoto(
+        currentFocusSessionId,
+        photoUrl,
+        eventName, // eventName goes to content field
+        location,
+        happyIndex
+      );
+
       if (result.success) {
         setAppState(AppState.DASHBOARD);
-        // Reset selected friend after posting
+        // Reset selected friend after creating memory
         setSelectedFriend(null);
       } else {
-        console.error('Failed to create post:', result.error);
-        alert(result.error || 'Failed to create post. Please try again.');
+        console.error('Failed to create memory:', result.error);
+        alert(result.error || 'Failed to create memory. Please try again.');
       }
     } catch (error) {
-      console.error('Failed to create post:', error);
-      alert('An error occurred while creating the post. Please try again.');
+      console.error('Failed to create memory:', error);
+      alert('An error occurred while creating the memory. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -322,7 +339,7 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
               sessionEndTime={sessionEndTime || new Date()}
               friend={selectedFriend}
               onBack={() => setAppState(AppState.SUMMARY)}
-              onPost={handlePostToVault}
+              onPost={handleCreateMemory}
               isSaving={isSaving}
             />
           </div>
