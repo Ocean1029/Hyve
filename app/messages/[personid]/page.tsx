@@ -5,9 +5,9 @@ import { redirect } from 'next/navigation';
 import { notFound } from 'next/navigation';
 
 interface ChatPageProps {
-  params: {
+  params: Promise<{
     personid: string;
-  };
+  }>;
 }
 
 export default async function ChatPage({ params }: ChatPageProps) {
@@ -19,7 +19,7 @@ export default async function ChatPage({ params }: ChatPageProps) {
   }
 
   const userId = session.user.id;
-  const friendId = params.personid;
+  const { personid: friendId } = await params;
 
   // Get friend data and verify it belongs to the current user
   const friend = await getFriendByIdService(friendId, userId);

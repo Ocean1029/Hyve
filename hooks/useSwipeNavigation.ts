@@ -91,7 +91,10 @@ export const useSwipeNavigation = ({ currentPath, enabled = true }: SwipeNavigat
         }
       } else if (isRightSwipe) {
         // Swipe right: go to previous page
-        if (currentPath === '/profile') {
+        // Handle dynamic routes: messages/[id] -> messages
+        if (currentPath.startsWith('/messages/')) {
+          router.push('/messages');
+        } else if (currentPath === '/profile') {
           router.push('/');
         } else if (currentPath === '/') {
           router.push('/search');
