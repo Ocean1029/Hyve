@@ -37,7 +37,7 @@ const MyProfile: React.FC<MyProfileProps> = ({
   const todayMins = todayMinutes % 60;
   const todayDisplay = todayHours > 0 ? `${todayHours}h ${todayMins}m` : `${todayMins}m`;
   return (
-    <div className="w-full h-full bg-zinc-950 flex flex-col overflow-y-auto pb-6 relative z-50">
+    <div className="w-full h-full bg-zinc-950 flex flex-col overflow-y-auto pb-40 relative z-50">
       
       {/* Header Background */}
       <div className="absolute top-0 left-0 right-0 h-64 bg-gradient-to-b from-rose-900/20 via-zinc-950/50 to-zinc-950 z-0 pointer-events-none"></div>

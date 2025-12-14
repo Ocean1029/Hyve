@@ -83,7 +83,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   return (
     <div className="relative w-full h-full flex flex-col bg-zinc-950 overflow-hidden">
        {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide pb-32">
+      <div className="flex-1 overflow-y-auto scrollbar-hide pb-40">
         
         {/* Sticky Header */}
         <header className="sticky top-0 z-30 flex justify-between items-center px-6 py-6 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-900/50">

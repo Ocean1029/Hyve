@@ -155,7 +155,7 @@ const SearchClient: React.FC = () => {
   };
 
   return (
-    <div className="w-full h-screen bg-black flex items-center justify-center">
+    <div className="w-full h-dvh bg-black flex items-center justify-center">
       <div className="w-full h-full max-w-[414px] bg-zinc-950 relative overflow-hidden shadow-2xl border-x border-zinc-900/50">
         
         {/* Header */}
@@ -184,7 +184,7 @@ const SearchClient: React.FC = () => {
         </div>
 
         {/* Results */}
-        <div className="flex-1 overflow-y-auto pb-32">
+        <div className="flex-1 overflow-y-auto pb-40">
           {isSearching || isLoadingRecommendations ? (
             <div className="flex flex-col items-center justify-center h-64">
               <Loader2 className="w-8 h-8 text-zinc-500 animate-spin mb-3" />

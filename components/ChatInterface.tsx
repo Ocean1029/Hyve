@@ -179,7 +179,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ friend, userId, onBack })
       </div>
 
       {/* Messages Area - Flex Grow, Scrolls independently */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 relative z-0">
+      <div className="flex-1 overflow-y-auto p-4 pb-40 space-y-4 relative z-0">
         {isLoadingMessages ? (
           <div className="flex items-center justify-center py-8">
             <div className="text-zinc-500 text-sm font-medium">Loading messages...</div>

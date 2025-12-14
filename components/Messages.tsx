@@ -100,7 +100,7 @@ const Messages: React.FC<MessagesProps> = ({ friends, onViewProfile, userId }) =
   }, [allMessages, searchTerm]);
 
   return (
-    <div className="w-full h-full bg-zinc-950 flex flex-col pt-12 pb-32 overflow-y-auto scrollbar-hide relative">
+    <div className="w-full h-full bg-zinc-950 flex flex-col pt-12 pb-40 overflow-y-auto scrollbar-hide relative">
       
       {/* Header */}
       <div className="px-6 flex justify-between items-center mb-6">

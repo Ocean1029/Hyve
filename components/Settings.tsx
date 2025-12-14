@@ -115,7 +115,7 @@ const Settings: React.FC<SettingsProps> = ({ user, onClose }) => {
         </button>
       </div>
 
-      <div className="p-6 space-y-8 pb-24">
+      <div className="p-6 space-y-8 pb-40">
         
         {/* Account Connections */}
         <section>

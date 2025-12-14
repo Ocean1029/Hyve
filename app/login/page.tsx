@@ -12,7 +12,7 @@ export default async function LoginPage() {
   }
 
   return (
-    <div className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 px-4 relative">
+    <div className="flex h-dvh w-full flex-col items-center justify-center bg-gray-50 px-4 relative">
       {/* Test Login Button - Top Left Corner */}
       <div className="absolute top-4 left-4">
         <TestLoginButton />
