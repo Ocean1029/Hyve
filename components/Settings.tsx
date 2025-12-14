@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Smartphone, Mail, Globe, Bell, Shield, LogOut, ChevronRight, User, Edit2, Check, X as XIcon } from 'lucide-react';
-import { updateUserProfile } from '@/modules/users/actions';
+import { updateUserProfile, logout } from '@/modules/users/actions';
 
 interface SettingsProps {
   user?: {
@@ -29,6 +29,7 @@ const Settings: React.FC<SettingsProps> = ({ user, onClose }) => {
   const [success, setSuccess] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
   const [nameSuccess, setNameSuccess] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Update userIdValue and nameValue when user changes
   useEffect(() => {
@@ -102,6 +103,26 @@ const Settings: React.FC<SettingsProps> = ({ user, onClose }) => {
     setIsEditingName(false);
     setNameError(null);
     setNameSuccess(false);
+  };
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    
+    setIsLoggingOut(true);
+    try {
+      // logout will automatically redirect, so we don't need to handle the redirect here
+      // NEXT_REDIRECT errors are expected and should not be caught
+      await logout();
+    } catch (error: any) {
+      // Only handle non-redirect errors
+      if (error?.digest && error.digest.startsWith('NEXT_REDIRECT')) {
+        // This is expected - let Next.js handle the redirect
+        return;
+      }
+      console.error('Logout error:', error);
+      setIsLoggingOut(false);
+      alert('An error occurred while logging out');
+    }
   };
 
   return (
@@ -373,8 +394,14 @@ const Settings: React.FC<SettingsProps> = ({ user, onClose }) => {
                  <Shield className="w-4 h-4 text-zinc-500" />
               </button>
               
-              <button className="w-full p-4 bg-zinc-900/50 border border-zinc-800 rounded-2xl text-left hover:bg-zinc-900 transition-colors flex items-center justify-between group">
-                 <span className="text-sm font-bold text-rose-400 group-hover:text-rose-300">Log Out</span>
+              <button 
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="w-full p-4 bg-zinc-900/50 border border-zinc-800 rounded-2xl text-left hover:bg-zinc-900 transition-colors flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                 <span className="text-sm font-bold text-rose-400 group-hover:text-rose-300">
+                   {isLoggingOut ? 'Logging out...' : 'Log Out'}
+                 </span>
                  <LogOut className="w-4 h-4 text-rose-500/70" />
               </button>
               

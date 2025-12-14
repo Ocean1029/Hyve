@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import prisma from '@/lib/prisma';
 import { validateUserId } from './validation';
+import { signOut } from '@/auth';
 
 export async function updateUserProfile(
   userId: string,
@@ -82,6 +83,15 @@ export async function getUserStats(userId: string) {
     console.error('Failed to get user stats:', error);
     return { success: false, error: 'Failed to get user stats' };
   }
+}
+
+/**
+ * Sign out the current user
+ * This server action handles the logout process by calling NextAuth's signOut
+ * signOut will automatically redirect, so we don't catch NEXT_REDIRECT errors
+ */
+export async function logout() {
+  await signOut({ redirectTo: '/login' });
 }
 
 
