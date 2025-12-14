@@ -14,6 +14,9 @@ interface FocusModeProps {
   onDismissIceBreaker: () => void;
   onEndSession: () => void;
   formatTime: (seconds: number) => string;
+  sensorAvailable: boolean;
+  permissionStatus: 'prompt' | 'granted' | 'denied' | 'unavailable';
+  onRequestPermission: () => Promise<boolean>;
 }
 
 const FocusMode: React.FC<FocusModeProps> = ({
@@ -27,6 +30,9 @@ const FocusMode: React.FC<FocusModeProps> = ({
   onDismissIceBreaker,
   onEndSession,
   formatTime,
+  sensorAvailable,
+  permissionStatus,
+  onRequestPermission,
 }) => {
   return (
     <div className="absolute inset-0 z-[60]">
@@ -34,14 +40,32 @@ const FocusMode: React.FC<FocusModeProps> = ({
 
         <div className={`relative z-[70] flex flex-col h-full transition-colors duration-1000`}>
 
-        {/* Simulation Controls */}
-        <div className="absolute top-4 right-4 z-50">
+        {/* Controls: Permission Request and Simulation */}
+        <div className="absolute top-4 right-4 z-50 flex flex-col gap-2 items-end">
+          {/* Permission Request Button (iOS 13+) */}
+          {permissionStatus === 'prompt' && (
             <button
+              onClick={onRequestPermission}
+              className="px-4 py-2 rounded-full text-[10px] font-bold border tracking-wider uppercase transition-all bg-amber-500/20 text-amber-300 border-amber-500/30 hover:bg-amber-500/30 shadow-[0_0_15px_rgba(251,191,36,0.2)]"
+            >
+              Enable Sensor
+            </button>
+          )}
+          
+          {/* Sensor Status Indicator */}
+          {sensorAvailable && permissionStatus === 'granted' && (
+            <div className="px-3 py-1 rounded-full text-[9px] font-bold border tracking-wider uppercase bg-green-500/20 text-green-300 border-green-500/30">
+              Sensor Active
+            </div>
+          )}
+          
+          {/* Simulation Button (always available as fallback) */}
+          <button
             onClick={onToggleSimulation}
             className={`px-4 py-2 rounded-full text-[10px] font-bold border tracking-wider uppercase transition-all ${isPhoneFaceDown ? 'bg-zinc-900 text-zinc-500 border-zinc-800' : 'bg-white/10 text-white border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)]'}`}
-            >
+          >
             {isPhoneFaceDown ? "Simulate: Pick Up" : "Simulate: Put Down"}
-            </button>
+          </button>
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center relative">

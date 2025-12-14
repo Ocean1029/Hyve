@@ -14,6 +14,7 @@ import FocusMode from '@/components/FocusMode';
 import SessionSummary from '@/components/SessionSummary';
 import { generateIceBreaker } from '@/lib/services/geminiService';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
+import { useDeviceOrientation } from '@/hooks/useDeviceOrientation';
 import { createFocusSession } from '@/modules/sessions/actions';
 import { createPost } from '@/modules/posts/actions';
 
@@ -48,6 +49,19 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
   const [isSaving, setIsSaving] = useState(false);
   const timerRef = useRef<number | null>(null);
 
+  // Device orientation sensor hook
+  const { 
+    isFaceDown: sensorIsFaceDown, 
+    permissionStatus, 
+    sensorAvailable, 
+    requestPermission 
+  } = useDeviceOrientation();
+
+  // Integrate sensor data with simulation button: prioritize sensor, fallback to simulation
+  const isFaceDown = sensorAvailable && sensorIsFaceDown !== null 
+    ? sensorIsFaceDown 
+    : isPhoneFaceDown;
+
   // --- Effects ---
   useEffect(() => {
     if (appState === AppState.FOCUS && focusStatus === FocusStatus.ACTIVE) {
@@ -62,11 +76,12 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
     };
   }, [appState, focusStatus]);
 
+  // Update focusStatus based on device orientation (sensor or simulation)
   useEffect(() => {
     if (appState === AppState.FOCUS) {
-      setFocusStatus(isPhoneFaceDown ? FocusStatus.ACTIVE : FocusStatus.PAUSED);
+      setFocusStatus(isFaceDown ? FocusStatus.ACTIVE : FocusStatus.PAUSED);
     }
-  }, [isPhoneFaceDown, appState]);
+  }, [isFaceDown, appState]);
 
   // --- Handlers ---
   const startSearch = () => {
@@ -216,6 +231,9 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
             onDismissIceBreaker={() => setIceBreaker(null)}
             onEndSession={endSession}
             formatTime={formatTime}
+            sensorAvailable={sensorAvailable}
+            permissionStatus={permissionStatus}
+            onRequestPermission={requestPermission}
           />
         )}
         
