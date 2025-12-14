@@ -116,8 +116,8 @@ const FocusMode: React.FC<FocusModeProps> = ({
             </div>
             
             {/* Interaction Layer: Ice Breaker */}
-            {!isPhoneFaceDown && focusStatus === FocusStatus.PAUSED && (
-                <div className="absolute bottom-20 w-full px-8">
+            {focusStatus === FocusStatus.PAUSED && (
+                <div className="absolute bottom-8 w-full px-8">
                 {iceBreaker ? (
                     <div className="bg-zinc-900/90 backdrop-blur-md p-8 rounded-[32px] border border-zinc-800 animate-in fade-in slide-in-from-bottom-4 shadow-2xl">
                     <p className="text-stone-200 text-center font-bold text-xl leading-relaxed">"{iceBreaker}"</p>
