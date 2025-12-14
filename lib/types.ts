@@ -28,6 +28,7 @@ export interface Memory {
   photos?: Photo[];
   focusSessionMinutes?: number; // Duration in minutes from the related FocusSession
   location?: string; // Location where the memory was created
+  happyIndex?: number; // Happiness index score (0-10)
 }
 
 export interface Photo {

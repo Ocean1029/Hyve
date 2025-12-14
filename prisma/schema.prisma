@@ -102,6 +102,7 @@ model Memory {
   content        String?
   timestamp      DateTime @default(now())
   location       String?  // Location where the memory was created
+  happyIndex     Int?     // Happiness index score (0-10)
 
   focusSessionId String
   focusSession   FocusSession @relation(fields: [focusSessionId], references: [id], onDelete: Cascade)

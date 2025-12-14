@@ -12,20 +12,28 @@ CREATE TABLE IF NOT EXISTS "FocusSessionFriend" (
 );
 
 -- Step 2: Migrate existing FocusSession.friendId data to FocusSessionFriend
--- Only insert if the relationship doesn't already exist
-INSERT INTO "FocusSessionFriend" ("id", "focusSessionId", "friendId", "createdAt")
-SELECT 
-    gen_random_uuid()::text as "id",
-    "id" as "focusSessionId",
-    "friendId" as "friendId",
-    "createdAt"
-FROM "FocusSession"
-WHERE "friendId" IS NOT NULL
-AND NOT EXISTS (
-    SELECT 1 FROM "FocusSessionFriend" fsf
-    WHERE fsf."focusSessionId" = "FocusSession"."id"
-    AND fsf."friendId" = "FocusSession"."friendId"
-);
+-- Only insert if the relationship doesn't already exist and friendId column exists
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'FocusSession' AND column_name = 'friendId'
+    ) THEN
+        INSERT INTO "FocusSessionFriend" ("id", "focusSessionId", "friendId", "createdAt")
+        SELECT 
+            gen_random_uuid()::text as "id",
+            "id" as "focusSessionId",
+            "friendId" as "friendId",
+            "createdAt"
+        FROM "FocusSession"
+        WHERE "friendId" IS NOT NULL
+        AND NOT EXISTS (
+            SELECT 1 FROM "FocusSessionFriend" fsf
+            WHERE fsf."focusSessionId" = "FocusSession"."id"
+            AND fsf."friendId" = "FocusSession"."friendId"
+        );
+    END IF;
+END $$;
 
 -- Step 3: Create Photo table
 CREATE TABLE IF NOT EXISTS "Photo" (
@@ -174,3 +182,4 @@ WHERE "minutes" IS NULL;
 
 -- Step 11: Drop old Interaction table (after data migration)
 DROP TABLE IF EXISTS "Interaction";
+
