@@ -12,7 +12,12 @@ export default async function LoginPage() {
   }
 
   return (
-    <div className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 px-4">
+    <div className="flex h-screen w-full flex-col items-center justify-center bg-gray-50 px-4 relative">
+      {/* Test Login Button - Top Left Corner */}
+      <div className="absolute top-4 left-4">
+        <TestLoginButton />
+      </div>
+      
       <div className="w-full max-w-sm space-y-8 rounded-xl bg-white p-8 shadow-lg">
         <div className="text-center">
           <h2 className="text-2xl font-bold tracking-tight text-gray-900">
@@ -55,18 +60,6 @@ export default async function LoginPage() {
               Sign in with Google
             </button>
           </form>
-
-          {/* Test Login Button */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">or</span>
-            </div>
-          </div>
-
-          <TestLoginButton />
         </div>
       </div>
     </div>
