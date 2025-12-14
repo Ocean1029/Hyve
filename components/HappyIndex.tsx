@@ -183,10 +183,10 @@ const HappyIndex: React.FC<HappyIndexProps> = ({ onClose, friends, onFriendClick
                           <p className="text-amber-400 font-black text-xl mb-1">{data.score}/10</p>
                           <div className="h-px w-full bg-zinc-800 my-2"></div>
                           <p className="text-stone-300 text-xs font-bold uppercase tracking-wider mb-1 text-zinc-500">With</p>
-                          <p className="text-white text-sm font-bold flex items-center gap-2">
+                          <div className="text-white text-sm font-bold flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
                             {data.with}
-                          </p>
+                          </div>
                         </div>
                       );
                     }
