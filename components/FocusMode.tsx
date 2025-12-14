@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Sparkles } from 'lucide-react';
 import Hyve from './Hyve';
 import { FocusStatus } from '@/lib/types';
@@ -34,19 +34,32 @@ const FocusMode: React.FC<FocusModeProps> = ({
   permissionStatus,
   onRequestPermission,
 }) => {
+  const hasRequestedPermission = useRef(false);
+
+  // Auto-request permission on first mount
+  useEffect(() => {
+    if (!hasRequestedPermission.current && permissionStatus === 'prompt') {
+      hasRequestedPermission.current = true;
+      // Small delay to ensure component is fully mounted
+      setTimeout(() => {
+        onRequestPermission();
+      }, 100);
+    }
+  }, [permissionStatus, onRequestPermission]);
+
   return (
     <div className="absolute inset-0 z-[60]">
         <div className="absolute inset-0 bg-black/40 backdrop-blur-md backdrop-saturate-50 transition-all duration-500"></div>
 
         <div className={`relative z-[70] flex flex-col h-full transition-colors duration-1000`}>
 
-        {/* Controls: Permission Request and Simulation */}
-        <div className="absolute top-4 right-4 z-50 flex flex-col gap-2 items-end">
+        {/* Sensor Status - Top Left Corner */}
+        <div className="absolute top-4 left-4 z-50 flex flex-col gap-2 items-start">
           {/* Permission Request Button (iOS 13+) */}
           {permissionStatus === 'prompt' && (
             <button
               onClick={onRequestPermission}
-              className="px-4 py-2 rounded-full text-[10px] font-bold border tracking-wider uppercase transition-all bg-amber-500/20 text-amber-300 border-amber-500/30 hover:bg-amber-500/30 shadow-[0_0_15px_rgba(251,191,36,0.2)]"
+              className="px-3 py-1.5 rounded-full text-[9px] font-bold border tracking-wider uppercase transition-all bg-amber-500/20 text-amber-300 border-amber-500/30 hover:bg-amber-500/30 shadow-[0_0_15px_rgba(251,191,36,0.2)]"
             >
               Enable Sensor
             </button>
@@ -58,14 +71,29 @@ const FocusMode: React.FC<FocusModeProps> = ({
               Sensor Active
             </div>
           )}
-          
-          {/* Simulation Button (always available as fallback) */}
+
+          {/* Sensor Unavailable Indicator */}
+          {permissionStatus === 'unavailable' && (
+            <div className="px-3 py-1 rounded-full text-[9px] font-bold border tracking-wider uppercase bg-gray-500/20 text-gray-400 border-gray-500/30">
+              Sensor N/A
+            </div>
+          )}
+
+          {/* Permission Denied Indicator */}
+          {permissionStatus === 'denied' && (
+            <div className="px-3 py-1 rounded-full text-[9px] font-bold border tracking-wider uppercase bg-red-500/20 text-red-300 border-red-500/30">
+              Sensor Denied
+            </div>
+          )}
+        </div>
+
+        {/* Simulation Button - Top Right Corner (Gray Dot) */}
+        <div className="absolute top-4 right-4 z-50">
           <button
             onClick={onToggleSimulation}
-            className={`px-4 py-2 rounded-full text-[10px] font-bold border tracking-wider uppercase transition-all ${isPhoneFaceDown ? 'bg-zinc-900 text-zinc-500 border-zinc-800' : 'bg-white/10 text-white border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.1)]'}`}
-          >
-            {isPhoneFaceDown ? "Simulate: Pick Up" : "Simulate: Put Down"}
-          </button>
+            className={`w-2 h-2 rounded-full transition-colors focus:outline-none ${isPhoneFaceDown ? 'bg-gray-500' : 'bg-gray-400 hover:bg-gray-300'}`}
+            title={isPhoneFaceDown ? "Simulate: Pick Up" : "Simulate: Put Down"}
+          />
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center relative">
