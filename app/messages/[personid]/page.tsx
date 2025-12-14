@@ -31,3 +31,4 @@ export default async function ChatPage({ params }: ChatPageProps) {
 
   return <ChatInterfaceClient friend={friend} userId={userId} />;
 }
+

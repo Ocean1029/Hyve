@@ -39,3 +39,4 @@ const SettingsClient: React.FC<SettingsClientProps> = ({ user }) => {
 };
 
 export default SettingsClient;
+

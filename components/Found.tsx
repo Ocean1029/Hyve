@@ -42,3 +42,4 @@ const Found: React.FC<FoundProps> = ({ friend, onClose }) => {
 
 export default Found;
 
+

@@ -14,6 +14,9 @@ export async function GET(request: NextRequest) {
       return new Response('Unauthorized', { status: 401 });
     }
 
+    // Extract userId after validation to ensure type safety
+    const userId = session.user.id;
+
     // Create a ReadableStream for SSE
     const stream = new ReadableStream({
       async start(controller) {
@@ -22,7 +25,7 @@ export async function GET(request: NextRequest) {
         // Send initial status
         const sendStatus = async () => {
           try {
-            const statuses = await getFriendsStatusService(session.user.id);
+            const statuses = await getFriendsStatusService(userId);
             const data = JSON.stringify({ type: 'status', statuses });
             controller.enqueue(encoder.encode(`data: ${data}\n\n`));
           } catch (error) {

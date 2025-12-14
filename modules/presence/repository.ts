@@ -1,5 +1,6 @@
 // modules/presence/repository.ts
 import prisma from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 /**
  * Update user's last seen timestamp and record heartbeat
@@ -8,7 +9,7 @@ export const updateLastSeen = async (userId: string) => {
   const now = new Date();
   
   // Use transaction to ensure both operations succeed
-  return await prisma.$transaction(async (tx) => {
+  return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     // Update user's lastSeenAt
     await tx.user.update({
       where: { id: userId },
@@ -50,7 +51,7 @@ export const getUsersOnlineStatus = async (userIds: string[]) => {
     },
   });
 
-  return users.map(user => ({
+  return users.map((user: { id: string; lastSeenAt: Date | null }) => ({
     userId: user.id,
     lastSeenAt: user.lastSeenAt,
     isOnline: user.lastSeenAt 
@@ -78,7 +79,14 @@ export const getFriendsOnlineStatus = async (sourceUserId: string) => {
     },
   });
 
-  return friends.map(friend => ({
+  return friends.map((friend: {
+    id: string;
+    userId: string;
+    user: {
+      id: string;
+      lastSeenAt: Date | null;
+    };
+  }) => ({
     friendId: friend.id,
     userId: friend.userId,
     lastSeenAt: friend.user.lastSeenAt,

@@ -36,3 +36,4 @@ const ChatInterfaceClient: React.FC<ChatInterfaceClientProps> = ({ friend, userI
 };
 
 export default ChatInterfaceClient;
+

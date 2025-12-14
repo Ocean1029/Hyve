@@ -19,7 +19,7 @@ async function main() {
       name: 'Alex Chen',
       email: 'alex@example.com',
       image: 'https://picsum.photos/100/100?random=99',
-      // userId will be automatically set to id by Prisma extension in lib/prisma.ts
+      userId: 'alex-chen', // Set to id, will be handled by Prisma extension in lib/prisma.ts
     },
   });
 
@@ -152,7 +152,7 @@ async function main() {
         name: f.name,
         email: f.email,
         image: f.image,
-        // userId will be automatically set to id by Prisma extension in lib/prisma.ts
+        userId: '', // Temporary value, will be set to id by Prisma extension in lib/prisma.ts
       },
     });
 
