@@ -352,15 +352,15 @@ const Settings: React.FC<SettingsProps> = ({ user, onClose }) => {
             {/* Account Privacy Toggle */}
             <div className="p-5 flex items-center justify-between border-b border-zinc-800/50">
               <div className="flex items-start gap-4">
-                 <div className={`p-2 ${privacy === 'private' ? 'bg-amber-500/10' : 'bg-emerald-500/10'} rounded-lg ${privacy === 'private' ? 'text-amber-500' : 'text-emerald-500'} mt-1`}>
-                   {privacy === 'private' ? <Lock className="w-5 h-5" /> : <Unlock className="w-5 h-5" />}
+                 <div className={`p-2 ${privacy === 'public' ? 'bg-emerald-500/10' : 'bg-zinc-800/50'} rounded-lg ${privacy === 'public' ? 'text-emerald-500' : 'text-zinc-500'} mt-1`}>
+                   {privacy === 'public' ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
                  </div>
                  <div>
                     <h4 className="text-sm font-bold text-white">Account Privacy</h4>
                     <p className="text-xs text-zinc-500 mt-1 leading-relaxed max-w-[200px]">
-                      {privacy === 'private' 
-                        ? 'Others can find you, but need approval to add you as a friend.' 
-                        : 'Others can find and add you as a friend directly.'}
+                      {privacy === 'public' 
+                        ? 'Others can find and add you as a friend directly.' 
+                        : 'Others can find you, but need approval to add you as a friend.'}
                     </p>
                  </div>
               </div>
@@ -368,14 +368,14 @@ const Settings: React.FC<SettingsProps> = ({ user, onClose }) => {
                 onClick={() => handlePrivacyChange(privacy === 'public' ? 'private' : 'public')}
                 disabled={isSavingPrivacy}
                 className={`relative inline-flex h-7 w-12 items-center rounded-full transition-all duration-200 ease-in-out focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${
-                  privacy === 'private' ? 'bg-amber-500/90' : 'bg-emerald-500/90'
+                  privacy === 'public' ? 'bg-emerald-500/90' : 'bg-zinc-800'
                 }`}
                 role="switch"
-                aria-checked={privacy === 'private'}
+                aria-checked={privacy === 'public'}
               >
                 <span
                   className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-all duration-200 ease-in-out ${
-                    privacy === 'private' ? 'translate-x-6' : 'translate-x-0.5'
+                    privacy === 'public' ? 'translate-x-6' : 'translate-x-0.5'
                   }`}
                 />
               </button>
