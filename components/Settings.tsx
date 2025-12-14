@@ -342,7 +342,7 @@ const Settings: React.FC<SettingsProps> = ({ user, onClose }) => {
                  <div>
                     <h4 className="text-sm font-bold text-white">Notifications</h4>
                     <p className="text-xs text-zinc-500 mt-1 leading-relaxed max-w-[200px]">
-                      Get alerted when friends start a campfire nearby.
+                      Get alerted when friends start a hyve nearby.
                     </p>
                  </div>
               </div>

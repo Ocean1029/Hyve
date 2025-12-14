@@ -1,12 +1,12 @@
 import React from 'react';
 import { FocusStatus } from '../lib/types';
 
-interface CampfireProps {
+interface HyveProps {
   status: FocusStatus;
   intensity: number; // 0 to 100
 }
 
-const Campfire: React.FC<CampfireProps> = ({ status, intensity }) => {
+const Hyve: React.FC<HyveProps> = ({ status, intensity }) => {
   const isPaused = status === FocusStatus.PAUSED;
   
   // Scale calculation: Base size + intensity growth
@@ -60,4 +60,4 @@ const Campfire: React.FC<CampfireProps> = ({ status, intensity }) => {
   );
 };
 
-export default Campfire;
+export default Hyve;

@@ -1,6 +1,6 @@
 {
-  "name": "Campfire",
-  "description": "A frictionless social focus app for students. Turn off your phone to fuel the campfire, earn rewards, and deepen relationships without the pressure.",
+  "name": "Hyve",
+  "description": "A frictionless social focus app for students. Turn off your phone to fuel the hyve, earn rewards, and deepen relationships without the pressure.",
   "requestFramePermissions": [
     "camera"
   ]

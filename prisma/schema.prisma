@@ -73,7 +73,7 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// Campfire Domain Models
+// Hyve Domain Models
 
 model Friend {
   id           String @id @default(cuid())

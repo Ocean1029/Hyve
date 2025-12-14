@@ -1,6 +1,6 @@
 import React from 'react';
 import { Sparkles } from 'lucide-react';
-import Campfire from './Campfire';
+import Hyve from './Hyve';
 import { FocusStatus } from '@/lib/types';
 
 interface FocusModeProps {
@@ -45,7 +45,7 @@ const FocusMode: React.FC<FocusModeProps> = ({
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center relative">
-            <Campfire status={focusStatus} intensity={Math.min(elapsedSeconds / 60 * 10, 100)} />
+            <Hyve status={focusStatus} intensity={Math.min(elapsedSeconds / 60 * 10, 100)} />
 
             <div className="mt-16 text-center transition-opacity duration-500">
             {focusStatus === FocusStatus.ACTIVE ? (

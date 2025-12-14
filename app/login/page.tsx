@@ -15,7 +15,7 @@ export default async function LoginPage() {
       <div className="w-full max-w-sm space-y-8 rounded-xl bg-white p-8 shadow-lg">
         <div className="text-center">
           <h2 className="text-2xl font-bold tracking-tight text-gray-900">
-            Welcome to Campfire
+            Welcome to Hyve
           </h2>
           <p className="mt-2 text-sm text-gray-500">
             Sign in to start your journey

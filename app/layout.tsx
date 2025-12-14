@@ -2,7 +2,7 @@ import './globals.css';
 import PresenceProvider from '@/components/PresenceProvider';
 
 export const metadata = {
-  title: 'Campfire',
+  title: 'Hyve',
   description: 'Connect with friends through shared focus sessions',
 };
 

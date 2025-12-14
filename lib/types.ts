@@ -3,7 +3,7 @@ export enum AppState {
   DASHBOARD = 'DASHBOARD',
   SEARCHING = 'SEARCHING',
   FOUND = 'FOUND',
-  FOCUS = 'FOCUS', // The campfire state
+  FOCUS = 'FOCUS', // The hyve state
   SUMMARY = 'SUMMARY',
   QUARTERLY_FEEDBACK = 'QUARTERLY_FEEDBACK',
   HAPPY_INDEX = 'HAPPY_INDEX',

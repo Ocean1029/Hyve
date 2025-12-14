@@ -2,12 +2,12 @@ version: '3.8'
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: campfire-postgres
+    container_name: hyve-postgres
     restart: always
     environment:
       POSTGRES_USER: myuser
       POSTGRES_PASSWORD: mypassword
-      POSTGRES_DB: campfire_db
+      POSTGRES_DB: hyve_db
     ports:
       - "5433:5432"
     volumes:

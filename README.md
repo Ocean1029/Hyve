@@ -1,4 +1,4 @@
-# Campfire 🔥
+# Hyve 🔥
 
 A Next.js app focused on helping friends connect and focus together in real-time.
 
@@ -6,7 +6,7 @@ A Next.js app focused on helping friends connect and focus together in real-time
 
 - 📱 **Horizontal Navigation**: Swipe between Messages, Dashboard, and Profile
 - 💬 **Real-time Chat**: AI-powered chat interface with friends using Gemini AI
-- 🔥 **Focus Sessions**: Start campfire sessions and track focus time
+- 🔥 **Focus Sessions**: Start hyve sessions and track focus time
 - 📊 **Analytics Dashboard**: Visualize weekly focus patterns with advanced charts
 - 😊 **Happy Index**: Track and rate your experiences
 - 🌸 **Seasonal Features**: Spring Recap and more
@@ -50,7 +50,7 @@ A Next.js app focused on helping friends connect and focus together in real-time
 ## Project Structure
 
 ```
-campfire/
+hyve/
 ├── app/
 │   ├── api/
 │   │   ├── generate-icebreaker/    # API route for ice breaker generation
@@ -60,7 +60,7 @@ campfire/
 │   └── page.tsx                    # Main app component
 ├── components/
 │   ├── BottomNav.tsx              # Bottom navigation bar
-│   ├── Campfire.tsx               # Animated campfire component
+│   ├── Hyve.tsx                   # Animated hyve component
 │   ├── ChatInterface.tsx          # Real-time chat UI
 │   ├── Dashboard.tsx              # Main dashboard with charts
 │   ├── FriendProfile.tsx          # Friend profile view
