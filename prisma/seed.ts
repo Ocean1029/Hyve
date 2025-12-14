@@ -5,27 +5,27 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Start seeding ...');
 
-  // Clear existing data
-  await prisma.interaction.deleteMany();
-  await prisma.post.deleteMany();
-  await prisma.focusSession.deleteMany();
-  await prisma.friend.deleteMany();
-  await prisma.user.deleteMany();
-
-  // 1. Create Main User (Alex)
-  const alex = await prisma.user.create({
-    data: {
-      id: 'alex-chen',
-      userId: 'alex-chen', // Set userId to id by default
+  // 1. Create or get Main User (Alex) - using upsert to avoid deleting existing data
+  const alex = await prisma.user.upsert({
+    where: { id: 'alex-chen' },
+    update: {
+      // Only update if user exists but fields are missing
       name: 'Alex Chen',
       email: 'alex@example.com',
       image: 'https://picsum.photos/100/100?random=99',
     },
+    create: {
+      id: 'alex-chen',
+      name: 'Alex Chen',
+      email: 'alex@example.com',
+      image: 'https://picsum.photos/100/100?random=99',
+      // userId will be automatically set to id by Prisma extension in lib/prisma.ts
+    },
   });
 
-  console.log(`Created user: ${alex.name}`);
+  console.log(`User ${alex.name} ready (existing or created)`);
 
-  // 2. Create My Vault Posts (from MyProfile.tsx)
+  // 2. Create My Vault Posts (from MyProfile.tsx) - only if they don't exist
   const myPosts = [
     { imageUrl: 'https://picsum.photos/300/300?random=101', caption: 'Deep work session' },
     { imageUrl: 'https://picsum.photos/300/300?random=102', caption: 'Library vibes' },
@@ -38,38 +38,63 @@ async function main() {
     { imageUrl: 'https://picsum.photos/300/300?random=109', caption: 'Focus mode' },
   ];
 
+  let createdPostsCount = 0;
   for (const post of myPosts) {
-    await prisma.post.create({
-      data: {
-        ...post,
+    // Check if post with same imageUrl and userId already exists
+    const existingPost = await prisma.post.findFirst({
+      where: {
         userId: alex.id,
+        imageUrl: post.imageUrl,
       },
     });
-  }
-  console.log(`Created ${myPosts.length} posts for Alex`);
 
-  // 3. Create Focus Sessions (Simulating Chart Data)
+    if (!existingPost) {
+      await prisma.post.create({
+        data: {
+          ...post,
+          userId: alex.id,
+        },
+      });
+      createdPostsCount++;
+    }
+  }
+  console.log(`Created ${createdPostsCount} new posts for Alex (${myPosts.length - createdPostsCount} already existed)`);
+
+  // 3. Create Focus Sessions (Simulating Chart Data) - only if they don't exist
   // MOCK_CHART_DATA: Mon: 45, Tue: 120, Wed: 30, Thu: 90, Fri: 180, Sat: 240, Sun: 60
   // We will create one session per day for simplicity
   const today = new Date();
-  // Assume today is Sunday to match the chart ending on Sunday? Or just map relative days.
-  // Let's create sessions for the last 7 days.
   const chartData = [45, 120, 30, 90, 180, 240, 60]; // Mon to Sun
   
+  let createdSessionsCount = 0;
   for (let i = 0; i < 7; i++) {
     const dayOffset = 6 - i; // 0 is today (Sun), 6 is Mon
     const date = new Date(today);
     date.setDate(date.getDate() - dayOffset);
     
-    await prisma.focusSession.create({
-      data: {
-        minutes: chartData[i],
-        date: date,
+    // Check if session for this date and user already exists
+    const existingSession = await prisma.focusSession.findFirst({
+      where: {
         userId: alex.id,
+        date: {
+          gte: new Date(date.setHours(0, 0, 0, 0)),
+          lt: new Date(date.setHours(23, 59, 59, 999)),
+        },
       },
     });
+
+    if (!existingSession) {
+      await prisma.focusSession.create({
+        data: {
+          minutes: chartData[i],
+          date: date,
+          userId: alex.id,
+        },
+      });
+      createdSessionsCount++;
+    }
   }
-  console.log('Created focus sessions');
+  console.log(`Created ${createdSessionsCount} new focus sessions (${7 - createdSessionsCount} already existed)`);
 
   // 4. Create Friends (from page.tsx MOCK_FRIENDS)
   // First, create User records for each friend
@@ -113,20 +138,38 @@ async function main() {
     }
   ];
 
+  let createdFriendsCount = 0;
   for (const f of friendsData) {
-    // Create User for this friend
-    const friendUser = await prisma.user.create({
-      data: {
+    // Create or get User for this friend
+    const friendUser = await prisma.user.upsert({
+      where: { email: f.email },
+      update: {
+        // Update if user exists but fields are missing
+        name: f.name,
+        image: f.image,
+      },
+      create: {
         name: f.name,
         email: f.email,
         image: f.image,
-        userId: f.email.split('@')[0], // Use email prefix as default userId
+        // userId will be automatically set to id by Prisma extension in lib/prisma.ts
       },
     });
 
-    // Create Friend relationship (Alex added this user as a friend)
-    const friend = await prisma.friend.create({
-      data: {
+    // Create or get Friend relationship (Alex added this user as a friend)
+    const friend = await prisma.friend.upsert({
+      where: {
+        userId_sourceUserId: {
+          userId: friendUser.id,
+          sourceUserId: alex.id,
+        },
+      },
+      update: {
+        // Update if friend relationship exists
+        totalHours: f.totalHours,
+        streak: f.streak,
+      },
+      create: {
         userId: friendUser.id,
         sourceUserId: alex.id, // Alex is the one who added these friends
         totalHours: f.totalHours,
@@ -134,27 +177,48 @@ async function main() {
       },
     });
 
-    // Create Interactions
+    // Create Interactions - only if they don't exist
     for (const interaction of f.interactions) {
-      await prisma.interaction.create({
-        data: {
-          ...interaction,
+      const existingInteraction = await prisma.interaction.findFirst({
+        where: {
           friendId: friend.id,
+          activity: interaction.activity,
+          date: interaction.date,
         },
       });
+
+      if (!existingInteraction) {
+        await prisma.interaction.create({
+          data: {
+            ...interaction,
+            friendId: friend.id,
+          },
+        });
+      }
     }
 
-    // Create Friend Posts
+    // Create Friend Posts - only if they don't exist
     for (const post of f.posts) {
-      await prisma.post.create({
-        data: {
-          ...post,
+      const existingPost = await prisma.post.findFirst({
+        where: {
           friendId: friend.id,
+          imageUrl: post.imageUrl,
         },
       });
+
+      if (!existingPost) {
+        await prisma.post.create({
+          data: {
+            ...post,
+            friendId: friend.id,
+          },
+        });
+      }
     }
+
+    createdFriendsCount++;
   }
-  console.log(`Created ${friendsData.length} friends`);
+  console.log(`Processed ${createdFriendsCount} friends (created or updated)`);
 
   console.log('Seeding finished.');
 }
