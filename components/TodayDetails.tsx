@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { X, Clock, MapPin, Users } from 'lucide-react';
+import { X, Clock, MapPin, Users, Activity, Flame, Camera } from 'lucide-react';
 import { getTodayFocusSessions } from '@/modules/sessions/actions';
 
 interface TodayDetailsProps {
@@ -21,6 +21,15 @@ interface TodaySession {
         image: string | null;
       };
     };
+  }>;
+  memories: Array<{
+    id: string;
+    content: string | null;
+    location: string | null;
+    photos: Array<{
+      id: string;
+      photoUrl: string;
+    }>;
   }>;
 }
 
@@ -48,12 +57,32 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
     loadTodaySessions();
   }, [userId]);
 
-  // Format time display
+  // Calculate score based on duration and participants
+  // Base score: 10 points
+  // Duration: up to 60 points (1 point per minute, capped at 60)
+  // Participants: up to 30 points (10 points per participant, capped at 30)
+  const calculateScore = (minutes: number, friendsCount: number): number => {
+    const baseScore = 10;
+    const durationScore = Math.min(60, minutes);
+    const participantScore = Math.min(30, friendsCount * 10);
+    return Math.min(100, baseScore + durationScore + participantScore);
+  };
+
+  // Calculate total score for all sessions
+  const calculateTotalScore = (): number => {
+    if (sessions.length === 0) return 0;
+    const totalScore = sessions.reduce((sum, session) => {
+      return sum + calculateScore(session.minutes, session.friends.length);
+    }, 0);
+    return Math.round(totalScore / sessions.length);
+  };
+
+  // Format time display in 12-hour format with AM/PM
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', { 
       hour: '2-digit', 
       minute: '2-digit',
-      hour12: false 
+      hour12: true 
     });
   };
 
@@ -77,97 +106,175 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
     return `${mins}m`;
   };
 
-  // Get today's date string
+  // Get today's date string (e.g., "October 24")
   const todayDate = new Date().toLocaleDateString('en-US', {
     month: 'long',
     day: 'numeric',
   });
 
+  const totalScore = calculateTotalScore();
+
   return (
-    <div className="absolute inset-0 flex flex-col h-full bg-zinc-950 overflow-y-auto animate-in slide-in-from-bottom duration-300 z-[60]">
+    <div className="absolute inset-0 z-[120] flex flex-col h-full bg-zinc-950 overflow-y-auto animate-in slide-in-from-bottom duration-300 scrollbar-hide">
       
-      {/* Header */}
-      <div className="p-6 flex justify-between items-center bg-zinc-950 sticky top-0 z-20 border-b border-zinc-900">
-        <div>
-          <h2 className="text-xl font-bold text-stone-200">Today's Focus</h2>
-          <p className="text-zinc-500 text-xs font-medium uppercase tracking-wider">{todayDate}</p>
+      {/* Immersive Header */}
+      <div className="relative h-64 flex-shrink-0">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-rose-900/40 via-zinc-950 to-zinc-950"></div>
+        
+        <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-20">
+          <div className="flex flex-col">
+            <span className="text-zinc-400 text-xs font-bold uppercase tracking-widest">{todayDate}</span>
+            <h1 className="text-3xl font-black text-white tracking-tight">Today's<br/>Focus</h1>
+          </div>
+          <button 
+            onClick={onClose} 
+            className="p-2 bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-colors border border-white/10"
+          >
+            <X className="w-6 h-6 text-white" />
+          </button>
         </div>
-        <button onClick={onClose} className="p-2 bg-zinc-900 rounded-full hover:bg-zinc-800 transition-colors">
-          <X className="w-5 h-5 text-zinc-400" />
-        </button>
+
+        {/* Daily Stats Overlay */}
+        <div className="absolute bottom-0 left-0 right-0 px-6 pb-6 z-20 flex gap-4">
+          <div className="flex-1 bg-zinc-900/80 backdrop-blur-md border border-zinc-800 p-4 rounded-2xl flex flex-col justify-between">
+            <div className="flex items-center gap-2 text-rose-400 mb-1">
+              <Clock className="w-4 h-4" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Time</span>
+            </div>
+            <span className="text-2xl font-mono font-bold text-white tracking-tighter">
+              {isLoading ? '...' : formatTotalTime(totalMinutes)}
+            </span>
+          </div>
+          <div className="flex-1 bg-zinc-900/80 backdrop-blur-md border border-zinc-800 p-4 rounded-2xl flex flex-col justify-between">
+            <div className="flex items-center gap-2 text-amber-400 mb-1">
+              <Activity className="w-4 h-4" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Score</span>
+            </div>
+            <span className="text-2xl font-mono font-bold text-white tracking-tighter">
+              {isLoading ? '...' : `${totalScore}/100`}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div className="p-6 space-y-8">
-        
-        {/* Total Summary */}
-        <div className="text-center py-4">
-          <div className="text-5xl font-mono font-light text-white tracking-tighter mb-2">
-            {isLoading ? '...' : formatTotalTime(totalMinutes)}
-          </div>
-          <p className="text-zinc-500 font-medium text-sm">Total time disconnected</p>
-        </div>
+      {/* Visual Timeline */}
+      <div className="flex-1 px-6 pt-4 pb-24 relative">
+        <div className="absolute top-0 bottom-0 left-[29px] w-[2px] bg-gradient-to-b from-rose-500 via-zinc-800 to-zinc-900"></div>
 
-        {/* Timeline */}
         {isLoading ? (
           <div className="text-center py-8">
             <p className="text-zinc-500 text-sm">Loading sessions...</p>
           </div>
         ) : sessions.length > 0 ? (
-          <div className="relative border-l-2 border-zinc-800 ml-4 space-y-8 pb-12">
+          <div className="space-y-10">
             {sessions.map((session) => {
               const participants = session.friends.map(f => f.friend.user.name || 'Unknown');
+              // Get activity name from first memory's content, or use default
+              const activityName = session.memories?.[0]?.content || 'Focus Session';
+              // Get location from first memory that has location
+              const location = session.memories?.find(m => m.location)?.location || null;
+              // Get photos from all memories (max 2)
+              const allPhotos = session.memories?.flatMap(m => m.photos || []) || [];
+              const displayPhotos = allPhotos.slice(0, 2);
               
               return (
-                <div key={session.id} className="relative pl-8">
-                  {/* Timeline Dot */}
-                  <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-zinc-950 border-2 border-rose-500 ring-4 ring-zinc-950"></div>
+                <div key={session.id} className="relative pl-10 group">
+                  {/* Time Marker */}
+                  <div className="absolute -left-[2px] top-0 w-4 h-4 rounded-full bg-zinc-950 border-[3px] border-rose-500 z-10 shadow-[0_0_10px_rgba(244,63,94,0.5)]"></div>
                   
-                  <div className="flex flex-col gap-1 mb-2">
-                    <span className="text-rose-400 font-mono text-sm font-bold">
+                  <div className="mb-4">
+                    <span className="text-rose-400 font-mono text-xs font-bold bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20">
                       {formatTime(session.startTime)} - {formatTime(session.endTime)}
                     </span>
-                    <h3 className="text-xl font-bold text-stone-200">
-                      Focus Session
-                    </h3>
                   </div>
 
-                  <div className="bg-zinc-900/50 rounded-2xl p-4 border border-zinc-800/50 space-y-3">
-                    
-                    <div className="flex items-center gap-3 text-zinc-400">
-                      <Clock className="w-4 h-4" />
-                      <span className="text-sm font-medium">{formatDuration(session.minutes)}</span>
-                    </div>
-
-                    {participants.length > 0 && (
-                      <div className="flex items-center gap-3 text-zinc-400 pt-2 border-t border-zinc-800/50">
-                        <Users className="w-4 h-4" />
-                        <div className="flex -space-x-2">
-                          {session.friends.map((f, i) => (
-                            <div 
-                              key={f.friend.id} 
-                              className="w-6 h-6 rounded-full bg-zinc-700 border border-zinc-800 flex items-center justify-center text-[10px] text-white font-bold overflow-hidden"
-                            >
-                              {f.friend.user.image ? (
-                                <img 
-                                  src={f.friend.user.image} 
-                                  alt={f.friend.user.name || ''}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <span>{(f.friend.user.name || 'U')[0].toUpperCase()}</span>
-                              )}
-                            </div>
-                          ))}
-                          <span className="ml-3 text-sm font-medium text-stone-300">
-                            With {participants.join(', ')}
-                          </span>
+                  {/* Card Content */}
+                  <div className="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden hover:border-zinc-700 transition-colors">
+                    <div className="p-5 border-b border-zinc-800/50">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="text-xl font-black text-stone-200">{activityName}</h3>
+                        {/* Flow State indicator - can be added later if needed */}
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-4 mt-3">
+                        {location && (
+                          <div className="flex items-center gap-1.5 text-zinc-400">
+                            <MapPin className="w-3.5 h-3.5" />
+                            <span className="text-xs font-bold">{location}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1.5 text-zinc-400">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span className="text-xs font-bold">{formatDuration(session.minutes)}</span>
                         </div>
                       </div>
-                    )}
+                    </div>
+
+                    {/* Participants & Photos */}
+                    <div className="bg-zinc-950/30 p-4 space-y-4">
+                      {/* Participants */}
+                      {participants.length > 0 && (
+                        <div className="flex items-center justify-between">
+                          <div className="flex -space-x-2">
+                            {session.friends.map((f) => (
+                              <div
+                                key={f.friend.id}
+                                className="w-8 h-8 rounded-full border-2 border-zinc-900 overflow-hidden"
+                              >
+                                {f.friend.user.image ? (
+                                  <img 
+                                    src={f.friend.user.image} 
+                                    alt={f.friend.user.name || ''}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-zinc-700 flex items-center justify-center text-xs text-white font-bold">
+                                    {(f.friend.user.name || 'U')[0].toUpperCase()}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          <div className="text-xs font-bold text-zinc-500">
+                            with {participants.join(', ')}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Photos */}
+                      {displayPhotos.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          {displayPhotos.map((photo) => (
+                            <div 
+                              key={photo.id} 
+                              className="relative aspect-video rounded-xl overflow-hidden group/photo"
+                            >
+                              <img 
+                                src={photo.photoUrl} 
+                                className="w-full h-full object-cover transition-transform duration-700 group-hover/photo:scale-110" 
+                                alt="Memory" 
+                              />
+                              <div className="absolute inset-0 bg-black/20 group-hover/photo:bg-transparent transition-colors"></div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="border border-dashed border-zinc-800 rounded-xl p-3 flex items-center justify-center gap-2 text-zinc-600">
+                          <Camera className="w-4 h-4" />
+                          <span className="text-xs font-bold uppercase">No photos taken</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
             })}
+
+            {/* End of Day Marker */}
+            <div className="relative pl-10 pb-4">
+              <div className="absolute -left-[3px] top-1 w-2 h-2 rounded-full bg-zinc-800 z-10"></div>
+              <p className="text-zinc-600 text-xs font-bold uppercase tracking-widest italic">End of timeline</p>
+            </div>
           </div>
         ) : (
           <div className="text-center py-12">
@@ -175,7 +282,6 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
             <p className="text-zinc-600 text-xs mt-2">Start a session to see it here</p>
           </div>
         )}
-
       </div>
     </div>
   );
