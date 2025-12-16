@@ -2,20 +2,27 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { updateUserLocation } from '@/modules/locations/actions';
 
 /**
  * Global location tracker that updates user's location in the background
- * Runs on every page to maintain location tracking
+ * Runs on every page to maintain location tracking (except login page)
  * Updates location every 5 minutes
  */
 export default function LocationTracker() {
   const locationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
   const hasPermissionRef = useRef(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     isMountedRef.current = true;
+
+    // Skip location tracking on login page to avoid requesting GPS permission
+    if (pathname === '/login') {
+      return;
+    }
 
     // Check if geolocation is available
     if (!navigator.geolocation) {
@@ -73,7 +80,7 @@ export default function LocationTracker() {
         clearInterval(locationIntervalRef.current);
       }
     };
-  }, []);
+  }, [pathname]);
 
   // This component doesn't render anything
   return null;
