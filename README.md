@@ -60,6 +60,7 @@ Before you begin, ensure you have the following installed:
 - **npm** or **yarn** package manager
 - **PostgreSQL** 15 or higher (or use Docker Compose)
 - **Google Gemini API Key** ([Get one here](https://ai.google.dev/))
+- **Cloudinary Account** ([Sign up here](https://cloudinary.com/)) for image uploads
 
 ## Installation
 
@@ -94,6 +95,11 @@ GOOGLE_CLIENT_SECRET="your-google-client-secret"
 
 # AI Integration
 GEMINI_API_KEY="your-gemini-api-key"
+
+# Cloudinary (for image uploads)
+CLOUDINARY_CLOUD_NAME="your-cloudinary-cloud-name"
+CLOUDINARY_API_KEY="your-cloudinary-api-key"
+CLOUDINARY_API_SECRET="your-cloudinary-api-secret"
 
 # NextAuth
 NEXTAUTH_URL="http://localhost:3000"
@@ -265,6 +271,10 @@ hyve/
 - `GET /api/presence/status` - Get friends' online status
 - `GET /api/presence/stream` - Server-Sent Events stream for real-time presence updates
 
+### Image Upload
+
+- `POST /api/upload` - Upload image files to Cloudinary (requires authentication, accepts multipart/form-data with 'file' field)
+
 ## Database Schema
 
 The application uses PostgreSQL with Prisma ORM. Key models include:
@@ -323,6 +333,9 @@ Ensure all environment variables from `.env.local` are configured in your deploy
 - `GOOGLE_CLIENT_ID` - Google OAuth client ID
 - `GOOGLE_CLIENT_SECRET` - Google OAuth client secret
 - `GEMINI_API_KEY` - Gemini API key
+- `CLOUDINARY_CLOUD_NAME` - Cloudinary cloud name
+- `CLOUDINARY_API_KEY` - Cloudinary API key
+- `CLOUDINARY_API_SECRET` - Cloudinary API secret
 - `NEXTAUTH_URL` - Production URL
 - `NEXTAUTH_SECRET` - NextAuth secret
 

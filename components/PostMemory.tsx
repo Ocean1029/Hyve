@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { X, Music, Image as ImageIcon, Plus, MapPin, ChevronRight, Star } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { X, Music, Image as ImageIcon, Plus, MapPin, ChevronRight, Star, Loader2 } from 'lucide-react';
 import { Friend } from '@/lib/types';
 
 interface PostMemoryProps {
@@ -20,6 +20,10 @@ const PostMemory: React.FC<PostMemoryProps> = ({ durationSeconds, sessionEndTime
   const [caption, setCaption] = useState('');
   const [location, setLocation] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Calculate time details
   const timeDetails = useMemo(() => {
@@ -43,6 +47,80 @@ const PostMemory: React.FC<PostMemoryProps> = ({ durationSeconds, sessionEndTime
 
     return { dateStr, timeRange, durationStr };
   }, [durationSeconds, sessionEndTime]);
+
+  // Clean up preview URL on component unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  // Handle file selection
+  const handleFileSelect = () => {
+    fileInputRef.current?.click();
+  };
+
+  // Handle file input change
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      setUploadError('Invalid file type. Please select an image file.');
+      return;
+    }
+
+    // Validate file size (10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      setUploadError('File size exceeds 10MB limit.');
+      return;
+    }
+
+    // Create preview URL
+    const preview = URL.createObjectURL(file);
+    setPreviewUrl(preview);
+    setUploadError('');
+
+    // Upload file
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.url) {
+        setPhotoUrl(result.url);
+        setUploadError('');
+        // Keep preview URL for display, will be cleaned up when component unmounts or new file is selected
+      } else {
+        setUploadError(result.error || 'Failed to upload image');
+        // Clean up preview URL on error
+        URL.revokeObjectURL(preview);
+        setPreviewUrl('');
+        setPhotoUrl('');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      setUploadError('An error occurred while uploading the image');
+      // Clean up preview URL on error
+      URL.revokeObjectURL(preview);
+      setPreviewUrl('');
+      setPhotoUrl('');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-zinc-950 relative z-50">
@@ -184,12 +262,55 @@ const PostMemory: React.FC<PostMemoryProps> = ({ durationSeconds, sessionEndTime
 
         {/* 7. Photos */}
         <section>
-           <div className="w-full aspect-[4/3] rounded-3xl border-2 border-dashed border-zinc-800 bg-zinc-900/30 flex flex-col items-center justify-center gap-4 hover:bg-zinc-900/50 transition-colors cursor-pointer group">
-              <div className="w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <ImageIcon className="w-8 h-8 text-zinc-500" />
-              </div>
-              <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider">Tap to add photos/video</p>
-           </div>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+            className="hidden"
+          />
+          <div
+            onClick={handleFileSelect}
+            className={`w-full aspect-[4/3] rounded-3xl border-2 border-dashed border-zinc-800 bg-zinc-900/30 flex flex-col items-center justify-center gap-4 hover:bg-zinc-900/50 transition-colors cursor-pointer group relative overflow-hidden ${
+              uploading ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            {previewUrl ? (
+              <>
+                <img
+                  src={previewUrl}
+                  alt="Preview"
+                  className="w-full h-full object-cover"
+                />
+                {uploading && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 text-white animate-spin" />
+                  </div>
+                )}
+                {!uploading && photoUrl && (
+                  <div className="absolute top-2 right-2 bg-emerald-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                    Uploaded
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  {uploading ? (
+                    <Loader2 className="w-8 h-8 text-zinc-500 animate-spin" />
+                  ) : (
+                    <ImageIcon className="w-8 h-8 text-zinc-500" />
+                  )}
+                </div>
+                <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider">
+                  {uploading ? 'Uploading...' : 'Tap to add photos/video'}
+                </p>
+              </>
+            )}
+          </div>
+          {uploadError && (
+            <p className="mt-2 text-xs text-red-400 font-medium">{uploadError}</p>
+          )}
         </section>
 
       </div>
