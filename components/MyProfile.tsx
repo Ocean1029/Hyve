@@ -1,6 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
-import { Grid, Heart, Users, Clock, Flame, Settings, ChevronRight, Calendar, Trophy } from 'lucide-react';
+import { Grid, Heart, Users, Clock, Flame, Settings, Trophy } from 'lucide-react';
 import { Post } from '../lib/types';
 
 interface MyProfileProps {
@@ -31,11 +31,6 @@ const MyProfile: React.FC<MyProfileProps> = ({
   onViewDetails, 
   onSettingsClick 
 }) => {
-  // Calculate today's focus time
-  const todayMinutes = stats?.todayMinutes || 0;
-  const todayHours = Math.floor(todayMinutes / 60);
-  const todayMins = todayMinutes % 60;
-  const todayDisplay = todayHours > 0 ? `${todayHours}h ${todayMins}m` : `${todayMins}m`;
   return (
     <div className="w-full h-full bg-zinc-950 flex flex-col overflow-y-auto pb-40 relative z-50">
       
@@ -85,23 +80,6 @@ const MyProfile: React.FC<MyProfileProps> = ({
             
             <h2 className="text-3xl font-black text-white tracking-wide mb-1">{user?.name || 'User'}</h2>
             <p className="text-zinc-600 text-sm font-medium">{user?.userId || 'No user ID'}</p>
-        </div>
-
-        {/* Action Card: Today's Summary */}
-        <div 
-            onClick={onViewDetails}
-            className="w-full bg-gradient-to-r from-zinc-900 to-zinc-900/50 border border-zinc-800 rounded-2xl p-4 flex items-center justify-between cursor-pointer group hover:border-rose-500/30 transition-all active:scale-[0.98]"
-        >
-            <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-rose-500/10 flex items-center justify-center border border-rose-500/20">
-                    <Calendar className="w-5 h-5 text-rose-400" />
-                </div>
-                <div>
-                    <h3 className="text-stone-200 font-bold text-sm">Today's Focus</h3>
-                    <p className="text-zinc-500 text-xs font-medium">{todayDisplay} disconnected</p>
-                </div>
-            </div>
-            <ChevronRight className="w-5 h-5 text-zinc-600 group-hover:text-stone-300 transition-colors" />
         </div>
 
         {/* Stats Grid */}

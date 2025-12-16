@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, MessageCircle, User, Search } from 'lucide-react';
+import { Home, MessageCircle, User, Search, Clock } from 'lucide-react';
 
 const BottomNav: React.FC = () => {
   const pathname = usePathname();
@@ -13,6 +13,8 @@ const BottomNav: React.FC = () => {
     if (pathname === path) return true;
     // For friends, also match /friends/[personid] routes
     if (path === '/friends' && pathname.startsWith('/friends/')) return true;
+    // For today, match /today route
+    if (path === '/today' && pathname === '/today') return true;
     return false;
   };
 
@@ -37,6 +39,13 @@ const BottomNav: React.FC = () => {
          className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-full transition-all duration-300 ${isActive('/') ? 'bg-zinc-800 shadow-md' : 'hover:bg-zinc-800/50'}`}
        >
          <Home className={`w-5 h-5 ${isActive('/') ? 'text-rose-400 fill-rose-400' : 'text-zinc-500'}`} />
+       </Link>
+       
+       <Link 
+         href="/today"
+         className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-full transition-all duration-300 ${isActive('/today') ? 'bg-zinc-800 shadow-md' : 'hover:bg-zinc-800/50'}`}
+       >
+         <Clock className={`w-5 h-5 ${isActive('/today') ? 'text-emerald-400 fill-emerald-400' : 'text-zinc-500'}`} />
        </Link>
        
        <Link 
