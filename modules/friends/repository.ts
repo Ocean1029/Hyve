@@ -122,3 +122,62 @@ export const getFriendById = async (friendId: string, sourceUserId: string) => {
     },
   });
 };
+
+/**
+ * Get friends with focus sessions in the last 3 months for Spring Bloom recap
+ * Returns friends with their total hours and memories from the last quarter
+ */
+export const getFriendsForSpringBloom = async (sourceUserId: string) => {
+  // Calculate date 3 months ago
+  const threeMonthsAgo = new Date();
+  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+  threeMonthsAgo.setHours(0, 0, 0, 0);
+
+  return await prisma.friend.findMany({
+    where: {
+      sourceUserId: sourceUserId,
+      focusSessionFriends: {
+        some: {
+          focusSession: {
+            startTime: {
+              gte: threeMonthsAgo,
+            },
+          },
+        },
+      },
+    },
+    include: {
+      user: true, // Include User data for name, avatar
+      focusSessionFriends: {
+        where: {
+          focusSession: {
+            startTime: {
+              gte: threeMonthsAgo,
+            },
+          },
+        },
+        include: {
+          focusSession: {
+            include: {
+              memories: {
+                where: {
+                  content: {
+                    not: null,
+                  },
+                },
+                select: {
+                  id: true,
+                  content: true,
+                  timestamp: true,
+                },
+                orderBy: {
+                  timestamp: 'desc',
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+};

@@ -10,59 +10,92 @@ interface RecapEntry {
   tags: { label: string; icon: React.ReactNode; color: string }[];
 }
 
-const MOCK_RECAP_DATA: RecapEntry[] = [
-  { 
-    rank: 1, name: 'Kai', avatar: 'https://picsum.photos/100/100?random=1', hours: 124, 
-    tags: [{ label: 'Late Night Study', icon: <BookOpen className="w-3 h-3" />, color: 'bg-indigo-400' }, { label: 'Coffee Runs', icon: <Coffee className="w-3 h-3" />, color: 'bg-amber-700' }] 
-  },
-  { 
-    rank: 2, name: 'Sarah', avatar: 'https://picsum.photos/100/100?random=2', hours: 98, 
-    tags: [{ label: 'Gym Buddy', icon: <Dumbbell className="w-3 h-3" />, color: 'bg-rose-500' }] 
-  },
-  { 
-    rank: 3, name: 'Leo', avatar: 'https://picsum.photos/100/100?random=3', hours: 85, 
-    tags: [{ label: 'Jam Sessions', icon: <Music className="w-3 h-3" />, color: 'bg-purple-500' }] 
-  },
-  { 
-    rank: 4, name: 'Mia', avatar: 'https://picsum.photos/100/100?random=4', hours: 72, 
-    tags: [{ label: 'Brunch', icon: <Utensils className="w-3 h-3" />, color: 'bg-orange-400' }] 
-  },
-  { 
-    rank: 5, name: 'Noah', avatar: 'https://picsum.photos/100/100?random=5', hours: 64, 
-    tags: [{ label: 'Hiking', icon: <Tent className="w-3 h-3" />, color: 'bg-emerald-600' }] 
-  },
-  { 
-    rank: 6, name: 'Ava', avatar: 'https://picsum.photos/100/100?random=6', hours: 50, 
-    tags: [{ label: 'Parties', icon: <PartyPopper className="w-3 h-3" />, color: 'bg-pink-500' }] 
-  },
-  { 
-    rank: 7, name: 'James', avatar: 'https://picsum.photos/100/100?random=7', hours: 42, 
-    tags: [{ label: 'Gaming', icon: <Sparkles className="w-3 h-3" />, color: 'bg-blue-500' }] 
-  },
-  { 
-    rank: 8, name: 'Lily', avatar: 'https://picsum.photos/100/100?random=8', hours: 38, 
-    tags: [{ label: 'Library', icon: <BookOpen className="w-3 h-3" />, color: 'bg-indigo-400' }] 
-  },
-  { 
-    rank: 9, name: 'Ethan', avatar: 'https://picsum.photos/100/100?random=9', hours: 25, 
-    tags: [{ label: 'Photo Walk', icon: <Camera className="w-3 h-3" />, color: 'bg-zinc-500' }] 
-  },
-  { 
-    rank: 10, name: 'Zoe', avatar: 'https://picsum.photos/100/100?random=10', hours: 12, 
-    tags: [{ label: 'Chilling', icon: <Coffee className="w-3 h-3" />, color: 'bg-teal-500' }] 
-  },
-];
+// Input data format from server (tags are strings)
+interface SpringBloomEntryInput {
+  rank: number;
+  name: string;
+  avatar: string;
+  hours: number;
+  tags: string[];
+}
 
 interface SpringRecapProps {
   onClose: () => void;
+  data?: SpringBloomEntryInput[];
+  loading?: boolean;
 }
 
-const SpringRecap: React.FC<SpringRecapProps> = ({ onClose }) => {
+/**
+ * Map tag labels to icons and colors
+ * Returns icon component and color class based on tag content
+ */
+const getTagIconAndColor = (tagLabel: string): { icon: React.ReactNode; color: string } => {
+  const lowerTag = tagLabel.toLowerCase();
+  
+  // Study/Education related
+  if (lowerTag.includes('study') || lowerTag.includes('library') || lowerTag.includes('homework') || lowerTag.includes('exam')) {
+    return { icon: <BookOpen className="w-3 h-3" />, color: 'bg-indigo-400' };
+  }
+  
+  // Coffee/Food related
+  if (lowerTag.includes('coffee') || lowerTag.includes('cafe') || lowerTag.includes('brunch') || lowerTag.includes('food') || lowerTag.includes('meal')) {
+    return { icon: <Coffee className="w-3 h-3" />, color: 'bg-amber-700' };
+  }
+  
+  // Gym/Fitness related
+  if (lowerTag.includes('gym') || lowerTag.includes('workout') || lowerTag.includes('fitness') || lowerTag.includes('exercise')) {
+    return { icon: <Dumbbell className="w-3 h-3" />, color: 'bg-rose-500' };
+  }
+  
+  // Music related
+  if (lowerTag.includes('music') || lowerTag.includes('jam') || lowerTag.includes('concert') || lowerTag.includes('song')) {
+    return { icon: <Music className="w-3 h-3" />, color: 'bg-purple-500' };
+  }
+  
+  // Food/Dining related
+  if (lowerTag.includes('dinner') || lowerTag.includes('lunch') || lowerTag.includes('restaurant') || lowerTag.includes('eat')) {
+    return { icon: <Utensils className="w-3 h-3" />, color: 'bg-orange-400' };
+  }
+  
+  // Outdoor/Adventure related
+  if (lowerTag.includes('hiking') || lowerTag.includes('outdoor') || lowerTag.includes('camping') || lowerTag.includes('nature')) {
+    return { icon: <Tent className="w-3 h-3" />, color: 'bg-emerald-600' };
+  }
+  
+  // Party/Social related
+  if (lowerTag.includes('party') || lowerTag.includes('celebration') || lowerTag.includes('event') || lowerTag.includes('social')) {
+    return { icon: <PartyPopper className="w-3 h-3" />, color: 'bg-pink-500' };
+  }
+  
+  // Photo/Photography related
+  if (lowerTag.includes('photo') || lowerTag.includes('picture') || lowerTag.includes('camera') || lowerTag.includes('photography')) {
+    return { icon: <Camera className="w-3 h-3" />, color: 'bg-zinc-500' };
+  }
+  
+  // Gaming/Entertainment related
+  if (lowerTag.includes('game') || lowerTag.includes('gaming') || lowerTag.includes('play')) {
+    return { icon: <Sparkles className="w-3 h-3" />, color: 'bg-blue-500' };
+  }
+  
+  // Default fallback
+  return { icon: <Coffee className="w-3 h-3" />, color: 'bg-teal-500' };
+};
+
+const SpringRecap: React.FC<SpringRecapProps> = ({ onClose, data = [], loading = false }) => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
   }, []);
+
+  // Transform data with icons and colors
+  const recapData: RecapEntry[] = data.map((entry) => ({
+    ...entry,
+    tags: entry.tags.map((tagLabel) => {
+      const { icon, color } = getTagIconAndColor(tagLabel);
+      return { label: tagLabel, icon, color };
+    }),
+  }));
 
   return (
     <div className="absolute inset-0 z-50 bg-zinc-950 flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-500">
@@ -116,8 +149,18 @@ const SpringRecap: React.FC<SpringRecapProps> = ({ onClose }) => {
 
       {/* Main Content */}
       <main className="relative z-10 flex-1 overflow-y-auto px-6 pb-24 scrollbar-hide">
-        <div className="space-y-4 pt-2">
-          {MOCK_RECAP_DATA.map((friend, index) => (
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-zinc-400">Loading Spring Bloom data...</div>
+          </div>
+        ) : recapData.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center px-6">
+            <div className="text-zinc-400 text-lg mb-2">No focus sessions found</div>
+            <div className="text-zinc-500 text-sm">Start focusing with friends to see your Spring Bloom recap!</div>
+          </div>
+        ) : (
+          <div className="space-y-4 pt-2">
+            {recapData.map((friend, index) => (
             <div 
               key={friend.rank}
               className="group relative flex items-center gap-4 bg-zinc-900/60 hover:bg-zinc-800/80 border border-zinc-800/50 rounded-2xl p-4 transition-all duration-300"
@@ -166,8 +209,9 @@ const SpringRecap: React.FC<SpringRecapProps> = ({ onClose }) => {
                 </div>
               </div>
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </main>
 
       {/* Floating CTA */}

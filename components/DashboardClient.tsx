@@ -17,6 +17,9 @@ import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { useDeviceOrientation } from '@/hooks/useDeviceOrientation';
 import { createFocusSession } from '@/modules/sessions/actions';
 import { createMemoryWithPhoto } from '@/modules/memories/actions';
+import { getSpringBloomDataAction } from '@/modules/friends/actions';
+import { SpringBloomEntry } from '@/modules/friends/service';
+import SwipePreviewWrapper from '@/components/SwipePreviewWrapper';
 
 interface DashboardClientProps {
   friends: Friend[];
@@ -52,6 +55,8 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
   const [sessionRecorded, setSessionRecorded] = useState(false);
   const [currentFocusSessionId, setCurrentFocusSessionId] = useState<string | null>(null);
   const timerRef = useRef<number | null>(null);
+  const [springBloomData, setSpringBloomData] = useState<SpringBloomEntry[]>([]);
+  const [springBloomLoading, setSpringBloomLoading] = useState(false);
 
   // Device orientation sensor hook
   const { 
@@ -242,29 +247,59 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
+  // Load Spring Bloom data when QUARTERLY_FEEDBACK state is activated
+  useEffect(() => {
+    if (appState === AppState.QUARTERLY_FEEDBACK && springBloomData.length === 0 && !springBloomLoading) {
+      const loadSpringBloomData = async () => {
+        setSpringBloomLoading(true);
+        try {
+          console.log('Loading Spring Bloom data...');
+          const result = await getSpringBloomDataAction();
+          console.log('Spring Bloom data result:', result);
+          if (result.success && result.data) {
+            setSpringBloomData(result.data);
+            console.log('Spring Bloom data loaded:', result.data.length, 'friends');
+          } else {
+            console.error('Failed to load Spring Bloom data:', result.error);
+            setSpringBloomData([]);
+          }
+        } catch (error) {
+          console.error('Error loading Spring Bloom data:', error);
+          setSpringBloomData([]);
+        } finally {
+          setSpringBloomLoading(false);
+        }
+      };
+      loadSpringBloomData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appState]);
+
   return (
     // Main Container ensuring iPhone dimensions on Desktop
     <div className="w-full h-dvh bg-black flex items-center justify-center">
       <div className="w-full h-full max-w-[414px] bg-zinc-950 relative overflow-hidden shadow-2xl border-x border-zinc-900/50">
+        <SwipePreviewWrapper currentPath="/">
+          {/* Dashboard Content */}
+          <div className="w-full h-full">
+              <Dashboard
+                friends={friends}
+                chartData={chartData}
+                user={user}
+                onOpenHappyIndex={() => router.push('/happy-index')}
+                onFriendClick={handleFriendClick}
+                onSearch={startSearch}
+                onSpringRecap={() => setAppState(AppState.QUARTERLY_FEEDBACK)}
+                onStartSession={startSession}
+              />
+          </div>
+        </SwipePreviewWrapper>
 
-        {/* Dashboard Content */}
-        <div className="w-full h-full">
-            <Dashboard
-              friends={friends}
-              chartData={chartData}
-              user={user}
-              onOpenHappyIndex={() => router.push('/happy-index')}
-              onFriendClick={handleFriendClick}
-              onSearch={startSearch}
-              onSpringRecap={() => setAppState(AppState.QUARTERLY_FEEDBACK)}
-              onStartSession={startSession}
-            />
-        </div>
-
-        {/* Bottom Navigation - Hidden during Focus, Summary, and Post Memory modes */}
+        {/* Bottom Navigation - Hidden during Focus, Summary, Post Memory, and Spring Bloom modes */}
         {appState !== AppState.FOCUS && 
          appState !== AppState.SUMMARY && 
-         appState !== AppState.POST_MEMORY && (
+         appState !== AppState.POST_MEMORY &&
+         appState !== AppState.QUARTERLY_FEEDBACK && (
           <BottomNav />
         )}
 
@@ -317,7 +352,17 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
           </div>
         )}
         
-        {appState === AppState.QUARTERLY_FEEDBACK && <SpringRecap onClose={() => setAppState(AppState.DASHBOARD)} />}
+        {appState === AppState.QUARTERLY_FEEDBACK && (
+          <SpringRecap 
+            onClose={() => {
+              setAppState(AppState.DASHBOARD);
+              // Reset Spring Bloom data when closing
+              setSpringBloomData([]);
+            }} 
+            data={springBloomData}
+            loading={springBloomLoading}
+          />
+        )}
         
         {appState === AppState.POST_MEMORY && (
           <div className="absolute inset-0 z-[70] bg-zinc-950">

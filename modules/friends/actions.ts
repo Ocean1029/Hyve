@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import prisma from '@/lib/prisma';
 import { auth } from '@/auth';
+import { getSpringBloomData, SpringBloomEntry } from './service';
 
 export async function addFriendFromUser(userId: string) {
   try {
@@ -238,6 +239,32 @@ export async function deleteFriend(friendId: string) {
   } catch (error) {
     console.error('Failed to delete friend:', error);
     return { success: false, error: 'Failed to delete friend' };
+  }
+}
+
+/**
+ * Get Spring Bloom data for the current user
+ * Returns ranked list of friends with total hours and tags from the last 3 months
+ */
+export async function getSpringBloomDataAction(): Promise<{ success: boolean; data?: SpringBloomEntry[]; error?: string }> {
+  try {
+    // Get current user session
+    const session = await auth();
+    if (!session?.user?.id) {
+      console.error('Spring Bloom: No user session');
+      return { success: false, error: 'Unauthorized: Please log in' };
+    }
+    const sourceUserId = session.user.id;
+    console.log('Spring Bloom: Loading data for user', sourceUserId);
+
+    // Get Spring Bloom data
+    const data = await getSpringBloomData(sourceUserId);
+    console.log('Spring Bloom: Data loaded successfully', data.length, 'friends');
+
+    return { success: true, data };
+  } catch (error: any) {
+    console.error('Failed to get Spring Bloom data:', error);
+    return { success: false, error: error.message || 'Failed to get Spring Bloom data' };
   }
 }
 
