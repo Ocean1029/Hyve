@@ -97,9 +97,6 @@ export async function getTodayFocusSessions(userId: string) {
           gte: today,
           lt: tomorrow,
         },
-        minutes: {
-          gte: 1,
-        },
       },
       orderBy: { startTime: 'asc' },
       include: {
