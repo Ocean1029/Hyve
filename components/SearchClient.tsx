@@ -10,6 +10,7 @@ import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import BottomNav from './BottomNav';
 import UserProfile from './UserProfile';
 import SearchBar from './SearchBar';
+import SwipePreviewWrapper from './SwipePreviewWrapper';
 
 type SearchResult = {
   id: string;
@@ -137,24 +138,24 @@ const SearchClient: React.FC = () => {
   return (
     <div className="w-full h-dvh bg-black flex items-center justify-center">
       <div className="w-full h-full max-w-[414px] bg-zinc-950 relative overflow-hidden shadow-2xl border-x border-zinc-900/50">
-        
-        {/* Header */}
-        <div className="p-6 border-b border-zinc-900 bg-zinc-950/90 backdrop-blur-md">
-          <h1 className="text-2xl font-black text-white mb-4">Search</h1>
-          
-          {/* Search Input */}
-          <SearchBar
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Search by ID or name"
-            showClearButton={true}
-            showGradient={true}
-            inputClassName="rounded-3xl"
-          />
-        </div>
+        <SwipePreviewWrapper currentPath="/search">
+          {/* Header */}
+          <div className="p-6 border-b border-zinc-900 bg-zinc-950/90 backdrop-blur-md">
+            <h1 className="text-2xl font-black text-white mb-4">Search</h1>
+            
+            {/* Search Input */}
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search by ID or name"
+              showClearButton={true}
+              showGradient={true}
+              inputClassName="rounded-3xl"
+            />
+          </div>
 
-        {/* Results */}
-        <div className="flex-1 overflow-y-auto pb-40">
+          {/* Results */}
+          <div className="flex-1 overflow-y-auto pb-40">
           {isSearching || isLoadingRecommendations ? (
             <div className="flex flex-col items-center justify-center h-64">
               <Loader2 className="w-8 h-8 text-zinc-500 animate-spin mb-3" />
@@ -323,23 +324,24 @@ const SearchClient: React.FC = () => {
               <p className="text-zinc-500 text-sm font-medium">Start searching</p>
             </div>
           )}
-        </div>
+          </div>
 
-        {/* User Profile Modal */}
-        {selectedUser && (
-          <UserProfile
-            user={selectedUser}
-            onClose={() => {
-              setSelectedUser(null);
-              setIsAlreadyFriend(false);
-            }}
-            onAddFriend={handleAddFriend}
-            isAlreadyFriend={isAlreadyFriend}
-          />
-        )}
+          {/* User Profile Modal */}
+          {selectedUser && (
+            <UserProfile
+              user={selectedUser}
+              onClose={() => {
+                setSelectedUser(null);
+                setIsAlreadyFriend(false);
+              }}
+              onAddFriend={handleAddFriend}
+              isAlreadyFriend={isAlreadyFriend}
+            />
+          )}
 
-        {/* Bottom Navigation */}
-        <BottomNav />
+          {/* Bottom Navigation */}
+          <BottomNav />
+        </SwipePreviewWrapper>
       </div>
     </div>
   );

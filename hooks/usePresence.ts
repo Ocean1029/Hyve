@@ -51,6 +51,19 @@ export function usePresence(): UsePresenceReturn {
 
   // Connect to SSE stream for real-time updates
   const connectToStream = useCallback(() => {
+    // Don't connect if we're in an iframe preview mode
+    // Check if we're in an iframe by checking window.self !== window.top
+    // or by checking URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const isPreview = urlParams.get('_preview') === 'true';
+    const isInIframe = window.self !== window.top;
+    
+    if (isPreview || isInIframe) {
+      // Don't establish SSE connection in preview/iframe mode
+      setIsLoading(false);
+      return;
+    }
+
     try {
       // Close existing connection if any
       if (eventSourceRef.current) {
@@ -86,19 +99,32 @@ export function usePresence(): UsePresenceReturn {
       };
 
       eventSource.onerror = (err) => {
-        console.error('SSE connection error:', err);
+        // Re-check iframe status in case it changed
+        const currentlyInIframe = window.self !== window.top;
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentlyPreview = urlParams.get('_preview') === 'true';
+        
+        // Only log error if not in iframe/preview mode to reduce console noise
+        if (!currentlyInIframe && !currentlyPreview) {
+          console.error('SSE connection error:', err);
+        }
         eventSource.close();
         
-        // Attempt to reconnect after 5 seconds
-        setTimeout(() => {
-          if (isMountedRef.current) {
-            connectToStream();
-          }
-        }, 5000);
+        // Attempt to reconnect after 5 seconds (only if not in iframe/preview)
+        if (!currentlyInIframe && !currentlyPreview) {
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              connectToStream();
+            }
+          }, 5000);
+        }
       };
     } catch (err) {
-      console.error('Error connecting to stream:', err);
-      setError('Failed to connect to presence stream');
+      // Only log error if not in iframe/preview mode
+      if (!isInIframe) {
+        console.error('Error connecting to stream:', err);
+        setError('Failed to connect to presence stream');
+      }
       setIsLoading(false);
     }
   }, []);

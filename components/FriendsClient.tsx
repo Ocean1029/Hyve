@@ -6,6 +6,7 @@ import { Friend } from '@/lib/types';
 import Friends from '@/components/Friends';
 import BottomNav from '@/components/BottomNav';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
+import SwipePreviewWrapper from '@/components/SwipePreviewWrapper';
 
 interface FriendsClientProps {
   friends: Friend[];
@@ -51,8 +52,10 @@ const FriendsClient: React.FC<FriendsClientProps> = ({ friends, userId }) => {
   return (
     <div className="w-full h-dvh bg-black flex items-center justify-center">
       <div className="w-full h-full max-w-[414px] bg-zinc-950 relative overflow-hidden shadow-2xl border-x border-zinc-900/50">
-        <Friends friends={friends} onViewProfile={handleFriendClick} userId={userId} />
-        <BottomNav />
+        <SwipePreviewWrapper currentPath="/friends">
+          <Friends friends={friends} onViewProfile={handleFriendClick} userId={userId} />
+          <BottomNav />
+        </SwipePreviewWrapper>
       </div>
     </div>
   );

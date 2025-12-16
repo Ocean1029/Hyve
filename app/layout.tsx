@@ -1,6 +1,7 @@
 import './globals.css';
 import PresenceProvider from '@/components/PresenceProvider';
 import LocationTracker from '@/components/LocationTracker';
+import SwipePreviewProvider from '@/components/SwipePreviewProvider';
 
 export const metadata = {
   title: 'Hyve',
@@ -17,7 +18,9 @@ export default function RootLayout({
       <body>
         <PresenceProvider />
         <LocationTracker />
-        {children}
+        <SwipePreviewProvider>
+          {children}
+        </SwipePreviewProvider>
       </body>
     </html>
   );

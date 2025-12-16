@@ -6,6 +6,7 @@ import { Post } from '@/lib/types';
 import MyProfile from '@/components/MyProfile';
 import BottomNav from '@/components/BottomNav';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
+import SwipePreviewWrapper from '@/components/SwipePreviewWrapper';
 
 interface ProfileClientProps {
   user: any; // Define proper User type later
@@ -32,16 +33,17 @@ const ProfileClient: React.FC<ProfileClientProps> = ({ user, posts }) => {
   return (
     <div className="w-full h-dvh bg-black flex items-center justify-center">
       <div className="w-full h-full max-w-[414px] bg-zinc-950 relative overflow-hidden shadow-2xl border-x border-zinc-900/50">
-        
-        <MyProfile 
-          user={user}
-          posts={posts}
-          stats={user?.stats}
-          onViewDetails={handleViewDetails} 
-          onSettingsClick={handleSettingsClick}
-        />
+        <SwipePreviewWrapper currentPath="/profile">
+          <MyProfile 
+            user={user}
+            posts={posts}
+            stats={user?.stats}
+            onViewDetails={handleViewDetails} 
+            onSettingsClick={handleSettingsClick}
+          />
 
-        <BottomNav />
+          <BottomNav />
+        </SwipePreviewWrapper>
       </div>
     </div>
   );

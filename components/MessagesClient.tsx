@@ -6,6 +6,7 @@ import { Friend } from '@/lib/types';
 import Messages from '@/components/Messages';
 import BottomNav from '@/components/BottomNav';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
+import SwipePreviewWrapper from '@/components/SwipePreviewWrapper';
 
 interface MessagesClientProps {
   friends: Friend[];
@@ -51,8 +52,10 @@ const MessagesClient: React.FC<MessagesClientProps> = ({ friends, userId }) => {
   return (
     <div className="w-full h-dvh bg-black flex items-center justify-center">
       <div className="w-full h-full max-w-[414px] bg-zinc-950 relative overflow-hidden shadow-2xl border-x border-zinc-900/50">
-        <Messages friends={friends} onViewProfile={handleFriendClick} userId={userId} />
-        <BottomNav />
+        <SwipePreviewWrapper currentPath="/messages">
+          <Messages friends={friends} onViewProfile={handleFriendClick} userId={userId} />
+          <BottomNav />
+        </SwipePreviewWrapper>
       </div>
     </div>
   );
