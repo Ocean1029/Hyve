@@ -2,8 +2,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Clock, MapPin, Users, Activity, Flame, Camera } from 'lucide-react';
+import { Clock, MapPin, Users, Activity, Flame, Camera } from 'lucide-react';
 import { getTodayFocusSessions } from '@/modules/sessions/actions';
 
 interface TodayDetailsProps {
@@ -37,19 +36,9 @@ interface TodaySession {
 }
 
 const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
-  const router = useRouter();
   const [sessions, setSessions] = useState<TodaySession[]>([]);
   const [totalMinutes, setTotalMinutes] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Handle back navigation
-  const handleBack = () => {
-    if (onClose) {
-      onClose();
-    } else {
-      router.back();
-    }
-  };
 
   useEffect(() => {
     const loadTodaySessions = async () => {
@@ -134,17 +123,11 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
       <div className="relative h-64 flex-shrink-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-rose-900/40 via-zinc-950 to-zinc-950"></div>
         
-        <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-20">
-          <div className="flex flex-col">
+        <div className="absolute top-0 left-0 right-0 pt-12 pb-6 px-6 flex justify-center items-center z-20">
+          <div className="flex flex-col items-center text-center">
             <span className="text-zinc-400 text-xs font-bold uppercase tracking-widest">{todayDate}</span>
-            <h1 className="text-3xl font-black text-white tracking-tight">Today's<br/>Focus</h1>
+            <h1 className="text-3xl font-black text-white tracking-tight">Today's Focus</h1>
           </div>
-          <button 
-            onClick={handleBack} 
-            className="p-2 bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-colors border border-white/10"
-          >
-            <ArrowLeft className="w-6 h-6 text-white" />
-          </button>
         </div>
 
         {/* Daily Stats Overlay */}
