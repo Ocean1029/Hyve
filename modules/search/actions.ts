@@ -2,6 +2,7 @@
 
 import prisma from '@/lib/prisma';
 import { auth } from '@/auth';
+import { getUserFriendCount } from '@/modules/friends/repository';
 
 export async function searchUsers(query: string) {
   try {
@@ -9,11 +10,21 @@ export async function searchUsers(query: string) {
       return { success: true, users: [] };
     }
 
+    // Get current user session to exclude self from results
+    const session = await auth();
+    const currentUserId = session?.user?.id;
+
     const searchQuery = query.trim();
 
     // Search users by ID, userId, name, or email (fuzzy search using contains)
+    // Exclude the current user from results
     const users = await prisma.user.findMany({
       where: {
+        ...(currentUserId && {
+          id: {
+            not: currentUserId,
+          },
+        }),
         OR: [
           {
             id: {
@@ -50,7 +61,6 @@ export async function searchUsers(query: string) {
         createdAt: true,
         _count: {
           select: {
-            posts: true,
             focusSessions: true,
           },
         },
@@ -61,7 +71,18 @@ export async function searchUsers(query: string) {
       },
     });
 
-    return { success: true, users };
+    // Add friend count for each user
+    const usersWithFriendCount = await Promise.all(
+      users.map(async (user: typeof users[0]) => {
+        const friendCount = await getUserFriendCount(user.id);
+        return {
+          ...user,
+          friendCount,
+        };
+      })
+    );
+
+    return { success: true, users: usersWithFriendCount };
   } catch (error) {
     console.error('Failed to search users:', error);
     return { success: false, error: 'Failed to search users' };
@@ -108,7 +129,6 @@ export async function searchFriends(query: string) {
         },
         _count: {
           select: {
-            posts: true,
             interactions: true,
           },
         },
@@ -155,7 +175,7 @@ export async function getRecommendedUsers() {
     const excludedUserIds = [...existingFriendIds, currentUserId];
 
     // Get all users with their activity counts
-    // We'll calculate activity score based on posts + focusSessions
+    // We'll calculate activity score based on focusSessions
     type UserWithCounts = {
       id: string;
       userId: string | null;
@@ -164,7 +184,6 @@ export async function getRecommendedUsers() {
       image: string | null;
       createdAt: Date;
       _count: {
-        posts: number;
         focusSessions: number;
       };
     };
@@ -184,7 +203,6 @@ export async function getRecommendedUsers() {
         createdAt: true,
         _count: {
           select: {
-            posts: true,
             focusSessions: true,
           },
         },
@@ -192,12 +210,12 @@ export async function getRecommendedUsers() {
     }) as UserWithCounts[];
 
     // Calculate activity score and sort by it
-    // Activity score = posts count + focusSessions count
+    // Activity score = focusSessions count
     type UserWithScore = UserWithCounts & { activityScore: number };
 
     const usersWithScore: UserWithScore[] = allUsers.map((user: UserWithCounts) => ({
       ...user,
-      activityScore: (user._count.posts || 0) + (user._count.focusSessions || 0),
+      activityScore: user._count.focusSessions || 0,
     }));
 
     // Sort by activity score (descending), then by creation date (newest first)
@@ -225,9 +243,20 @@ export async function getRecommendedUsers() {
       });
 
     // Combine active and random users, limit to 15 total
-    const recommendedUsers = [...activeUsers, ...randomUsers].slice(0, 15);
+    const combinedUsers = [...activeUsers, ...randomUsers].slice(0, 15);
 
-    return { success: true, users: recommendedUsers };
+    // Add friend count for each recommended user
+    const recommendedUsersWithFriendCount = await Promise.all(
+      combinedUsers.map(async (user) => {
+        const friendCount = await getUserFriendCount(user.id);
+        return {
+          ...user,
+          friendCount,
+        };
+      })
+    );
+
+    return { success: true, users: recommendedUsersWithFriendCount };
   } catch (error) {
     console.error('Failed to get recommended users:', error);
     return { success: false, error: 'Failed to get recommended users' };

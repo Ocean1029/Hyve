@@ -12,6 +12,6 @@ export default async function ProfilePage() {
 
   const profileData = await getMyProfileService(session.user.id);
 
-  return <ProfileClient user={profileData} posts={profileData?.posts || []} />;
+  return <ProfileClient user={profileData} memories={profileData?.memories || []} />;
 }
 

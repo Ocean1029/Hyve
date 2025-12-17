@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronLeft, Calendar, Grid, Clock, Hash, Flame } from 'lucide-react';
+import { ChevronLeft, Calendar, Clock, Hash, Flame } from 'lucide-react';
 import { Friend } from '../lib/types';
 
 interface FriendProfileProps {
@@ -109,37 +109,6 @@ const FriendProfile: React.FC<FriendProfileProps> = ({ friend, onBack }) => {
               ))
             ) : (
               <div className="text-zinc-600 text-sm font-medium italic pl-4">No recent memories recorded.</div>
-            )}
-          </div>
-        </section>
-
-        {/* 4. Collection of Posts (Shared Interactions) */}
-        <section>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-emerald-500/10 rounded-lg">
-               <Grid className="w-4 h-4 text-emerald-400" />
-            </div>
-            <h3 className="text-sm font-black text-stone-200 uppercase tracking-widest">Shared Vault</h3>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            {friend.posts.length > 0 ? (
-              friend.posts.map((post, i) => (
-                <div 
-                  key={post.id} 
-                  className={`relative rounded-2xl overflow-hidden group shadow-lg ${i === 0 ? 'col-span-2 aspect-[2/1]' : 'aspect-square'}`}
-                >
-                  <img src={post.imageUrl} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-5">
-                    <p className="text-sm text-white font-bold leading-tight">{post.caption}</p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="col-span-2 py-12 flex flex-col items-center justify-center border-2 border-dashed border-zinc-800 rounded-3xl bg-zinc-900/20">
-                <Grid className="w-8 h-8 text-zinc-700 mb-2" />
-                <p className="text-zinc-600 text-xs font-bold uppercase tracking-wider">No photos unlocked</p>
-              </div>
             )}
           </div>
         </section>

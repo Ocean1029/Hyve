@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Post } from '@/lib/types';
 import MyProfile from '@/components/MyProfile';
 import BottomNav from '@/components/BottomNav';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
@@ -10,10 +9,10 @@ import SwipePreviewWrapper from '@/components/SwipePreviewWrapper';
 
 interface ProfileClientProps {
   user: any; // Define proper User type later
-  posts: Post[];
+  memories: any[];
 }
 
-const ProfileClient: React.FC<ProfileClientProps> = ({ user, posts }) => {
+const ProfileClient: React.FC<ProfileClientProps> = ({ user, memories }) => {
   const router = useRouter();
   
   // Enable swipe navigation
@@ -36,7 +35,7 @@ const ProfileClient: React.FC<ProfileClientProps> = ({ user, posts }) => {
         <SwipePreviewWrapper currentPath="/profile">
           <MyProfile 
             user={user}
-            posts={posts}
+            memories={memories}
             stats={user?.stats}
             onViewDetails={handleViewDetails} 
             onSettingsClick={handleSettingsClick}

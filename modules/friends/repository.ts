@@ -29,7 +29,6 @@ export const getFriendsWithDetails = async (sourceUserId: string) => {
           },
         },
       },
-      posts: true,
     },
   });
 };
@@ -64,7 +63,6 @@ export const getFriendsWithLastMessage = async (sourceUserId: string) => {
           },
         },
       },
-      posts: true,
       messages: {
         orderBy: {
           timestamp: 'desc',
@@ -118,8 +116,17 @@ export const getFriendById = async (friendId: string, sourceUserId: string) => {
           },
         },
       },
-      posts: true,
     },
+  });
+};
+
+/**
+ * Get friend count for a user
+ * Counts how many friends a user has (where sourceUserId = userId)
+ */
+export const getUserFriendCount = async (userId: string): Promise<number> => {
+  return await prisma.friend.count({
+    where: { sourceUserId: userId },
   });
 };
 

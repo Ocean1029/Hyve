@@ -1,7 +1,8 @@
 // modules/users/service.ts
 import { getUserWithPosts } from './repository';
-import { Post } from '@/lib/types';
+import { Memory } from '@/lib/types';
 import prisma from '@/lib/prisma';
+import { getUserMemories } from '@/modules/memories/repository';
 
 export const getMyProfileService = async (userId: string) => {
   const user = await getUserWithPosts(userId);
@@ -63,15 +64,25 @@ export const getMyProfileService = async (userId: string) => {
     }),
   ]);
 
-  const posts: Post[] = user.posts.map((p: any) => ({
-    id: p.id,
-    imageUrl: p.photoUrl || p.imageUrl || '',
-    caption: p.caption || '',
+  // Get user's memories for vault display
+  const memories = await getUserMemories(userId, 50);
+  
+  // Transform memories to format suitable for vault display
+  // Each memory uses its first photo as the display image
+  const vaultMemories: Memory[] = memories.map((m: any) => ({
+    id: m.id,
+    type: m.type,
+    content: m.content || '',
+    timestamp: m.timestamp,
+    focusSessionId: m.focusSessionId,
+    photos: m.photos || [],
+    location: m.location,
+    happyIndex: m.happyIndex,
   }));
 
   return {
     ...user,
-    posts,
+    memories: vaultMemories,
     stats: {
       totalFriends,
       totalHours: Math.floor(totalFocusHours._sum.totalHours || 0),

@@ -20,10 +20,9 @@ type SearchResult = {
   image?: string | null;
   avatar?: string | null;
   createdAt: Date;
+  friendCount?: number;
   _count?: {
-    posts: number;
     focusSessions?: number;
-    interactions?: number;
   };
 };
 
@@ -214,30 +213,6 @@ const SearchClient: React.FC = () => {
                         )}
                       </div>
                     </div>
-
-                    {/* Stats */}
-                    {result._count && (
-                      <div className="flex flex-col items-end gap-1">
-                        {result._count.posts !== undefined && (
-                          <div className="text-xs text-zinc-500 flex items-center gap-1">
-                            <span className="font-bold text-white tabular-nums w-6 text-right">{result._count.posts}</span>
-                            <span>posts</span>
-                          </div>
-                        )}
-                        {result._count.focusSessions !== undefined && (
-                          <div className="text-xs text-zinc-500 flex items-center gap-1">
-                            <span className="font-bold text-white tabular-nums w-6 text-right">{result._count.focusSessions}</span>
-                            <span>sessions</span>
-                          </div>
-                        )}
-                        {result._count.interactions !== undefined && (
-                          <div className="text-xs text-zinc-500 flex items-center gap-1">
-                            <span className="font-bold text-white tabular-nums w-6 text-right">{result._count.interactions}</span>
-                            <span>interactions</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </div>
               ))}
@@ -290,30 +265,6 @@ const SearchClient: React.FC = () => {
                         )}
                       </div>
                     </div>
-
-                    {/* Stats */}
-                    {result._count && (
-                      <div className="flex flex-col items-end gap-1">
-                        {result._count.posts !== undefined && (
-                          <div className="text-xs text-zinc-500 flex items-center gap-1">
-                            <span className="font-bold text-white tabular-nums w-6 text-right">{result._count.posts}</span>
-                            <span>posts</span>
-                          </div>
-                        )}
-                        {result._count.focusSessions !== undefined && (
-                          <div className="text-xs text-zinc-500 flex items-center gap-1">
-                            <span className="font-bold text-white tabular-nums w-6 text-right">{result._count.focusSessions}</span>
-                            <span>sessions</span>
-                          </div>
-                        )}
-                        {result._count.interactions !== undefined && (
-                          <div className="text-xs text-zinc-500 flex items-center gap-1">
-                            <span className="font-bold text-white tabular-nums w-6 text-right">{result._count.interactions}</span>
-                            <span>interactions</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </div>
               ))}

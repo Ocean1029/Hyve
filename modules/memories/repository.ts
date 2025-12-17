@@ -71,3 +71,24 @@ export const getMemoryPhotos = async (memoryId: string) => {
   });
 };
 
+/**
+ * Get all memories for a specific user (from all their focus sessions)
+ * Used for displaying user's vault
+ */
+export const getUserMemories = async (userId: string, limit = 50) => {
+  return await prisma.memory.findMany({
+    where: {
+      focusSession: {
+        userId: userId,
+      },
+    },
+    include: {
+      photos: true,
+    },
+    orderBy: {
+      timestamp: 'desc',
+    },
+    take: limit,
+  });
+};
+

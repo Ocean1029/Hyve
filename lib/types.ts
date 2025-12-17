@@ -38,12 +38,6 @@ export interface Photo {
   createdAt: Date;
 }
 
-export interface Post {
-  id: string;
-  imageUrl: string;
-  caption: string;
-}
-
 export interface Message {
   id: string;
   friendId: string;
@@ -76,7 +70,8 @@ export interface Friend {
   totalHours: number;
   streak: number;
   recentMemories: Memory[]; // Memories from focus sessions with this friend
-  posts: Post[];
+  friendCount?: number; // Number of friends this user has
+  sessionCount?: number; // Number of focus sessions with this friend
   lastMessage?: {
     id: string;
     content: string;

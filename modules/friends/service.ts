@@ -1,5 +1,5 @@
 // modules/friends/service.ts
-import { getFriendsWithDetails, getFriendsWithLastMessage, getFriendById, getFriendsForSpringBloom } from './repository';
+import { getFriendsWithDetails, getFriendsWithLastMessage, getFriendById, getFriendsForSpringBloom, getUserFriendCount } from './repository';
 import { Friend } from '@/lib/types';
 import { GoogleGenAI } from '@google/genai';
 
@@ -65,7 +65,12 @@ ${combinedContent}`,
 export const getFriendListService = async (sourceUserId: string): Promise<Friend[]> => {
   const friends = await getFriendsWithDetails(sourceUserId);
   
-  return friends.map((f: any) => {
+  // Batch fetch friend counts for all friends
+  const friendCounts = await Promise.all(
+    friends.map((f: any) => getUserFriendCount(f.user.id))
+  );
+  
+  return friends.map((f: any, index: number) => {
     // Collect memories from all focus sessions with this friend
     const allMemories: any[] = [];
     f.focusSessionFriends?.forEach((fsf: any) => {
@@ -106,11 +111,8 @@ export const getFriendListService = async (sourceUserId: string): Promise<Friend
       totalHours: f.totalHours,
       streak: f.streak,
       recentMemories,
-      posts: f.posts.map((p: any) => ({
-        id: p.id,
-        imageUrl: p.imageUrl || p.photoUrl || '',
-        caption: p.caption || '',
-      })),
+      friendCount: friendCounts[index],
+      sessionCount: f.focusSessionFriends?.length || 0,
     };
   });
 };
@@ -185,11 +187,6 @@ export const getFriendsForMessagesService = async (sourceUserId: string): Promis
       totalHours: f.totalHours,
       streak: f.streak,
       recentMemories,
-      posts: f.posts.map((p: any) => ({
-        id: p.id,
-        imageUrl: p.imageUrl || p.photoUrl || '',
-        caption: p.caption || '',
-      })),
       lastMessage: f.messages[0] ? {
         id: f.messages[0].id,
         content: f.messages[0].content,
@@ -240,6 +237,12 @@ export const getFriendByIdService = async (friendId: string, sourceUserId: strin
         };
       });
   
+  // Get friend count for this friend's user (how many friends they have)
+  const friendCount = await getUserFriendCount(friend.user.id);
+  
+  // Get session count (number of focus sessions with this friend)
+  const sessionCount = friend.focusSessionFriends?.length || 0;
+  
   return {
     id: friend.id,
     name: friend.user.name || 'Unknown User',
@@ -247,11 +250,8 @@ export const getFriendByIdService = async (friendId: string, sourceUserId: strin
     totalHours: friend.totalHours,
     streak: friend.streak,
     recentMemories,
-    posts: friend.posts.map((p: any) => ({
-      id: p.id,
-      imageUrl: p.imageUrl || p.photoUrl || '',
-      caption: p.caption || '',
-    })),
+    friendCount,
+    sessionCount,
   };
 };
 

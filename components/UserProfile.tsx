@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { X, Calendar, Image as ImageIcon, UserPlus, Check, Clock } from 'lucide-react';
+import { X, Calendar, UserPlus, Check, Clock, Users } from 'lucide-react';
 import { checkFriendRequestStatus } from '@/modules/friend-requests/actions';
 import { sendFriendRequest } from '@/modules/friend-requests/actions';
 import { acceptFriendRequest, rejectFriendRequest } from '@/modules/friend-requests/actions';
@@ -16,8 +16,8 @@ interface UserProfileProps {
     image?: string | null;
     avatar?: string | null;
     createdAt: Date;
+    friendCount?: number;
     _count?: {
-      posts: number;
       focusSessions?: number;
     };
   };
@@ -183,27 +183,26 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onClose, onAddFriend, i
           </div>
 
           {/* Stats */}
-          {user._count && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-zinc-800/50 rounded-2xl p-4 text-center border border-zinc-800">
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <ImageIcon className="w-4 h-4 text-rose-400" />
-                  <span className="text-2xl font-black text-white">
-                    {user._count.posts}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Posts</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-zinc-800/50 rounded-2xl p-4 text-center border border-zinc-800">
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <Users className="w-4 h-4 text-emerald-400" />
+                <span className="text-2xl font-black text-white">
+                  {user.friendCount ?? 0}
+                </span>
               </div>
-              <div className="bg-zinc-800/50 rounded-2xl p-4 text-center border border-zinc-800">
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <span className="text-2xl font-black text-white">
-                    {user._count.focusSessions || 0}
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Sessions</p>
-              </div>
+              <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Friends</p>
             </div>
-          )}
+            <div className="bg-zinc-800/50 rounded-2xl p-4 text-center border border-zinc-800">
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <Clock className="w-4 h-4 text-blue-400" />
+                <span className="text-2xl font-black text-white">
+                  {user._count?.focusSessions || 0}
+                </span>
+              </div>
+              <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Sessions</p>
+            </div>
+          </div>
 
           {/* Info */}
           <div className="space-y-3">

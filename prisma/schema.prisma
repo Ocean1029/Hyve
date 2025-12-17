@@ -19,13 +19,12 @@ model User {
   sessions      Session[]
 
   // Custom Relations
-  focusSessions   FocusSession[]
-  posts           Post[]
-  friendsAsUser   Friend[]       @relation("FriendUser")
-  friendsAsSource Friend[]       @relation("FriendSource")
-  heartbeats      Heartbeat[]
-  locations       UserLocation[]
-  sentRequests    FriendRequest[] @relation("FriendRequestSender")
+  focusSessions    FocusSession[]
+  friendsAsUser    Friend[]        @relation("FriendUser")
+  friendsAsSource  Friend[]        @relation("FriendSource")
+  heartbeats       Heartbeat[]
+  locations        UserLocation[]
+  sentRequests     FriendRequest[] @relation("FriendRequestSender")
   receivedRequests FriendRequest[] @relation("FriendRequestReceiver")
 
   // Presence tracking
@@ -90,10 +89,9 @@ model Friend {
   streak     Int   @default(0)
 
   // Relations
-  user                User                  @relation("FriendUser", fields: [userId], references: [id], onDelete: Cascade)
-  sourceUser          User                  @relation("FriendSource", fields: [sourceUserId], references: [id], onDelete: Cascade)
+  user                User                 @relation("FriendUser", fields: [userId], references: [id], onDelete: Cascade)
+  sourceUser          User                 @relation("FriendSource", fields: [sourceUserId], references: [id], onDelete: Cascade)
   focusSessionFriends FocusSessionFriend[]
-  posts               Post[]
   messages            Message[]
 
   createdAt DateTime @default(now())
@@ -103,38 +101,17 @@ model Friend {
 }
 
 model Memory {
-  id             String   @id @default(cuid())
-  type           String   @default("note") // 'message', 'call', 'meet', 'note'
-  content        String?
-  timestamp      DateTime @default(now())
-  location       String?  // Location where the memory was created
-  happyIndex     Int?     // Happiness index score (0-10)
+  id         String   @id @default(cuid())
+  type       String   @default("note") // 'message', 'call', 'meet', 'note'
+  content    String?
+  timestamp  DateTime @default(now())
+  location   String? // Location where the memory was created
+  happyIndex Int? // Happiness index score (0-10)
 
   focusSessionId String
   focusSession   FocusSession @relation(fields: [focusSessionId], references: [id], onDelete: Cascade)
 
   photos Photo[]
-
-  createdAt DateTime @default(now())
-}
-
-model Post {
-  id        String   @id @default(cuid())
-  photoUrl  String   @default("https://picsum.photos/800/600")
-  caption   String?
-  location  String?
-  mood      String?
-  timestamp DateTime @default(now())
-
-  // Legacy field
-  imageUrl String?
-
-  // A post can belong to a Friend (from mock data) or the User (My Vault)
-  friendId String?
-  friend   Friend? @relation(fields: [friendId], references: [id], onDelete: Cascade)
-
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 }
@@ -222,13 +199,13 @@ model UserLocation {
 }
 
 model FriendRequest {
-  id        String   @id @default(cuid())
-  senderId  String
+  id         String @id @default(cuid())
+  senderId   String
   receiverId String
-  status    String   @default("pending") // 'pending', 'accepted', 'rejected'
-  
-  sender    User     @relation("FriendRequestSender", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver  User     @relation("FriendRequestReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  status     String @default("pending") // 'pending', 'accepted', 'rejected'
+
+  sender   User @relation("FriendRequestSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("FriendRequestReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

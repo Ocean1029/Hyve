@@ -23,42 +23,7 @@ async function main() {
 
   console.log(`User ${alex.name} ready (existing or created)`);
 
-  // 2. Create My Vault Posts (from MyProfile.tsx) - only if they don't exist
-  const myPosts = [
-    { imageUrl: 'https://picsum.photos/300/300?random=101', caption: 'Deep work session' },
-    { imageUrl: 'https://picsum.photos/300/300?random=102', caption: 'Library vibes' },
-    { imageUrl: 'https://picsum.photos/300/300?random=103', caption: 'Coffee break' },
-    { imageUrl: 'https://picsum.photos/300/300?random=104', caption: 'Sunday reset' },
-    { imageUrl: 'https://picsum.photos/300/300?random=105', caption: 'Late night study' },
-    { imageUrl: 'https://picsum.photos/300/300?random=106', caption: 'Planning' },
-    { imageUrl: 'https://picsum.photos/300/300?random=107', caption: 'Sketching' },
-    { imageUrl: 'https://picsum.photos/300/300?random=108', caption: 'Finals week' },
-    { imageUrl: 'https://picsum.photos/300/300?random=109', caption: 'Focus mode' },
-  ];
-
-  let createdPostsCount = 0;
-  for (const post of myPosts) {
-    // Check if post with same imageUrl and userId already exists
-    const existingPost = await prisma.post.findFirst({
-      where: {
-        userId: alex.id,
-        imageUrl: post.imageUrl,
-      },
-    });
-
-    if (!existingPost) {
-      await prisma.post.create({
-        data: {
-          ...post,
-          userId: alex.id,
-        },
-      });
-      createdPostsCount++;
-    }
-  }
-  console.log(`Created ${createdPostsCount} new posts for Alex (${myPosts.length - createdPostsCount} already existed)`);
-
-  // 3. Create Focus Sessions (Simulating Chart Data) - only if they don't exist
+  // 2. Create Focus Sessions (Simulating Chart Data) - only if they don't exist
   // MOCK_CHART_DATA: Mon: 45, Tue: 120, Wed: 30, Thu: 90, Fri: 180, Sat: 240, Sun: 60
   // We will create one session per day for simplicity
   const today = new Date();
@@ -115,10 +80,6 @@ async function main() {
         { activity: 'Studio Late Night', date: 'Yesterday', duration: '3h 15m' },
         { activity: 'Lunch', date: '2 days ago', duration: '45m' }
       ],
-      posts: [
-        { imageUrl: 'https://picsum.photos/300/300?random=11', caption: 'Studio vibes' },
-        { imageUrl: 'https://picsum.photos/300/300?random=12', caption: 'Coffee run' }
-      ]
     },
     {
       name: 'Sarah',
@@ -129,9 +90,6 @@ async function main() {
       interactions: [
         { activity: 'Morning Hike', date: 'Sunday', duration: '2h 30m' }
       ],
-      posts: [
-        { imageUrl: 'https://picsum.photos/300/300?random=13', caption: 'Sunrise' }
-      ]
     },
     {
       name: 'Leo',
@@ -140,7 +98,6 @@ async function main() {
       totalHours: 12,
       streak: 0,
       interactions: [],
-      posts: []
     }
   ];
 
@@ -238,25 +195,6 @@ async function main() {
             content: interaction.activity,
             timestamp: focusSession.startTime,
             focusSessionId: focusSession.id,
-          },
-        });
-      }
-    }
-
-    // Create Friend Posts - only if they don't exist
-    for (const post of f.posts) {
-      const existingPost = await prisma.post.findFirst({
-        where: {
-          friendId: friend.id,
-          imageUrl: post.imageUrl,
-        },
-      });
-
-      if (!existingPost) {
-        await prisma.post.create({
-          data: {
-            ...post,
-            friendId: friend.id,
           },
         });
       }
