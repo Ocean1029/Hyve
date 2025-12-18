@@ -179,10 +179,16 @@ export const getUserHeartbeatStats = async (
 /**
  * Check if user is online based on last seen time
  * User is considered online if last seen within 5 minutes
+ * Returns false if lastSeenAt is null (user has never been seen)
  */
 const ONLINE_THRESHOLD_MINUTES = 5;
 
-export const isUserOnline = (lastSeenAt: Date): boolean => {
+export const isUserOnline = (lastSeenAt: Date | null): boolean => {
+  // If lastSeenAt is null, user is considered offline
+  if (!lastSeenAt) {
+    return false;
+  }
+  
   const now = new Date();
   const diffMs = now.getTime() - lastSeenAt.getTime();
   const diffMinutes = diffMs / (1000 * 60);
