@@ -42,6 +42,18 @@ export const useSwipeNavigation = ({ currentPath, enabled = true }: SwipeNavigat
         return;
       }
 
+      // Check if touch is within a horizontal scroll container (photo gallery)
+      // Disable page swipe navigation when touching photo scroll areas
+      const horizontalScrollContainer = target.closest('[class*="overflow-x-auto"]');
+      if (horizontalScrollContainer) {
+        // Check if the container actually has horizontal scroll capability
+        const container = horizontalScrollContainer as HTMLElement;
+        const hasHorizontalScroll = container.scrollWidth > container.clientWidth;
+        if (hasHorizontalScroll) {
+          return; // Disable page swipe, let photo scrolling handle it
+        }
+      }
+
       touchStartX.current = e.touches[0].clientX;
       touchStartY.current = e.touches[0].clientY;
       touchEndX.current = e.touches[0].clientX;
@@ -52,6 +64,20 @@ export const useSwipeNavigation = ({ currentPath, enabled = true }: SwipeNavigat
 
     const handleTouchMove = (e: TouchEvent) => {
       if (!isSwiping.current) return;
+      
+      // Check if touch is within a horizontal scroll container (photo gallery)
+      const target = e.target as HTMLElement;
+      const horizontalScrollContainer = target.closest('[class*="overflow-x-auto"]');
+      if (horizontalScrollContainer) {
+        const container = horizontalScrollContainer as HTMLElement;
+        const hasHorizontalScroll = container.scrollWidth > container.clientWidth;
+        if (hasHorizontalScroll) {
+          // Cancel page swipe if user is in photo scroll area
+          isSwiping.current = false;
+          endSwipe();
+          return;
+        }
+      }
       
       touchEndX.current = e.touches[0].clientX;
       const moveDistance = Math.abs(touchStartX.current - touchEndX.current);

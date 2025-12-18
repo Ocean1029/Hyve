@@ -1,7 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
-import { Grid, Heart, Users, Clock, Flame, Settings, Trophy } from 'lucide-react';
-import { Memory } from '../lib/types';
+import { Grid, Heart, Users, Clock, Flame, Settings, ChevronRight, Calendar, Trophy } from 'lucide-react';
+import { Post } from '../lib/types';
 
 interface MyProfileProps {
   user?: {
@@ -11,7 +11,7 @@ interface MyProfileProps {
     email: string | null;
     image: string | null;
   };
-  memories?: Memory[];
+  posts?: Post[];
   stats?: {
     totalFriends: number;
     totalHours: number;
@@ -26,11 +26,16 @@ interface MyProfileProps {
 
 const MyProfile: React.FC<MyProfileProps> = ({ 
   user, 
-  memories = [], 
+  posts = [], 
   stats,
   onViewDetails, 
   onSettingsClick 
 }) => {
+  // Calculate today's focus time
+  const todayMinutes = stats?.todayMinutes || 0;
+  const todayHours = Math.floor(todayMinutes / 60);
+  const todayMins = todayMinutes % 60;
+  const todayDisplay = todayHours > 0 ? `${todayHours}h ${todayMins}m` : `${todayMins}m`;
   return (
     <div className="w-full h-full bg-zinc-950 flex flex-col overflow-y-auto pb-40 relative z-50">
       
@@ -82,6 +87,23 @@ const MyProfile: React.FC<MyProfileProps> = ({
             <p className="text-zinc-600 text-sm font-medium">{user?.userId || 'No user ID'}</p>
         </div>
 
+        {/* Action Card: Today's Summary */}
+        <div 
+            onClick={onViewDetails}
+            className="w-full bg-gradient-to-r from-zinc-900 to-zinc-900/50 border border-zinc-800 rounded-2xl p-4 flex items-center justify-between cursor-pointer group hover:border-rose-500/30 transition-all active:scale-[0.98]"
+        >
+            <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-rose-500/10 flex items-center justify-center border border-rose-500/20">
+                    <Calendar className="w-5 h-5 text-rose-400" />
+                </div>
+                <div>
+                    <h3 className="text-stone-200 font-bold text-sm">Today's Focus</h3>
+                    <p className="text-zinc-500 text-xs font-medium">{todayDisplay} disconnected</p>
+                </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-zinc-600 group-hover:text-stone-300 transition-colors" />
+        </div>
+
         {/* Stats Grid */}
         <div className="grid grid-cols-3 gap-3">
             <div className="bg-zinc-900/30 border border-zinc-800/50 rounded-2xl p-3 flex flex-col items-center justify-center gap-1">
@@ -97,7 +119,7 @@ const MyProfile: React.FC<MyProfileProps> = ({
             {/* Modified Rank -> Top Buddy Block with Trophy */}
             <div className="bg-zinc-900/30 border border-zinc-800/50 rounded-2xl p-3 flex flex-col items-center justify-center gap-1">
                 <Trophy className="w-4 h-4 text-rose-500 mb-1 fill-rose-500/20" />
-                <span className="text-md font-black text-stone-200 text-center">{stats?.topBuddy || '-'}</span>
+                <span className="text-md font-black text-stone-200">{stats?.topBuddy || '-'}</span>
                 <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Best Buddy</span>
             </div>
         </div>
@@ -112,38 +134,29 @@ const MyProfile: React.FC<MyProfileProps> = ({
                 <span className="text-[10px] font-bold text-zinc-600 uppercase">See All</span>
             </div>
             <div className="grid grid-cols-3 gap-1 rounded-2xl overflow-hidden border border-zinc-800/50">
-                {(() => {
-                  // Filter memories to only include those with photos
-                  const memoriesWithPhotos = memories.filter(
-                    (memory) => memory.photos && memory.photos.length > 0
-                  );
-                  
-                  if (memoriesWithPhotos.length > 0) {
-                    return memoriesWithPhotos.map((memory) => {
-                      // Get first photo from memory (guaranteed to exist due to filter)
-                      const firstPhoto = memory.photos && memory.photos.length > 0 ? memory.photos[0] : null;
-                      if (!firstPhoto) return null;
-                      
-                      return (
-                        <div key={memory.id} className="relative aspect-square bg-zinc-900 overflow-hidden group cursor-pointer">
-                          <Image
-                            src={firstPhoto.photoUrl}
-                            alt={memory.content || 'Memory'}
-                            fill
-                            className="object-cover group-hover:scale-110 transition-transform duration-500 opacity-80 group-hover:opacity-100"
-                            sizes="(max-width: 414px) 33vw, 138px"
-                          />
+                {posts.length > 0 ? (
+                  posts.map((post) => (
+                    <div key={post.id} className="relative aspect-square bg-zinc-900 overflow-hidden group cursor-pointer">
+                      {post.imageUrl ? (
+                        <Image
+                          src={post.imageUrl}
+                          alt={post.caption || ''}
+                          fill
+                          className="object-cover group-hover:scale-110 transition-transform duration-500 opacity-80 group-hover:opacity-100"
+                          sizes="(max-width: 414px) 33vw, 138px"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
+                          <Grid className="w-8 h-8 text-zinc-600" />
                         </div>
-                      );
-                    }).filter(Boolean);
-                  } else {
-                    return (
-                      <div className="col-span-3 aspect-square bg-zinc-900/50 flex items-center justify-center border border-zinc-800/50 rounded-2xl">
-                        <p className="text-zinc-600 text-sm font-medium">No memories yet</p>
-                      </div>
-                    );
-                  }
-                })()}
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-3 aspect-square bg-zinc-900/50 flex items-center justify-center border border-zinc-800/50 rounded-2xl">
+                    <p className="text-zinc-600 text-sm font-medium">No posts yet</p>
+                  </div>
+                )}
             </div>
         </section>
 
