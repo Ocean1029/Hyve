@@ -1,7 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { Grid, Heart, Users, Clock, Flame, Settings, ChevronRight, Calendar, Trophy } from 'lucide-react';
-import { Post } from '../lib/types';
+import { Memory } from '../lib/types';
 
 interface MyProfileProps {
   user?: {
@@ -11,7 +11,7 @@ interface MyProfileProps {
     email: string | null;
     image: string | null;
   };
-  posts?: Post[];
+  memories: Memory[] | null;
   stats?: {
     totalFriends: number;
     totalHours: number;
@@ -26,7 +26,7 @@ interface MyProfileProps {
 
 const MyProfile: React.FC<MyProfileProps> = ({ 
   user, 
-  posts = [], 
+  memories = [], 
   stats,
   onViewDetails, 
   onSettingsClick 
@@ -134,13 +134,13 @@ const MyProfile: React.FC<MyProfileProps> = ({
                 <span className="text-[10px] font-bold text-zinc-600 uppercase">See All</span>
             </div>
             <div className="grid grid-cols-3 gap-1 rounded-2xl overflow-hidden border border-zinc-800/50">
-                {posts.length > 0 ? (
-                  posts.map((post) => (
-                    <div key={post.id} className="relative aspect-square bg-zinc-900 overflow-hidden group cursor-pointer">
-                      {post.imageUrl ? (
+                {memories && memories.length > 0 ? (
+                  memories.map((memory) => (
+                    <div key={memory.id} className="relative aspect-square bg-zinc-900 overflow-hidden group cursor-pointer">
+                      {memory.photos && memory.photos.length > 0 ? (
                         <Image
-                          src={post.imageUrl}
-                          alt={post.caption || ''}
+                          src={memory.photos[0].photoUrl}
+                          alt={memory.content || ''}
                           fill
                           className="object-cover group-hover:scale-110 transition-transform duration-500 opacity-80 group-hover:opacity-100"
                           sizes="(max-width: 414px) 33vw, 138px"

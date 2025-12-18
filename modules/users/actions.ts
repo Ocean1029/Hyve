@@ -57,11 +57,11 @@ export async function updateUserProfile(
 
 export async function getUserStats(userId: string) {
   try {
-    const [totalSessions, totalPosts, totalMinutes] = await Promise.all([
+    const [totalSessions, totalMemories, totalMinutes] = await Promise.all([
       prisma.focusSession.count({
         where: { userId },
       }),
-      prisma.post.count({
+      prisma.memory.count({
         where: { userId },
       }),
       prisma.focusSession.aggregate({
@@ -76,7 +76,7 @@ export async function getUserStats(userId: string) {
       success: true,
       stats: {
         totalSessions,
-        totalPosts,
+        totalMemories,
         totalMinutes: totalMinutes._sum.minutes || 0,
       },
     };
