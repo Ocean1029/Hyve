@@ -2,8 +2,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Clock, MapPin, Users, Activity, Flame, Camera } from 'lucide-react';
+import { Clock, MapPin, Users, Activity, Flame, Camera, Edit, Star } from 'lucide-react';
 import { getTodayFocusSessions } from '@/modules/sessions/actions';
+import PostMemory from './PostMemory';
+import { createMemoryWithPhoto } from '@/modules/memories/actions';
 
 interface TodayDetailsProps {
   userId: string;
@@ -28,6 +30,7 @@ interface TodaySession {
     id: string;
     content: string | null;
     location: string | null;
+    happyIndex: number | null;
     photos: Array<{
       id: string;
       photoUrl: string;
@@ -39,25 +42,68 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
   const [sessions, setSessions] = useState<TodaySession[]>([]);
   const [totalMinutes, setTotalMinutes] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [editingSession, setEditingSession] = useState<TodaySession | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const loadTodaySessions = async () => {
+    setIsLoading(true);
+    try {
+      const result = await getTodayFocusSessions(userId);
+      if (result.success && result.sessions) {
+        setSessions(result.sessions as TodaySession[]);
+        setTotalMinutes(result.totalMinutes || 0);
+      }
+    } catch (error) {
+      console.error('Failed to load today sessions:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadTodaySessions = async () => {
-      setIsLoading(true);
-      try {
-        const result = await getTodayFocusSessions(userId);
-        if (result.success && result.sessions) {
-          setSessions(result.sessions as TodaySession[]);
-          setTotalMinutes(result.totalMinutes || 0);
-        }
-      } catch (error) {
-        console.error('Failed to load today sessions:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     loadTodaySessions();
   }, [userId]);
+
+  const handleEditSession = (session: TodaySession) => {
+    setEditingSession(session);
+  };
+
+  const handleCreateMemory = async (
+    photoUrl?: string | string[],
+    eventName?: string,
+    caption?: string,
+    location?: string,
+    mood?: string,
+    happyIndex?: number
+  ) => {
+    if (!editingSession) return;
+
+    setIsSaving(true);
+    try {
+      // Create memory with photo
+      // eventName is stored as content, caption is for additional description
+      const result = await createMemoryWithPhoto(
+        editingSession.id,
+        photoUrl,
+        eventName, // eventName goes to content field
+        location,
+        happyIndex
+      );
+
+      if (result.success) {
+        setEditingSession(null);
+        loadTodaySessions();
+      } else {
+        console.error('Failed to create memory:', result.error);
+        alert(result.error || 'Failed to create memory. Please try again.');
+      }
+    } catch (error) {
+      console.error('Failed to create memory:', error);
+      alert('An error occurred while creating the memory. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Calculate score based on duration and participants
   // Base score: 10 points
@@ -79,12 +125,12 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
     return Math.round(totalScore / sessions.length);
   };
 
-  // Format time display in 12-hour format with AM/PM
+  // Format time display in 24-hour format
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', { 
       hour: '2-digit', 
       minute: '2-digit',
-      hour12: true 
+      hour12: false 
     });
   };
 
@@ -169,6 +215,9 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
               const activityName = session.memories?.[0]?.content || 'Focus Session';
               // Get location from first memory that has location
               const location = session.memories?.find(m => m.location)?.location || null;
+              // Get last memory's happyIndex
+              const lastMemory = session.memories?.[session.memories.length - 1];
+              const happyIndex = lastMemory?.happyIndex ?? null;
               // Get photos from all memories (max 2)
               const allPhotos = session.memories?.flatMap(m => m.photos || []) || [];
               const displayPhotos = allPhotos.slice(0, 2);
@@ -189,7 +238,12 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
                     <div className="p-5 border-b border-zinc-800/50">
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="text-xl font-black text-stone-200">{activityName}</h3>
-                        {/* Flow State indicator - can be added later if needed */}
+                        <button
+                          onClick={() => handleEditSession(session)}
+                          className="p-2 bg-zinc-800/50 hover:bg-zinc-800 rounded-lg transition-colors"
+                        >
+                          <Edit className="w-4 h-4 text-zinc-400" />
+                        </button>
                       </div>
                       
                       <div className="flex flex-wrap gap-4 mt-3">
@@ -203,6 +257,12 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
                           <Clock className="w-3.5 h-3.5" />
                           <span className="text-xs font-bold">{formatDuration(session.minutes)}</span>
                         </div>
+                        {happyIndex !== null && (
+                          <div className="flex items-center gap-1.5 text-amber-400">
+                            <Star className="w-3.5 h-3.5 fill-amber-400" />
+                            <span className="text-xs font-bold">{happyIndex}/10</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -279,6 +339,29 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
           </div>
         )}
       </div>
+
+      {/* Post Memory Modal */}
+      {editingSession && (() => {
+        // Get last memory's happyIndex for initial value
+        const lastMemory = editingSession.memories?.[editingSession.memories.length - 1];
+        const initialHappyIndex = lastMemory?.happyIndex ?? 10;
+        const hasExistingMemory = editingSession.memories && editingSession.memories.length > 0;
+        
+        return (
+          <div className="absolute inset-0 z-[250] bg-zinc-950">
+            <PostMemory
+              durationSeconds={Math.floor(editingSession.minutes * 60)}
+              sessionEndTime={new Date(editingSession.endTime)}
+              friend={null}
+              onBack={() => setEditingSession(null)}
+              onPost={handleCreateMemory}
+              isSaving={isSaving}
+              initialHappyIndex={initialHappyIndex}
+              title={hasExistingMemory ? 'Add Memory' : 'New Memory'}
+            />
+          </div>
+        );
+      })()}
     </div>
   );
 };

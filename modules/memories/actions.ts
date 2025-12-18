@@ -60,13 +60,18 @@ export async function addPhotoToMemory(
  */
 export async function createMemoryWithPhoto(
   focusSessionId: string,
-  photoUrl?: string,
+  photoUrl?: string | string[],
   content?: string,
   location?: string,
   happyIndex?: number
 ) {
   try {
-    // Use transaction to ensure both memory and photo are created atomically
+    // Normalize photoUrl to array
+    const photoUrls = photoUrl 
+      ? (Array.isArray(photoUrl) ? photoUrl : [photoUrl])
+      : [];
+
+    // Use transaction to ensure both memory and photos are created atomically
     const result = await prisma.$transaction(async (tx: any) => {
       // Create the memory
       const memory = await tx.memory.create({
@@ -80,26 +85,30 @@ export async function createMemoryWithPhoto(
         },
       });
 
-      // Create the photo linked to the memory only if photoUrl is provided
-      let photo = null;
-      if (photoUrl && photoUrl.trim() !== '') {
-        photo = await tx.photo.create({
-          data: {
-            memoryId: memory.id,
-            photoUrl,
-          },
-        });
+      // Create photos linked to the memory
+      const photos = [];
+      for (const url of photoUrls) {
+        if (url && url.trim() !== '') {
+          const photo = await tx.photo.create({
+            data: {
+              memoryId: memory.id,
+              photoUrl: url,
+            },
+          });
+          photos.push(photo);
+        }
       }
 
-      return { memory, photo };
+      return { memory, photos };
     });
 
     // Revalidate relevant pages
     revalidatePath('/friends');
     revalidatePath('/');
     revalidatePath('/profile');
+    revalidatePath('/today');
 
-    return { success: true, memory: result.memory, photo: result.photo };
+    return { success: true, memory: result.memory, photos: result.photos };
   } catch (error) {
     console.error('Failed to create memory with photo:', error);
     return { success: false, error: 'Failed to create memory with photo' };

@@ -190,7 +190,7 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
     setAppState(AppState.POST_MEMORY);
   };
 
-  const handleCreateMemory = async (photoUrl?: string, eventName?: string, caption?: string, location?: string, mood?: string, happyIndex?: number) => {
+  const handleCreateMemory = async (photoUrl?: string | string[], eventName?: string, caption?: string, location?: string, mood?: string, happyIndex?: number) => {
     setIsSaving(true);
     try {
       // Check if focus session ID exists
