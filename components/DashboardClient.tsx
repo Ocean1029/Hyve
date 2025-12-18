@@ -47,10 +47,12 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
+  const [pauseStartTime, setPauseStartTime] = useState<Date | null>(null); // Track when pause started
+  const [totalPausedSeconds, setTotalPausedSeconds] = useState(0); // Track total paused time
   const [sessionEndTime, setSessionEndTime] = useState<Date | null>(null);
   const [iceBreaker, setIceBreaker] = useState<string | null>(null);
   const [loadingIceBreaker, setLoadingIceBreaker] = useState(false);
-  const [isPhoneFaceDown, setIsPhoneFaceDown] = useState(false);
+  const [isPhoneFaceDown, setIsPhoneFaceDown] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [sessionRecorded, setSessionRecorded] = useState(false);
   const [currentFocusSessionId, setCurrentFocusSessionId] = useState<string | null>(null);
@@ -59,6 +61,8 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
   const [springBloomLoading, setSpringBloomLoading] = useState(false);
   const activeSessionCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isSessionPausedByOthers, setIsSessionPausedByOthers] = useState(false); // Track if session is paused by other users
+  const userManuallyExitedRef = useRef(false); // Track if user manually exited from session
+  const prevFocusStatusRef = useRef<FocusStatus>(FocusStatus.PAUSED); // Track previous focusStatus for transition detection
 
   // Device orientation sensor hook
   const { 
@@ -97,15 +101,40 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
       const currentUserPaused = !isFaceDown; // Current user picked up phone
       const shouldBePaused = currentUserPaused || isSessionPausedByOthers;
       const newStatus = shouldBePaused ? FocusStatus.PAUSED : FocusStatus.ACTIVE;
-      console.log('Updating focusStatus:', {
-        isFaceDown,
-        currentUserPaused,
-        isSessionPausedByOthers,
-        shouldBePaused,
-        newStatus,
-        currentStatus: focusStatus
+      
+      // Track pause time: when transitioning to PAUSED, record start time
+      // When transitioning to ACTIVE, calculate and add to total paused time
+      const prevStatus = prevFocusStatusRef.current;
+      if (newStatus === FocusStatus.PAUSED && prevStatus === FocusStatus.ACTIVE) {
+        // Just paused - record pause start time
+        setPauseStartTime(new Date());
+      } else if (newStatus === FocusStatus.ACTIVE && prevStatus === FocusStatus.PAUSED) {
+        // Just resumed - calculate paused duration and add to total
+        if (pauseStartTime) {
+          const pauseDuration = Math.floor((new Date().getTime() - pauseStartTime.getTime()) / 1000);
+          setTotalPausedSeconds(prev => prev + pauseDuration);
+          setPauseStartTime(null);
+        }
+      }
+      
+      // Only update if status actually changed to avoid unnecessary re-renders
+      // Use ref to get current focusStatus to avoid dependency issues
+      setFocusStatus((currentStatus) => {
+        if (newStatus !== currentStatus) {
+          console.log('Updating focusStatus:', {
+            isFaceDown,
+            currentUserPaused,
+            isSessionPausedByOthers,
+            shouldBePaused,
+            newStatus,
+            currentStatus: currentStatus,
+            prevStatus: prevStatus
+          });
+          prevFocusStatusRef.current = newStatus;
+          return newStatus;
+        }
+        return currentStatus;
       });
-      setFocusStatus(newStatus);
     }
   }, [isFaceDown, appState, isSessionPausedByOthers]);
 
@@ -136,21 +165,10 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
                 (u: any) => u.userId !== userId && u.isPaused
               );
               console.log('Other user paused:', otherUserPaused, 'Current isFaceDown:', isFaceDown);
+              // Update isSessionPausedByOthers state
+              // Don't immediately update focusStatus here - let the main useEffect handle it
+              // This avoids race conditions with isFaceDown state
               setIsSessionPausedByOthers(otherUserPaused);
-              
-              // Immediately update focusStatus based on current state
-              // This ensures the UI updates right away without waiting for useEffect
-              const currentUserPaused = !isFaceDown;
-              const shouldBePaused = currentUserPaused || otherUserPaused;
-              const newStatus = shouldBePaused ? FocusStatus.PAUSED : FocusStatus.ACTIVE;
-              console.log('Immediate focusStatus update:', {
-                isFaceDown,
-                currentUserPaused,
-                otherUserPaused,
-                shouldBePaused,
-                newStatus
-              });
-              setFocusStatus(newStatus);
             }
           } else {
             console.error('Failed to sync pause status');
@@ -167,8 +185,10 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
   }, [isFaceDown, appState, currentFocusSessionId, userId]);
 
   // Listen to session stream for real-time status updates
+  // Listen in both DASHBOARD and FOCUS states to detect new sessions
   useEffect(() => {
-    if (appState !== AppState.FOCUS || !currentFocusSessionId) {
+    // Only skip if we're in a state that doesn't need session updates
+    if (appState === AppState.SUMMARY || appState === AppState.POST_MEMORY || appState === AppState.QUARTERLY_FEEDBACK) {
       return;
     }
 
@@ -179,6 +199,52 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
         const data = JSON.parse(event.data);
         
         if (data.type === 'session_status' && data.sessions) {
+          // Check if there's a new active session that we're not tracking yet
+          if (!currentFocusSessionId && data.sessions.length > 0) {
+            // Find the first active session
+            const newActiveSession = data.sessions.find(
+              (s: any) => s.status === 'active'
+            );
+            
+            if (newActiveSession && appState !== AppState.FOCUS && !sessionStartTime && !userManuallyExitedRef.current) {
+              // New session detected, auto-enter Focus Mode
+              console.log('New active session detected from stream:', newActiveSession);
+              
+              // Calculate elapsed seconds from session start time
+              // Note: This is initial time, actual active time will be tracked by timer
+              const sessionStart = new Date(newActiveSession.startTime);
+              const now = new Date();
+              const elapsedMs = now.getTime() - sessionStart.getTime();
+              const elapsedSec = Math.floor(elapsedMs / 1000);
+              
+              // Set up the focus session state
+              setCurrentFocusSessionId(newActiveSession.sessionId);
+              setSessionStartTime(sessionStart);
+              setElapsedSeconds(Math.max(0, elapsedSec));
+              // Reset pause tracking when entering new session
+              setTotalPausedSeconds(0);
+              setPauseStartTime(null);
+              
+              // Find the friend from the session participants
+              const otherUsers = newActiveSession.users.filter(
+                (u: any) => u.userId !== userId
+              );
+              if (otherUsers.length > 0) {
+                // Try to find the friend in the friends list
+                const friendUserId = otherUsers[0].userId;
+                const friend = friends.find(f => f.userId === friendUserId);
+                if (friend) {
+                  setSelectedFriend(friend);
+                }
+              }
+              
+              // Enter Focus Mode
+              setAppState(AppState.FOCUS);
+              setFocusStatus(FocusStatus.ACTIVE);
+              return;
+            }
+          }
+          
           // Find the current session
           const currentSession = data.sessions.find(
             (s: any) => s.sessionId === currentFocusSessionId
@@ -187,8 +253,45 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
           if (currentSession) {
             // Check if session was ended by another user
             if (currentSession.status !== 'active') {
-              // Session ended by another user, mark as recorded and go to summary
+              // Session ended by another user, update state with session information from stream
+              console.log('Session ended by another user:', currentSession);
+              
+              // Calculate elapsed seconds from session minutes
+              const sessionMinutes = currentSession.minutes || 0;
+              const calculatedElapsedSeconds = sessionMinutes * 60;
+              
+              // Update state with session end information
+              if (sessionStartTime) {
+                // Use session endTime if available, otherwise use current time
+                const endTime = currentSession.endTime 
+                  ? new Date(currentSession.endTime) 
+                  : new Date();
+                setSessionEndTime(endTime);
+                
+                // Use calculated elapsed seconds if available, otherwise keep current
+                if (calculatedElapsedSeconds > 0) {
+                  setElapsedSeconds(calculatedElapsedSeconds);
+                }
+              } else {
+                // If no sessionStartTime, set it from session startTime
+                if (currentSession.startTime) {
+                  setSessionStartTime(new Date(currentSession.startTime));
+                }
+                const endTime = currentSession.endTime 
+                  ? new Date(currentSession.endTime) 
+                  : new Date();
+                setSessionEndTime(endTime);
+                if (calculatedElapsedSeconds > 0) {
+                  setElapsedSeconds(calculatedElapsedSeconds);
+                }
+              }
+              
               setSessionRecorded(true);
+              console.log('Entering SUMMARY state with session info:', {
+                elapsedSeconds: calculatedElapsedSeconds || elapsedSeconds,
+                endTime: currentSession.endTime,
+                minutes: sessionMinutes
+              });
               setAppState(AppState.SUMMARY);
               return;
             }
@@ -199,7 +302,10 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
               (u: any) => u.userId !== userId && u.isPaused
             );
             
-            console.log('Stream update - otherUserPaused:', otherUserPaused, 'Current isFaceDown:', isFaceDown);
+            console.log('Stream update - otherUserPaused:', otherUserPaused, 'Current isFaceDown:', isFaceDown, 'Current focusStatus:', focusStatus);
+            // Update isSessionPausedByOthers state
+            // Don't immediately update focusStatus here - let the main useEffect handle it
+            // This avoids race conditions with isFaceDown state
             setIsSessionPausedByOthers(otherUserPaused);
           }
         }
@@ -216,7 +322,7 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
     return () => {
       eventSource.close();
     };
-  }, [appState, currentFocusSessionId, userId]);
+  }, [appState, currentFocusSessionId, userId, sessionStartTime, friends]);
 
   // Check for active focus sessions and auto-enter Focus Mode
   useEffect(() => {
@@ -232,8 +338,10 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
           
           // Only auto-enter Focus Mode if we're not already in FOCUS state
           // and we don't have a manually started session (no sessionStartTime means no manual session)
-          if (appState !== AppState.FOCUS && !sessionStartTime) {
+          // and user hasn't manually exited from a session
+          if (appState !== AppState.FOCUS && !sessionStartTime && !userManuallyExitedRef.current) {
             // Calculate elapsed seconds from session start time
+            // Note: This is initial time, actual active time will be tracked by timer
             const sessionStart = new Date(activeSession.startTime);
             const now = new Date();
             const elapsedMs = now.getTime() - sessionStart.getTime();
@@ -243,6 +351,9 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
             setCurrentFocusSessionId(activeSession.id);
             setSessionStartTime(sessionStart);
             setElapsedSeconds(Math.max(0, elapsedSec));
+            // Reset pause tracking when entering new session
+            setTotalPausedSeconds(0);
+            setPauseStartTime(null);
             
             // Find the friend from the session participants
             const otherUsers = activeSession.users.filter((u: any) => u.user.id !== userId);
@@ -259,13 +370,40 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
             setAppState(AppState.FOCUS);
             setFocusStatus(FocusStatus.ACTIVE);
           } else if (appState === AppState.FOCUS && isSameSession) {
-            // Update elapsed time if we're already in Focus Mode for this auto-created session
-            const sessionStart = new Date(activeSession.startTime);
-            const now = new Date();
-            const elapsedMs = now.getTime() - sessionStart.getTime();
-            const elapsedSec = Math.floor(elapsedMs / 1000);
-            // Update elapsed time to sync with server
-            setElapsedSeconds(Math.max(0, elapsedSec));
+            // Check if any other user has paused the session
+            const otherUserPaused = activeSession.users.some(
+              (u: any) => u.userId !== userId && u.isPaused
+            );
+            
+            // Update isSessionPausedByOthers - use functional update to ensure we use latest value
+            setIsSessionPausedByOthers((currentValue) => {
+              if (otherUserPaused !== currentValue) {
+                console.log('checkActiveSessions - Updating isSessionPausedByOthers:', {
+                  from: currentValue,
+                  to: otherUserPaused,
+                  activeSessionUsers: activeSession.users.map((u: any) => ({
+                    userId: u.userId,
+                    isPaused: u.isPaused
+                  }))
+                });
+                return otherUserPaused;
+              }
+              return currentValue;
+            });
+            
+            // Only update elapsed time if session is active (not paused)
+            // Calculate actual active time by subtracting paused time
+            if (focusStatus === FocusStatus.ACTIVE) {
+              const sessionStart = new Date(activeSession.startTime);
+              const now = new Date();
+              const totalElapsedMs = now.getTime() - sessionStart.getTime();
+              const totalElapsedSec = Math.floor(totalElapsedMs / 1000);
+              // Subtract total paused time to get actual active time
+              const activeElapsedSec = Math.max(0, totalElapsedSec - totalPausedSeconds);
+              // Update elapsed time to sync with server only when active
+              setElapsedSeconds(activeElapsedSec);
+            }
+            // Don't update elapsed time when paused - timer is already stopped
           }
         } else {
           // No active sessions - if we're in Focus Mode due to auto-created session, exit
@@ -287,8 +425,8 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
     // Check immediately on mount
     checkActiveSessions();
 
-    // Check every 5 seconds for active sessions (more frequent for better UX)
-    activeSessionCheckIntervalRef.current = setInterval(checkActiveSessions, 5000);
+    // Check every 3 seconds for active sessions (more frequent for better UX and faster detection)
+    activeSessionCheckIntervalRef.current = setInterval(checkActiveSessions, 3000);
 
     return () => {
       if (activeSessionCheckIntervalRef.current) {
@@ -303,6 +441,8 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
   };
 
   const startSession = () => {
+    // Reset manual exit flag when user starts a new session
+    userManuallyExitedRef.current = false;
     setAppState(AppState.FOCUS);
     setElapsedSeconds(0);
     setSessionStartTime(new Date()); // Record actual start time
@@ -311,6 +451,9 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
     setIsPhoneFaceDown(false);
     setSessionRecorded(false); // Reset session recorded flag when starting new session
     setCurrentFocusSessionId(null); // Reset focus session ID when starting new session
+    // Reset pause tracking when starting new session
+    setTotalPausedSeconds(0);
+    setPauseStartTime(null);
   };
 
   const endSession = async () => {
@@ -580,7 +723,19 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
               elapsedSeconds={elapsedSeconds}
               formatTime={formatTime}
               onUnlockPhotoMoment={handleUnlockPhotoMoment}
-              onReturnHome={() => setAppState(AppState.DASHBOARD)}
+              onReturnHome={() => {
+                // Mark that user manually exited, prevent auto-reentry
+                userManuallyExitedRef.current = true;
+                // Clear all session-related state when returning home
+                setAppState(AppState.DASHBOARD);
+                setCurrentFocusSessionId(null);
+                setSessionStartTime(null);
+                setSessionEndTime(null);
+                setElapsedSeconds(0);
+                setSelectedFriend(null);
+                setSessionRecorded(false);
+                setIsSessionPausedByOthers(false);
+              }}
             />
           </div>
         )}
