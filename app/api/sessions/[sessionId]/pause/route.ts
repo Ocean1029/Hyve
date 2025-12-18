@@ -89,13 +89,13 @@ export async function POST(
     });
 
     // Check if any user has paused (if any user picks up phone, session is paused for all)
-    const hasAnyPaused = sessionUsers.some((su) => su.isPaused);
+    const hasAnyPaused = sessionUsers.some((su: typeof sessionUsers[0]) => su.isPaused);
 
     return NextResponse.json({
       success: true,
       sessionId: sessionId,
       isPaused: hasAnyPaused, // Overall session pause status (true if any user paused)
-      users: sessionUsers.map((su) => ({
+      users: sessionUsers.map((su: typeof sessionUsers[0]) => ({
         userId: su.userId,
         userName: su.user.name,
         userImage: su.user.image,

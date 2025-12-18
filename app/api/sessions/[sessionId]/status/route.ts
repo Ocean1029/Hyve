@@ -68,14 +68,14 @@ export async function GET(
     }
 
     // Check if any user has paused (if any user picks up phone, session is paused for all)
-    const hasAnyPaused = focusSession.users.some((su) => su.isPaused);
+    const hasAnyPaused = focusSession.users.some((su: typeof focusSession.users[0]) => su.isPaused);
 
     return NextResponse.json({
       success: true,
       sessionId: sessionId,
       status: focusSession.status,
       isPaused: hasAnyPaused, // Overall session pause status
-      users: focusSession.users.map((su) => ({
+      users: focusSession.users.map((su: typeof focusSession.users[0]) => ({
         userId: su.userId,
         userName: su.user.name,
         userImage: su.user.image,

@@ -85,6 +85,8 @@ export async function createMemoryWithPhoto(
       return { success: false, error: 'Unauthorized' };
     }
 
+    const userId = session.user.id;
+
     // Normalize photoUrl to array
     const photoUrls = photoUrl 
       ? (Array.isArray(photoUrl) ? photoUrl : [photoUrl])
@@ -96,7 +98,7 @@ export async function createMemoryWithPhoto(
       const memory = await tx.memory.create({
         data: {
           focusSessionId,
-          userId: session.user.id,
+          userId: userId,
           type: mood || '📚 Study',
           content,
           location,

@@ -178,7 +178,7 @@ async function main() {
         },
       });
       
-      const userIds = existingUsers.map((u) => u.userId);
+      const userIds = existingUsers.map((u: typeof existingUsers[0]) => u.userId);
       if (!userIds.includes(alex.id)) {
         await prisma.focusSessionUser.create({
           data: {

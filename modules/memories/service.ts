@@ -144,28 +144,7 @@ export const getPeakHappinessMemories = async (
     take: limit,
   });
 
-  return memories.map((memory: {
-    id: string;
-    content: string | null;
-    location: string | null;
-    timestamp: Date;
-    happyIndex: number | null;
-    photos: Array<{ id: string; photoUrl: string }>;
-    focusSession: {
-      id: string;
-      startTime: Date;
-      endTime: Date;
-      friends: Array<{
-        friend: {
-          id: string;
-          user: {
-            name: string | null;
-            image: string | null;
-          };
-        };
-      }>;
-    };
-  }) => ({
+  return memories.map((memory: typeof memories[0]) => ({
     id: memory.id,
     content: memory.content,
     location: memory.location,

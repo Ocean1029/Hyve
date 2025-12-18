@@ -16,10 +16,10 @@ export const getFriendsWithDetails = async (sourceUserId: string) => {
   });
 
   // Get focus sessions where both current user and friend participated
-  const friendUserIds = friends.map((f) => f.userId);
+  const friendUserIds = friends.map((f: typeof friends[0]) => f.userId);
   
   if (friendUserIds.length === 0) {
-    return friends.map((f) => ({ ...f, focusSessionUsers: [] }));
+    return friends.map((f: typeof friends[0]) => ({ ...f, focusSessionUsers: [] }));
   }
 
   // Find sessions that contain both sourceUserId and at least one friend userId
@@ -69,14 +69,14 @@ export const getFriendsWithDetails = async (sourceUserId: string) => {
   });
 
   // Map focus sessions to friends
-  return friends.map((friend) => {
-    const friendSessions = focusSessions.filter((session) =>
-      session.users.some((fsu) => fsu.userId === friend.userId)
+  return friends.map((friend: typeof friends[0]) => {
+    const friendSessions = focusSessions.filter((session: typeof focusSessions[0]) =>
+      session.users.some((fsu: typeof session.users[0]) => fsu.userId === friend.userId)
     );
 
     return {
       ...friend,
-      focusSessionUsers: friendSessions.map((session) => ({
+      focusSessionUsers: friendSessions.map((session: typeof focusSessions[0]) => ({
         focusSession: session,
       })),
     };
@@ -109,10 +109,10 @@ export const getFriendsWithLastMessage = async (sourceUserId: string) => {
   });
 
   // Get focus sessions where both current user and friends participated
-  const friendUserIds = friends.map((f) => f.userId);
+  const friendUserIds = friends.map((f: typeof friends[0]) => f.userId);
   
   if (friendUserIds.length === 0) {
-    return friends.map((f) => ({ ...f, focusSessionUsers: [] }));
+    return friends.map((f: typeof friends[0]) => ({ ...f, focusSessionUsers: [] }));
   }
 
   // Find sessions that contain both sourceUserId and at least one friend userId
@@ -162,14 +162,14 @@ export const getFriendsWithLastMessage = async (sourceUserId: string) => {
   });
 
   // Map focus sessions to friends
-  return friends.map((friend) => {
-    const friendSessions = focusSessions.filter((session) =>
-      session.users.some((fsu) => fsu.userId === friend.userId)
+  return friends.map((friend: typeof friends[0]) => {
+    const friendSessions = focusSessions.filter((session: typeof focusSessions[0]) =>
+      session.users.some((fsu: typeof session.users[0]) => fsu.userId === friend.userId)
     );
 
     return {
       ...friend,
-      focusSessionUsers: friendSessions.map((session) => ({
+      focusSessionUsers: friendSessions.map((session: typeof focusSessions[0]) => ({
         focusSession: session,
       })),
     };
@@ -250,7 +250,7 @@ export const getFriendById = async (friendId: string, sourceUserId: string) => {
 
   return {
     ...friend,
-    focusSessionUsers: focusSessions.map((session) => ({
+    focusSessionUsers: focusSessions.map((session: typeof focusSessions[0]) => ({
       focusSession: session,
     })),
   };
@@ -316,8 +316,8 @@ export const getFriendsForSpringBloom = async (sourceUserId: string) => {
 
   // Get unique friend user IDs from these sessions
   const friendUserIds = new Set<string>();
-  focusSessions.forEach((session) => {
-    session.users.forEach((fsu: any) => {
+  focusSessions.forEach((session: typeof focusSessions[0]) => {
+    session.users.forEach((fsu: typeof session.users[0]) => {
       if (fsu.userId !== sourceUserId) {
         friendUserIds.add(fsu.userId);
       }
@@ -338,17 +338,17 @@ export const getFriendsForSpringBloom = async (sourceUserId: string) => {
   });
 
   // Map sessions to friends
-  return friends.map((friend) => {
-    const friendSessions = focusSessions.filter((session) =>
-      session.users.some((fsu: any) => fsu.userId === friend.userId)
+  return friends.map((friend: typeof friends[0]) => {
+    const friendSessions = focusSessions.filter((session: typeof focusSessions[0]) =>
+      session.users.some((fsu: typeof session.users[0]) => fsu.userId === friend.userId)
     );
 
     return {
       ...friend,
-      focusSessionUsers: friendSessions.map((session) => ({
+      focusSessionUsers: friendSessions.map((session: typeof focusSessions[0]) => ({
         focusSession: {
           ...session,
-          memories: session.memories.filter((m: any) => m.userId === friend.userId),
+          memories: session.memories.filter((m: typeof session.memories[0]) => m.userId === friend.userId),
         },
       })),
     };
