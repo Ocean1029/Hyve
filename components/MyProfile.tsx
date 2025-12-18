@@ -112,13 +112,20 @@ const MyProfile: React.FC<MyProfileProps> = ({
                 <span className="text-[10px] font-bold text-zinc-600 uppercase">See All</span>
             </div>
             <div className="grid grid-cols-3 gap-1 rounded-2xl overflow-hidden border border-zinc-800/50">
-                {memories.length > 0 ? (
-                  memories.map((memory) => {
-                    // Get first photo from memory, if available
-                    const firstPhoto = memory.photos && memory.photos.length > 0 ? memory.photos[0] : null;
-                    return (
-                      <div key={memory.id} className="relative aspect-square bg-zinc-900 overflow-hidden group cursor-pointer">
-                        {firstPhoto ? (
+                {(() => {
+                  // Filter memories to only include those with photos
+                  const memoriesWithPhotos = memories.filter(
+                    (memory) => memory.photos && memory.photos.length > 0
+                  );
+                  
+                  if (memoriesWithPhotos.length > 0) {
+                    return memoriesWithPhotos.map((memory) => {
+                      // Get first photo from memory (guaranteed to exist due to filter)
+                      const firstPhoto = memory.photos && memory.photos.length > 0 ? memory.photos[0] : null;
+                      if (!firstPhoto) return null;
+                      
+                      return (
+                        <div key={memory.id} className="relative aspect-square bg-zinc-900 overflow-hidden group cursor-pointer">
                           <Image
                             src={firstPhoto.photoUrl}
                             alt={memory.content || 'Memory'}
@@ -126,19 +133,17 @@ const MyProfile: React.FC<MyProfileProps> = ({
                             className="object-cover group-hover:scale-110 transition-transform duration-500 opacity-80 group-hover:opacity-100"
                             sizes="(max-width: 414px) 33vw, 138px"
                           />
-                        ) : (
-                          <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-                            <Grid className="w-8 h-8 text-zinc-600" />
-                          </div>
-                        )}
+                        </div>
+                      );
+                    }).filter(Boolean);
+                  } else {
+                    return (
+                      <div className="col-span-3 aspect-square bg-zinc-900/50 flex items-center justify-center border border-zinc-800/50 rounded-2xl">
+                        <p className="text-zinc-600 text-sm font-medium">No memories yet</p>
                       </div>
                     );
-                  })
-                ) : (
-                  <div className="col-span-3 aspect-square bg-zinc-900/50 flex items-center justify-center border border-zinc-800/50 rounded-2xl">
-                    <p className="text-zinc-600 text-sm font-medium">No memories yet</p>
-                  </div>
-                )}
+                  }
+                })()}
             </div>
         </section>
 

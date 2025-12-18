@@ -207,7 +207,8 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
         photoUrl,
         eventName, // eventName goes to content field
         location,
-        happyIndex
+        happyIndex,
+        mood // Pass vibe check value as type
       );
 
       if (result.success) {

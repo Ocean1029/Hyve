@@ -11,18 +11,44 @@ interface PostMemoryProps {
   isSaving?: boolean;
   initialHappyIndex?: number;
   title?: string;
+  // Initial values for editing existing memory
+  initialEventName?: string;
+  initialCaption?: string;
+  initialLocation?: string;
+  initialPhotos?: string[];
+  initialCategory?: string;
+  // Whether this is edit mode
+  isEditMode?: boolean;
 }
 
 const CATEGORIES = ['📚 Study', '🍔 Eat', '🏋️ Gym', '🚗 Drive', '☕ Chill', '🎮 Game', '🎨 Create'];
 
-const PostMemory: React.FC<PostMemoryProps> = ({ durationSeconds, sessionEndTime, friend, onBack, onPost, isSaving = false, initialHappyIndex = 10, title = 'New Memory' }) => {
-  const [selectedCategory, setSelectedCategory] = useState<string>(CATEGORIES[0]);
+const PostMemory: React.FC<PostMemoryProps> = ({ 
+  durationSeconds, 
+  sessionEndTime, 
+  friend, 
+  onBack, 
+  onPost, 
+  isSaving = false, 
+  initialHappyIndex = 10, 
+  title = 'New Memory',
+  initialEventName = '',
+  initialCaption = '',
+  initialLocation = '',
+  initialPhotos = [],
+  initialCategory = CATEGORIES[0],
+  isEditMode = false
+}) => {
+  const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
   const [rating, setRating] = useState(initialHappyIndex);
-  const [eventName, setEventName] = useState('');
-  const [caption, setCaption] = useState('');
-  const [location, setLocation] = useState('');
-  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [eventName, setEventName] = useState(initialEventName);
+  const [caption, setCaption] = useState(initialCaption);
+  const [location, setLocation] = useState(initialLocation);
+  // Initialize with initialPhotos, but use a key or effect to update when they change
+  const [photoUrls, setPhotoUrls] = useState<string[]>(() => initialPhotos);
+  const [previewUrls, setPreviewUrls] = useState<string[]>(() => initialPhotos);
+  // Track which URLs are blob URLs (created by URL.createObjectURL) vs regular URLs
+  const [blobUrls, setBlobUrls] = useState<Set<string>>(new Set());
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -55,16 +81,42 @@ const PostMemory: React.FC<PostMemoryProps> = ({ durationSeconds, sessionEndTime
     setRating(initialHappyIndex);
   }, [initialHappyIndex]);
 
-  // Clean up preview URLs on component unmount
+  // Update form fields when initial values change (for editing mode)
+  useEffect(() => {
+    setEventName(initialEventName);
+    setCaption(initialCaption);
+    setLocation(initialLocation);
+    setSelectedCategory(initialCategory);
+  }, [initialEventName, initialCaption, initialLocation, initialCategory]);
+
+  // Separate effect for photos to ensure they update correctly
+  // Use a ref to track previous photos to avoid unnecessary updates
+  const prevPhotosRef = useRef<string>('');
+  useEffect(() => {
+    // Create a stable key from initialPhotos
+    const currentPhotosKey = initialPhotos.join(',');
+    
+    // Only update if photos actually changed
+    if (currentPhotosKey !== prevPhotosRef.current) {
+      // Set photo URLs - these are already uploaded URLs, not blob URLs
+      setPhotoUrls([...initialPhotos]);
+      setPreviewUrls([...initialPhotos]);
+      prevPhotosRef.current = currentPhotosKey;
+    }
+    // Don't add initial photos to blobUrls set since they're not blob URLs
+  }, [initialPhotos]);
+
+  // Clean up blob URLs on component unmount
+  // Only revoke URLs that were created by URL.createObjectURL (blob URLs)
   useEffect(() => {
     return () => {
-      previewUrls.forEach(url => {
+      blobUrls.forEach(url => {
         if (url) {
           URL.revokeObjectURL(url);
         }
       });
     };
-  }, [previewUrls]);
+  }, [blobUrls]);
 
   // Handle file selection
   const handleFileSelect = () => {
@@ -94,9 +146,15 @@ const PostMemory: React.FC<PostMemoryProps> = ({ durationSeconds, sessionEndTime
     setUploadError('');
     setUploading(true);
 
-    // Create preview URLs for all files
+    // Create preview URLs for all files (these are blob URLs)
     const newPreviewUrls = files.map(file => URL.createObjectURL(file));
     setPreviewUrls(prev => [...prev, ...newPreviewUrls]);
+    // Track these as blob URLs for cleanup
+    setBlobUrls(prev => {
+      const newSet = new Set(prev);
+      newPreviewUrls.forEach(url => newSet.add(url));
+      return newSet;
+    });
 
     // Upload all files
     try {
@@ -124,7 +182,14 @@ const PostMemory: React.FC<PostMemoryProps> = ({ durationSeconds, sessionEndTime
       console.error('Upload error:', error);
       setUploadError(error.message || 'An error occurred while uploading images');
       // Clean up preview URLs on error
-      newPreviewUrls.forEach(url => URL.revokeObjectURL(url));
+      newPreviewUrls.forEach(url => {
+        URL.revokeObjectURL(url);
+        setBlobUrls(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(url);
+          return newSet;
+        });
+      });
       setPreviewUrls(prev => prev.filter(url => !newPreviewUrls.includes(url)));
     } finally {
       setUploading(false);
@@ -137,10 +202,15 @@ const PostMemory: React.FC<PostMemoryProps> = ({ durationSeconds, sessionEndTime
 
   // Handle removing a photo
   const handleRemovePhoto = (index: number) => {
-    // Clean up preview URL
+    // Clean up preview URL if it's a blob URL
     const previewUrlToRemove = previewUrls[index];
-    if (previewUrlToRemove) {
+    if (previewUrlToRemove && blobUrls.has(previewUrlToRemove)) {
       URL.revokeObjectURL(previewUrlToRemove);
+      setBlobUrls(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(previewUrlToRemove);
+        return newSet;
+      });
     }
     
     setPreviewUrls(prev => prev.filter((_, i) => i !== index));
@@ -353,7 +423,10 @@ const PostMemory: React.FC<PostMemoryProps> = ({ durationSeconds, sessionEndTime
           disabled={isSaving || !eventName.trim()}
           className="w-full bg-white text-black font-bold text-lg py-5 rounded-3xl shadow-lg shadow-white/10 hover:bg-stone-200 transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isSaving ? 'Posting...' : 'Post to Vault'}
+          {isSaving 
+            ? (isEditMode ? 'Updating...' : 'Posting...') 
+            : (isEditMode ? 'Update Memory' : 'Post to Vault')
+          }
         </button>
       </div>
 

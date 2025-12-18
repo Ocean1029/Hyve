@@ -1,11 +1,11 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Clock, MapPin, Users, Activity, Flame, Camera, Edit, Star } from 'lucide-react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Clock, MapPin, Users, Activity, Flame, Camera, Edit, Star, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getTodayFocusSessions } from '@/modules/sessions/actions';
 import PostMemory from './PostMemory';
-import { createMemoryWithPhoto } from '@/modules/memories/actions';
+import { createMemoryWithPhoto, updateMemoryWithPhoto } from '@/modules/memories/actions';
 
 interface TodayDetailsProps {
   userId: string;
@@ -44,6 +44,9 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [editingSession, setEditingSession] = useState<TodaySession | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  // Image viewer state
+  const [viewingPhotos, setViewingPhotos] = useState<Array<{ id: string; photoUrl: string }>>([]);
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
 
   const loadTodaySessions = async () => {
     setIsLoading(true);
@@ -65,6 +68,8 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
   }, [userId]);
 
   const handleEditSession = (session: TodaySession) => {
+    // Reset saving state when opening edit modal
+    setIsSaving(false);
     setEditingSession(session);
   };
 
@@ -80,27 +85,59 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
 
     setIsSaving(true);
     try {
-      // Create memory with photo
-      // eventName is stored as content, caption is for additional description
-      const result = await createMemoryWithPhoto(
-        editingSession.id,
-        photoUrl,
-        eventName, // eventName goes to content field
-        location,
-        happyIndex
-      );
+      // Store the session ID and memory info before async operations
+      const sessionId = editingSession.id;
+      const existingMemory = editingSession.memories?.[0];
+      
+      if (existingMemory) {
+        // Update existing memory
+        const result = await updateMemoryWithPhoto(
+          existingMemory.id,
+          photoUrl,
+          eventName, // eventName goes to content field
+          location,
+          happyIndex,
+          mood // Pass vibe check value as type
+        );
 
-      if (result.success) {
-        setEditingSession(null);
-        loadTodaySessions();
+        if (result.success) {
+          // Reset saving state before closing modal
+          setIsSaving(false);
+          setEditingSession(null);
+          // Reload sessions after a short delay to ensure state is updated
+          await loadTodaySessions();
+        } else {
+          console.error('Failed to update memory:', result.error);
+          alert(result.error || 'Failed to update memory. Please try again.');
+          setIsSaving(false);
+        }
       } else {
-        console.error('Failed to create memory:', result.error);
-        alert(result.error || 'Failed to create memory. Please try again.');
+        // Create new memory with photo
+        // eventName is stored as content, caption is for additional description
+        const result = await createMemoryWithPhoto(
+          sessionId,
+          photoUrl,
+          eventName, // eventName goes to content field
+          location,
+          happyIndex,
+          mood // Pass vibe check value as type
+        );
+
+        if (result.success) {
+          // Reset saving state before closing modal
+          setIsSaving(false);
+          setEditingSession(null);
+          // Reload sessions after a short delay to ensure state is updated
+          await loadTodaySessions();
+        } else {
+          console.error('Failed to create memory:', result.error);
+          alert(result.error || 'Failed to create memory. Please try again.');
+          setIsSaving(false);
+        }
       }
     } catch (error) {
-      console.error('Failed to create memory:', error);
-      alert('An error occurred while creating the memory. Please try again.');
-    } finally {
+      console.error('Failed to save memory:', error);
+      alert('An error occurred while saving the memory. Please try again.');
       setIsSaving(false);
     }
   };
@@ -162,6 +199,52 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
 
   const totalScore = calculateTotalScore();
 
+  // Handle photo click to open viewer
+  const handlePhotoClick = (photos: Array<{ id: string; photoUrl: string }>, index: number) => {
+    setViewingPhotos(photos);
+    setCurrentPhotoIndex(index);
+  };
+
+  // Handle close image viewer
+  const handleCloseViewer = useCallback(() => {
+    setViewingPhotos([]);
+    setCurrentPhotoIndex(0);
+  }, []);
+
+  // Handle next photo
+  const handleNextPhoto = useCallback(() => {
+    setCurrentPhotoIndex((prev) => {
+      if (viewingPhotos.length === 0) return prev;
+      return (prev + 1) % viewingPhotos.length;
+    });
+  }, [viewingPhotos.length]);
+
+  // Handle previous photo
+  const handlePrevPhoto = useCallback(() => {
+    setCurrentPhotoIndex((prev) => {
+      if (viewingPhotos.length === 0) return prev;
+      return (prev - 1 + viewingPhotos.length) % viewingPhotos.length;
+    });
+  }, [viewingPhotos.length]);
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    if (viewingPhotos.length === 0) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleCloseViewer();
+      } else if (e.key === 'ArrowLeft') {
+        handlePrevPhoto();
+      } else if (e.key === 'ArrowRight') {
+        handleNextPhoto();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [viewingPhotos.length, handleCloseViewer, handlePrevPhoto, handleNextPhoto]);
+
   return (
     <div className="w-full h-full flex flex-col bg-zinc-950 overflow-y-auto scrollbar-hide">
       
@@ -218,9 +301,9 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
               // Get last memory's happyIndex
               const lastMemory = session.memories?.[session.memories.length - 1];
               const happyIndex = lastMemory?.happyIndex ?? null;
-              // Get photos from all memories (max 2)
+              // Get photos from all memories
               const allPhotos = session.memories?.flatMap(m => m.photos || []) || [];
-              const displayPhotos = allPhotos.slice(0, 2);
+              const displayPhotos = allPhotos;
               
               return (
                 <div key={session.id} className="relative pl-10 group">
@@ -297,22 +380,25 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
                         </div>
                       )}
 
-                      {/* Photos */}
+                      {/* Photos - Horizontal Scrollable */}
                       {displayPhotos.length > 0 ? (
-                        <div className="grid grid-cols-2 gap-2 mt-2">
-                          {displayPhotos.map((photo) => (
-                            <div 
-                              key={photo.id} 
-                              className="relative aspect-video rounded-xl overflow-hidden group/photo"
-                            >
-                              <img 
-                                src={photo.photoUrl} 
-                                className="w-full h-full object-cover transition-transform duration-700 group-hover/photo:scale-110" 
-                                alt="Memory" 
-                              />
-                              <div className="absolute inset-0 bg-black/20 group-hover/photo:bg-transparent transition-colors"></div>
-                            </div>
-                          ))}
+                        <div className="overflow-x-auto -mx-4 px-4 mt-2 scrollbar-hide snap-x snap-mandatory">
+                          <div className="flex gap-2">
+                            {displayPhotos.map((photo, photoIndex) => (
+                              <div 
+                                key={photo.id} 
+                                onClick={() => handlePhotoClick(displayPhotos, photoIndex)}
+                                className="relative flex-shrink-0 w-[calc((100%-0.5rem)/2.2)] aspect-video rounded-xl overflow-hidden group/photo snap-start cursor-pointer"
+                              >
+                                <img 
+                                  src={photo.photoUrl} 
+                                  className="w-full h-full object-cover transition-transform duration-700 group-hover/photo:scale-110" 
+                                  alt="Memory" 
+                                />
+                                <div className="absolute inset-0 bg-black/20 group-hover/photo:bg-transparent transition-colors"></div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       ) : (
                         <div className="border border-dashed border-zinc-800 rounded-xl p-3 flex items-center justify-center gap-2 text-zinc-600">
@@ -340,12 +426,84 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
         )}
       </div>
 
+      {/* Image Viewer Modal */}
+      {viewingPhotos.length > 0 && (
+        <div 
+          className="fixed inset-0 z-[300] bg-black/95 flex items-center justify-center"
+          onClick={handleCloseViewer}
+        >
+          {/* Close Button */}
+          <button
+            onClick={handleCloseViewer}
+            className="absolute top-4 right-4 z-10 p-3 bg-zinc-900/80 hover:bg-zinc-800 rounded-full transition-colors"
+          >
+            <X className="w-6 h-6 text-white" />
+          </button>
+
+          {/* Navigation Buttons */}
+          {viewingPhotos.length > 1 && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePrevPhoto();
+                }}
+                className="absolute left-4 z-10 p-3 bg-zinc-900/80 hover:bg-zinc-800 rounded-full transition-colors"
+              >
+                <ChevronLeft className="w-6 h-6 text-white" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleNextPhoto();
+                }}
+                className="absolute right-4 z-10 p-3 bg-zinc-900/80 hover:bg-zinc-800 rounded-full transition-colors"
+              >
+                <ChevronRight className="w-6 h-6 text-white" />
+              </button>
+            </>
+          )}
+
+          {/* Image Container */}
+          <div 
+            className="relative w-full h-full flex items-center justify-center p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img 
+              src={viewingPhotos[currentPhotoIndex]?.photoUrl} 
+              alt={`Photo ${currentPhotoIndex + 1} of ${viewingPhotos.length}`}
+              className="max-w-full max-h-full object-contain"
+            />
+          </div>
+
+          {/* Photo Counter */}
+          {viewingPhotos.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 bg-zinc-900/80 rounded-full">
+              <span className="text-white text-sm font-medium">
+                {currentPhotoIndex + 1} / {viewingPhotos.length}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Post Memory Modal */}
       {editingSession && (() => {
-        // Get last memory's happyIndex for initial value
-        const lastMemory = editingSession.memories?.[editingSession.memories.length - 1];
-        const initialHappyIndex = lastMemory?.happyIndex ?? 10;
-        const hasExistingMemory = editingSession.memories && editingSession.memories.length > 0;
+        // Get existing memory data for initial values
+        const existingMemory = editingSession.memories?.[0];
+        const hasExistingMemory = existingMemory !== undefined;
+        
+        // Extract initial values from existing memory
+        const initialHappyIndex = existingMemory?.happyIndex ?? 10;
+        const initialEventName = existingMemory?.content ?? '';
+        const initialLocation = existingMemory?.location ?? '';
+        // Extract photos - ensure we get all photos from the memory
+        const initialPhotos = existingMemory?.photos 
+          ? existingMemory.photos.map(p => p.photoUrl).filter(url => url && url.trim() !== '')
+          : [];
+        // Note: caption and category are not stored in memory model, so they default to empty
+        const initialCaption = '';
+        const initialCategory = '📚 Study'; // Default category, matching PostMemory's CATEGORIES[0]
         
         return (
           <div className="absolute inset-0 z-[250] bg-zinc-950">
@@ -357,7 +515,13 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
               onPost={handleCreateMemory}
               isSaving={isSaving}
               initialHappyIndex={initialHappyIndex}
-              title={hasExistingMemory ? 'Add Memory' : 'New Memory'}
+              initialEventName={initialEventName}
+              initialCaption={initialCaption}
+              initialLocation={initialLocation}
+              initialPhotos={initialPhotos}
+              initialCategory={initialCategory}
+              isEditMode={hasExistingMemory}
+              title={hasExistingMemory ? 'Edit Memory' : 'New Memory'}
             />
           </div>
         );

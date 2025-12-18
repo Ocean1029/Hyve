@@ -9,7 +9,7 @@ import prisma from '@/lib/prisma';
  */
 export async function createMemoryAction(
   focusSessionId: string,
-  type: 'message' | 'call' | 'meet' | 'note',
+  type: string,
   content?: string,
   location?: string,
   happyIndex?: number
@@ -63,7 +63,8 @@ export async function createMemoryWithPhoto(
   photoUrl?: string | string[],
   content?: string,
   location?: string,
-  happyIndex?: number
+  happyIndex?: number,
+  mood?: string
 ) {
   try {
     // Normalize photoUrl to array
@@ -77,7 +78,7 @@ export async function createMemoryWithPhoto(
       const memory = await tx.memory.create({
         data: {
           focusSessionId,
-          type: 'note',
+          type: mood || '📚 Study',
           content,
           location,
           happyIndex,
@@ -112,6 +113,78 @@ export async function createMemoryWithPhoto(
   } catch (error) {
     console.error('Failed to create memory with photo:', error);
     return { success: false, error: 'Failed to create memory with photo' };
+  }
+}
+
+/**
+ * Update an existing memory with photos in a single transaction
+ * Used for editing existing memories
+ */
+export async function updateMemoryWithPhoto(
+  memoryId: string,
+  photoUrl?: string | string[],
+  content?: string,
+  location?: string,
+  happyIndex?: number,
+  mood?: string
+) {
+  try {
+    // Normalize photoUrl to array
+    const photoUrls = photoUrl 
+      ? (Array.isArray(photoUrl) ? photoUrl : [photoUrl])
+      : [];
+
+    // Use transaction to ensure both memory and photos are updated atomically
+    const result = await prisma.$transaction(async (tx: any) => {
+      // Update the memory
+      const updateData: any = {
+        content,
+        location,
+        happyIndex,
+      };
+      
+      // Only update type if mood is provided
+      if (mood) {
+        updateData.type = mood;
+      }
+      
+      const memory = await tx.memory.update({
+        where: { id: memoryId },
+        data: updateData,
+      });
+
+      // Delete existing photos
+      await tx.photo.deleteMany({
+        where: { memoryId },
+      });
+
+      // Create new photos linked to the memory
+      const photos = [];
+      for (const url of photoUrls) {
+        if (url && url.trim() !== '') {
+          const photo = await tx.photo.create({
+            data: {
+              memoryId: memory.id,
+              photoUrl: url,
+            },
+          });
+          photos.push(photo);
+        }
+      }
+
+      return { memory, photos };
+    });
+
+    // Revalidate relevant pages
+    revalidatePath('/friends');
+    revalidatePath('/');
+    revalidatePath('/profile');
+    revalidatePath('/today');
+
+    return { success: true, memory: result.memory, photos: result.photos };
+  } catch (error) {
+    console.error('Failed to update memory with photo:', error);
+    return { success: false, error: 'Failed to update memory with photo' };
   }
 }
 

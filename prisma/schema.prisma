@@ -102,7 +102,7 @@ model Friend {
 
 model Memory {
   id         String   @id @default(cuid())
-  type       String   @default("note") // 'message', 'call', 'meet', 'note'
+  type       String   @default("📚 Study") // Vibe check value (e.g., '📚 Study', '🍔 Eat', '🏋️ Gym', etc.)
   content    String?
   timestamp  DateTime @default(now())
   location   String? // Location where the memory was created
