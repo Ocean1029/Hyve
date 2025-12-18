@@ -109,8 +109,7 @@ const FocusMode: React.FC<FocusModeProps> = ({
                 </>
             ) : (
                 <div className="animate-pulse">
-                    <h3 className="text-2xl text-stone-200 font-bold mb-2">Resting the Fire...</h3>
-                    <p className="text-zinc-500 text-sm font-medium">Put your phone down to resume.</p>
+                    <h3 className="text-2xl text-stone-200 font-bold mb-2">Put your phone down...</h3>
                 </div>
             )}
             </div>
