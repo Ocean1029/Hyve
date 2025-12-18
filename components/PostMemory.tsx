@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { X, Music, Image as ImageIcon, Plus, MapPin, ChevronRight, Star, Loader2 } from 'lucide-react';
+import { X, Music, Image as ImageIcon, Plus, MapPin, ChevronRight, Star, Loader2, Calendar } from 'lucide-react';
 import { Friend } from '@/lib/types';
 
 interface PostMemoryProps {
@@ -30,7 +30,7 @@ const PostMemory: React.FC<PostMemoryProps> = ({
   onBack, 
   onPost, 
   isSaving = false, 
-  initialHappyIndex = 10, 
+  initialHappyIndex = 5, 
   title = 'New Memory',
   initialEventName = '',
   initialCaption = '',
@@ -233,12 +233,11 @@ const PostMemory: React.FC<PostMemoryProps> = ({
         <div className="max-w-2xl mx-auto">
           <input 
             type="text" 
-            placeholder="What happened?" 
+            placeholder="What happened in this moment?" 
             value={eventName}
             onChange={(e) => setEventName(e.target.value)}
             required
-            className="w-full bg-transparent text-white text-4xl font-black tracking-tighter text-center placeholder-zinc-400 focus:outline-none focus:placeholder-transparent border-b-2 border-zinc-700 focus:border-rose-400 pb-4 focus:scale-[1.02]"
-            autoFocus
+            className="w-full bg-transparent text-white text-xl font-black text-center placeholder-zinc-400 focus:outline-none focus:placeholder-transparent border-b-2 border-zinc-700 focus:border-rose-400 pb-4 focus:scale-[1.02]"
           />
         </div>
       </div>
@@ -248,22 +247,14 @@ const PostMemory: React.FC<PostMemoryProps> = ({
         
         {/* 1. Time Info */}
         <section>
-          <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-3 block">Time</label>
           <div className="flex items-center gap-2 text-rose-400 font-mono text-sm font-medium">
+            <Calendar className="w-4 h-4" />
             <span>{timeDetails.dateStr}</span>
-            <span className="text-zinc-600">•</span>
             <span>{timeDetails.timeRange}</span>
-            <span className="text-zinc-600">•</span>
-            <span>{timeDetails.durationStr}</span>
           </div>
-        </section>
-
-        {/* 2. Location */}
-        <section>
-          <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-3 block">Location</label>
           <div className="flex items-center gap-2 text-white text-sm font-medium">
-            <MapPin className="w-4 h-4 text-white" />
-            <span>Location automatically tagged</span>
+            <MapPin className="w-4 h-4 text-emerald-600" />
+            <span className="text-emerald-600">Location automatically tagged</span>
           </div>
         </section>
 
@@ -294,7 +285,7 @@ const PostMemory: React.FC<PostMemoryProps> = ({
                );
              })}
            </div>
-           <div className="flex justify-between text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+           <div className="flex justify-between text-[10px] font-medium text-zinc-700 tracking-wider">
               <span>Meh</span>
               <span>Life Changing</span>
            </div>
@@ -308,7 +299,7 @@ const PostMemory: React.FC<PostMemoryProps> = ({
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-3 rounded-xl text-xs font-bold transition-all border ${
+                className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all border ${
                   selectedCategory === cat 
                     ? 'bg-zinc-700 text-white border-zinc-600 shadow-lg shadow-zinc-700/20 scale-105' 
                     : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300'
@@ -425,7 +416,7 @@ const PostMemory: React.FC<PostMemoryProps> = ({
         >
           {isSaving 
             ? (isEditMode ? 'Updating...' : 'Posting...') 
-            : (isEditMode ? 'Update Memory' : 'Post to Vault')
+            : (isEditMode ? 'Update Memory' : 'Lock this Moment')
           }
         </button>
       </div>

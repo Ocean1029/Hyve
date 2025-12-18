@@ -388,7 +388,7 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
                               <div 
                                 key={photo.id} 
                                 onClick={() => handlePhotoClick(displayPhotos, photoIndex)}
-                                className="relative flex-shrink-0 w-[calc((100%-0.5rem)/1.2)] aspect-video rounded-xl overflow-hidden group/photo snap-start cursor-pointer"
+                                className="relative flex-shrink-0 w-[calc((100%-0.5rem))] aspect-[9/16] rounded-xl overflow-hidden group/photo snap-start cursor-pointer"
                               >
                                 <img 
                                   src={photo.photoUrl} 
