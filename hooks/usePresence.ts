@@ -17,37 +17,17 @@ interface UsePresenceReturn {
 
 /**
  * Hook to manage user presence (online/offline status)
- * - Sends heartbeat every 30 seconds
  * - Connects to SSE stream for real-time updates
  * - Provides friend online status
+ * Note: Heartbeat is handled by PresenceProvider component
  */
 export function usePresence(): UsePresenceReturn {
   const [friendStatuses, setFriendStatuses] = useState<Map<string, FriendStatus>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const isMountedRef = useRef(true);
-
-  // Send heartbeat to update user's last seen time
-  const sendHeartbeat = useCallback(async () => {
-    try {
-      const response = await fetch('/api/presence/heartbeat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to send heartbeat');
-      }
-    } catch (err) {
-      console.error('Error sending heartbeat:', err);
-      // Don't set error state for heartbeat failures to avoid UI disruption
-    }
-  }, []);
 
   // Connect to SSE stream for real-time updates
   const connectToStream = useCallback(() => {
@@ -161,12 +141,9 @@ export function usePresence(): UsePresenceReturn {
     }
   }, []);
 
-  // Initialize: send first heartbeat, fetch initial status, then connect to stream
+  // Initialize: fetch initial status, then connect to stream
   useEffect(() => {
     isMountedRef.current = true;
-    
-    // Send initial heartbeat
-    sendHeartbeat();
     
     // Fetch initial status
     fetchInitialStatus();
@@ -174,24 +151,15 @@ export function usePresence(): UsePresenceReturn {
     // Connect to stream for real-time updates
     connectToStream();
 
-    // Set up heartbeat interval (every 30 seconds)
-    heartbeatIntervalRef.current = setInterval(() => {
-      sendHeartbeat();
-    }, 30000); // 30 seconds
-
     // Cleanup
     return () => {
       isMountedRef.current = false;
-      
-      if (heartbeatIntervalRef.current) {
-        clearInterval(heartbeatIntervalRef.current);
-      }
       
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
       }
     };
-  }, [sendHeartbeat, fetchInitialStatus, connectToStream]);
+  }, [fetchInitialStatus, connectToStream]);
 
   // Helper function to check if a friend is online
   const isOnline = useCallback((friendId: string): boolean => {
