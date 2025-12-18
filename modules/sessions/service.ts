@@ -1,6 +1,7 @@
 // modules/sessions/service.ts
-import { getRecentFocusSessions } from './repository';
+import { getRecentFocusSessions, findActiveSessionByUsers, createFocusSessionWithUsers } from './repository';
 import { ChartDataPoint } from '@/lib/types';
+import { getFriendsOnlineStatus } from '@/modules/presence/repository';
 
 export const getWeeklyFocusChartData = async (userId: string): Promise<ChartDataPoint[]> => {
   const endDate = new Date();
@@ -38,5 +39,66 @@ export const getWeeklyFocusChartData = async (userId: string): Promise<ChartData
       day,
       minutes: daysMap.get(day) || 0
   }));
+};
+
+/**
+ * Check if friends are online and automatically create focus sessions
+ * This function is called during heartbeat to detect online friends
+ * and create focus sessions automatically
+ */
+export const checkAndCreateFocusSession = async (currentUserId: string): Promise<void> => {
+  try {
+    // Get all friends' online status
+    const friendsStatus = await getFriendsOnlineStatus(currentUserId);
+    
+    // Filter to find online friends
+    const onlineFriends = friendsStatus.filter((status: any) => status.isOnline);
+    
+    if (onlineFriends.length === 0) {
+      return; // No online friends, nothing to do
+    }
+
+    // For each online friend, check if we should create a session
+    for (const friendStatus of onlineFriends) {
+      const friendUserId = friendStatus.userId;
+      
+      // Create sorted array of user IDs to ensure consistent ordering
+      // This helps prevent duplicate session creation
+      const userIds = [currentUserId, friendUserId].sort();
+      
+      // Check if an active session already exists for these users
+      const existingSession = await findActiveSessionByUsers(userIds);
+      
+      if (existingSession) {
+        // Session already exists, skip
+        continue;
+      }
+      
+      // Use user ID sorting to determine who creates the session
+      // Only the user with the smaller ID creates the session to prevent duplicates
+      if (currentUserId !== userIds[0]) {
+        // Current user is not the "creator" (smaller ID), skip
+        // The other user will create the session when they send heartbeat
+        continue;
+      }
+      
+      // Create new focus session
+      const now = new Date();
+      // Set endTime to a future time (e.g., 1 hour from now)
+      // This will be updated when the session actually ends
+      const endTime = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour default
+      
+      await createFocusSessionWithUsers(
+        userIds,
+        now,
+        endTime,
+        0, // minutes start at 0, will be calculated when session ends
+        'active'
+      );
+    }
+  } catch (error) {
+    // Log error but don't throw - heartbeat should continue even if session creation fails
+    console.error('Error in checkAndCreateFocusSession:', error);
+  }
 };
 

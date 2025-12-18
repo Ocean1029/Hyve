@@ -36,23 +36,53 @@ export const getRecentMessages = async (limit = 10) => {
 /**
  * Get all FocusSessions for a specific friend relationship
  * Includes memories and photos for each session
+ * Note: friendId is the Friend record ID, we need to get the userId from Friend table
  */
 export const getFocusSessionsByFriendId = async (friendId: string) => {
-  return await prisma.focusSessionFriend.findMany({
+  // First get the friend record to find the userId
+  const friend = await prisma.friend.findUnique({
+    where: { id: friendId },
+    select: { userId: true },
+  });
+
+  if (!friend) {
+    return [];
+  }
+
+  // Get focus sessions where this user participated
+  return await prisma.focusSession.findMany({
     where: {
-      friendId,
+      users: {
+        some: {
+          userId: friend.userId,
+        },
+      },
     },
     include: {
-      focusSession: {
+      users: {
         include: {
-          memories: {
-            include: {
-              photos: true,
-            },
-            orderBy: {
-              timestamp: 'desc',
+          user: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
             },
           },
+        },
+      },
+      memories: {
+        include: {
+          photos: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
+          },
+        },
+        orderBy: {
+          timestamp: 'desc',
         },
       },
     },

@@ -2,49 +2,27 @@
 
 import { revalidatePath } from 'next/cache';
 import prisma from '@/lib/prisma';
+import { createFocusSessionWithUsers } from './repository';
 
 export async function createFocusSession(
-  userId: string,
-  friendIds: string[],
+  userIds: string[],
   durationSeconds: number,
   startTime: Date,
   endTime: Date
 ) {
   try {
-    // Use transaction to ensure data consistency
-    const session = await prisma.$transaction(async (tx: any) => {
-      // Create FocusSession record with actual start and end times
-      const focusSession = await tx.focusSession.create({
-        data: {
-          userId,
-          startTime: startTime,
-          endTime: endTime,
-          minutes: Math.floor(durationSeconds / 60),
-        },
-      });
+    if (userIds.length === 0) {
+      return { success: false, error: 'At least one user ID is required' };
+    }
 
-      // Create FocusSessionFriend records for each friend
-      if (friendIds.length > 0) {
-        await tx.focusSessionFriend.createMany({
-          data: friendIds.map((friendId) => ({
-            focusSessionId: focusSession.id,
-            friendId,
-          })),
-        });
-      }
-
-      // Return session with friends included
-      return await tx.focusSession.findUnique({
-        where: { id: focusSession.id },
-        include: {
-          friends: {
-            include: {
-              friend: true,
-            },
-          },
-        },
-      });
-    });
+    // Use repository function to create session with users
+    const session = await createFocusSessionWithUsers(
+      userIds,
+      startTime,
+      endTime,
+      Math.floor(durationSeconds / 60),
+      'active'
+    );
 
     // Revalidate the home page to update the chart
     revalidatePath('/');
@@ -59,13 +37,25 @@ export async function createFocusSession(
 export async function getUserFocusSessions(userId: string, limit = 10) {
   try {
     const sessions = await prisma.focusSession.findMany({
-      where: { userId },
+      where: {
+        users: {
+          some: {
+            userId: userId,
+          },
+        },
+      },
       orderBy: { startTime: 'desc' },
       take: limit,
       include: {
-        friends: {
+        users: {
           include: {
-            friend: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
           },
         },
         memories: {
@@ -92,7 +82,11 @@ export async function getTodayFocusSessions(userId: string) {
 
     const sessions = await prisma.focusSession.findMany({
       where: {
-        userId,
+        users: {
+          some: {
+            userId: userId,
+          },
+        },
         startTime: {
           gte: today,
           lt: tomorrow,
@@ -100,17 +94,13 @@ export async function getTodayFocusSessions(userId: string) {
       },
       orderBy: { startTime: 'asc' },
       include: {
-        friends: {
+        users: {
           include: {
-            friend: {
+            user: {
               select: {
                 id: true,
-                user: {
-                  select: {
-                    name: true,
-                    image: true,
-                  },
-                },
+                name: true,
+                image: true,
               },
             },
           },
@@ -130,6 +120,49 @@ export async function getTodayFocusSessions(userId: string) {
   } catch (error) {
     console.error('Failed to get today focus sessions:', error);
     return { success: false, error: 'Failed to get today focus sessions' };
+  }
+}
+
+/**
+ * Get active focus sessions for the current user
+ * Returns sessions with status 'active' that the user is participating in
+ */
+export async function getActiveFocusSessions(userId: string) {
+  try {
+    const sessions = await prisma.focusSession.findMany({
+      where: {
+        status: 'active',
+        users: {
+          some: {
+            userId: userId,
+          },
+        },
+      },
+      orderBy: { startTime: 'desc' },
+      include: {
+        users: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
+          },
+        },
+        memories: {
+          include: {
+            photos: true,
+          },
+        },
+      },
+    });
+
+    return { success: true, sessions };
+  } catch (error) {
+    console.error('Failed to get active focus sessions:', error);
+    return { success: false, error: 'Failed to get active focus sessions' };
   }
 }
 

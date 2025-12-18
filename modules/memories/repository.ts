@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma';
  */
 export const createMemory = async (
   focusSessionId: string,
+  userId: string,
   type: string,
   content?: string,
   location?: string,
@@ -13,6 +14,7 @@ export const createMemory = async (
   return await prisma.memory.create({
     data: {
       focusSessionId,
+      userId,
       type,
       content,
       location,
@@ -24,17 +26,29 @@ export const createMemory = async (
 
 /**
  * Get memories for a specific focus session
+ * Optionally filter by userId to get only a specific user's memories
  */
 export const getMemoriesByFocusSession = async (
   focusSessionId: string,
-  limit = 50
+  limit = 50,
+  userId?: string
 ) => {
   return await prisma.memory.findMany({
-    where: { focusSessionId },
+    where: {
+      focusSessionId,
+      ...(userId ? { userId } : {}),
+    },
     orderBy: { timestamp: 'desc' },
     take: limit,
     include: {
       photos: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          image: true,
+        },
+      },
     },
   });
 };
@@ -49,14 +63,27 @@ export const getRecentMemories = async (limit = 20) => {
     include: {
       focusSession: {
         include: {
-          friends: {
+          users: {
             include: {
-              friend: true,
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  image: true,
+                },
+              },
             },
           },
         },
       },
       photos: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          image: true,
+        },
+      },
     },
   });
 };
@@ -78,12 +105,25 @@ export const getMemoryPhotos = async (memoryId: string) => {
 export const getUserMemories = async (userId: string, limit = 50) => {
   return await prisma.memory.findMany({
     where: {
-      focusSession: {
-        userId: userId,
-      },
+      userId: userId,
     },
     include: {
       photos: true,
+      focusSession: {
+        include: {
+          users: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  image: true,
+                },
+              },
+            },
+          },
+        },
+      },
     },
     orderBy: {
       timestamp: 'desc',

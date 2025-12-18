@@ -65,6 +65,7 @@ export interface ChatMessage {
 
 export interface Friend {
   id: string;
+  userId?: string; // The actual user ID of the friend (not the Friend record ID)
   name: string;
   avatar: string;
   totalHours: number;

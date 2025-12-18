@@ -61,7 +61,7 @@ export async function searchUsers(query: string) {
         createdAt: true,
         _count: {
           select: {
-            focusSessions: true,
+            focusSessionsAsUser: true,
           },
         },
       },
@@ -127,11 +127,6 @@ export async function searchFriends(query: string) {
             image: true,
           },
         },
-        _count: {
-          select: {
-            interactions: true,
-          },
-        },
       },
       take: 20,
       orderBy: {
@@ -184,7 +179,7 @@ export async function getRecommendedUsers() {
       image: string | null;
       createdAt: Date;
       _count: {
-        focusSessions: number;
+        focusSessionsAsUser: number;
       };
     };
 
@@ -203,7 +198,7 @@ export async function getRecommendedUsers() {
         createdAt: true,
         _count: {
           select: {
-            focusSessions: true,
+            focusSessionsAsUser: true,
           },
         },
       },
@@ -215,7 +210,7 @@ export async function getRecommendedUsers() {
 
     const usersWithScore: UserWithScore[] = allUsers.map((user: UserWithCounts) => ({
       ...user,
-      activityScore: user._count.focusSessions || 0,
+      activityScore: user._count.focusSessionsAsUser || 0,
     }));
 
     // Sort by activity score (descending), then by creation date (newest first)

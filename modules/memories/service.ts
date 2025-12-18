@@ -28,7 +28,7 @@ export interface PeakHappinessMemory {
           image: string | null;
         };
       };
-    }>;
+    }>; // Keep same structure for compatibility
   };
 }
 
@@ -48,15 +48,13 @@ export const getWeeklyHappyIndexData = async (
   // Get all memories with happyIndex from the user's focus sessions in the last 7 days
   const memories = await prisma.memory.findMany({
     where: {
+      userId: userId, // Filter by userId directly
       happyIndex: {
         not: null,
       },
       timestamp: {
         gte: startDate,
         lte: endDate,
-      },
-      focusSession: {
-        userId: userId,
       },
     },
     select: {
@@ -112,11 +110,9 @@ export const getPeakHappinessMemories = async (
 ): Promise<PeakHappinessMemory[]> => {
   const memories = await prisma.memory.findMany({
     where: {
+      userId: userId, // Filter by userId directly
       happyIndex: {
         not: null,
-      },
-      focusSession: {
-        userId: userId,
       },
     },
     include: {
@@ -128,16 +124,13 @@ export const getPeakHappinessMemories = async (
       },
       focusSession: {
         include: {
-          friends: {
+          users: {
             include: {
-              friend: {
-                include: {
-                  user: {
-                    select: {
-                      name: true,
-                      image: true,
-                    },
-                  },
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  image: true,
                 },
               },
             },
@@ -186,20 +179,18 @@ export const getPeakHappinessMemories = async (
       id: memory.focusSession.id,
       startTime: memory.focusSession.startTime,
       endTime: memory.focusSession.endTime,
-      friends: memory.focusSession.friends.map((fsf: {
-        friend: {
+      friends: memory.focusSession.users.map((fsu: {
+        user: {
           id: string;
-          user: {
-            name: string | null;
-            image: string | null;
-          };
+          name: string | null;
+          image: string | null;
         };
       }) => ({
         friend: {
-          id: fsf.friend.id,
+          id: fsu.user.id, // Use user.id as friend.id for compatibility
           user: {
-            name: fsf.friend.user.name,
-            image: fsf.friend.user.image,
+            name: fsu.user.name,
+            image: fsu.user.image,
           },
         },
       })),

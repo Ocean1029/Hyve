@@ -15,7 +15,7 @@ import SessionSummary from '@/components/SessionSummary';
 import { generateIceBreaker } from '@/lib/services/geminiService';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { useDeviceOrientation } from '@/hooks/useDeviceOrientation';
-import { createFocusSession } from '@/modules/sessions/actions';
+import { createFocusSession, getActiveFocusSessions } from '@/modules/sessions/actions';
 import { createMemoryWithPhoto } from '@/modules/memories/actions';
 import { getSpringBloomDataAction } from '@/modules/friends/actions';
 import { SpringBloomEntry } from '@/modules/friends/service';
@@ -57,6 +57,8 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
   const timerRef = useRef<number | null>(null);
   const [springBloomData, setSpringBloomData] = useState<SpringBloomEntry[]>([]);
   const [springBloomLoading, setSpringBloomLoading] = useState(false);
+  const activeSessionCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [isSessionPausedByOthers, setIsSessionPausedByOthers] = useState(false); // Track if session is paused by other users
 
   // Device orientation sensor hook
   const { 
@@ -85,12 +87,215 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
     };
   }, [appState, focusStatus]);
 
-  // Update focusStatus based on device orientation (sensor or simulation)
+  // Update focusStatus based on device orientation (sensor or simulation) and other users' pause status
   useEffect(() => {
     if (appState === AppState.FOCUS) {
-      setFocusStatus(isFaceDown ? FocusStatus.ACTIVE : FocusStatus.PAUSED);
+      // Session is paused if:
+      // 1. Current user picks up phone (isFaceDown = false), OR
+      // 2. Any other user has paused the session
+      // Only resume to ACTIVE when current user puts phone down AND no other users have paused
+      const currentUserPaused = !isFaceDown; // Current user picked up phone
+      const shouldBePaused = currentUserPaused || isSessionPausedByOthers;
+      const newStatus = shouldBePaused ? FocusStatus.PAUSED : FocusStatus.ACTIVE;
+      console.log('Updating focusStatus:', {
+        isFaceDown,
+        currentUserPaused,
+        isSessionPausedByOthers,
+        shouldBePaused,
+        newStatus,
+        currentStatus: focusStatus
+      });
+      setFocusStatus(newStatus);
     }
-  }, [isFaceDown, appState]);
+  }, [isFaceDown, appState, isSessionPausedByOthers]);
+
+  // Sync pause status with server when phone is picked up or put down
+  useEffect(() => {
+    if (appState === AppState.FOCUS && currentFocusSessionId) {
+      const syncPauseStatus = async () => {
+        try {
+          // isFaceDown = false means phone is picked up (paused)
+          // isFaceDown = true means phone is put down (active)
+          const isPaused = !isFaceDown;
+          
+          const response = await fetch(`/api/sessions/${currentFocusSessionId}/pause`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ isPaused }),
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            console.log('Pause status sync response:', result);
+            // Update isSessionPausedByOthers based on server response
+            // Check if any other user has paused
+            if (result.users) {
+              const otherUserPaused = result.users.some(
+                (u: any) => u.userId !== userId && u.isPaused
+              );
+              console.log('Other user paused:', otherUserPaused, 'Current isFaceDown:', isFaceDown);
+              setIsSessionPausedByOthers(otherUserPaused);
+              
+              // Immediately update focusStatus based on current state
+              // This ensures the UI updates right away without waiting for useEffect
+              const currentUserPaused = !isFaceDown;
+              const shouldBePaused = currentUserPaused || otherUserPaused;
+              const newStatus = shouldBePaused ? FocusStatus.PAUSED : FocusStatus.ACTIVE;
+              console.log('Immediate focusStatus update:', {
+                isFaceDown,
+                currentUserPaused,
+                otherUserPaused,
+                shouldBePaused,
+                newStatus
+              });
+              setFocusStatus(newStatus);
+            }
+          } else {
+            console.error('Failed to sync pause status');
+          }
+        } catch (error) {
+          console.error('Error syncing pause status:', error);
+        }
+      };
+
+      // Debounce to avoid too many API calls
+      const timeoutId = setTimeout(syncPauseStatus, 300);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isFaceDown, appState, currentFocusSessionId, userId]);
+
+  // Listen to session stream for real-time status updates
+  useEffect(() => {
+    if (appState !== AppState.FOCUS || !currentFocusSessionId) {
+      return;
+    }
+
+    const eventSource = new EventSource('/api/sessions/stream');
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'session_status' && data.sessions) {
+          // Find the current session
+          const currentSession = data.sessions.find(
+            (s: any) => s.sessionId === currentFocusSessionId
+          );
+          
+          if (currentSession) {
+            // Check if session was ended by another user
+            if (currentSession.status !== 'active') {
+              // Session ended by another user, mark as recorded and go to summary
+              setSessionRecorded(true);
+              setAppState(AppState.SUMMARY);
+              return;
+            }
+            
+            // Check if any other user has paused the session
+            // Find if any user other than current user has paused
+            const otherUserPaused = currentSession.users.some(
+              (u: any) => u.userId !== userId && u.isPaused
+            );
+            
+            console.log('Stream update - otherUserPaused:', otherUserPaused, 'Current isFaceDown:', isFaceDown);
+            setIsSessionPausedByOthers(otherUserPaused);
+          }
+        }
+      } catch (error) {
+        console.error('Error parsing session stream message:', error);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('Session stream error:', error);
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [appState, currentFocusSessionId, userId]);
+
+  // Check for active focus sessions and auto-enter Focus Mode
+  useEffect(() => {
+    const checkActiveSessions = async () => {
+      try {
+        const result = await getActiveFocusSessions(userId);
+        if (result.success && result.sessions && result.sessions.length > 0) {
+          // User should only have one active session at a time
+          const activeSession = result.sessions[0];
+          
+          // Check if this is the same session we're tracking
+          const isSameSession = currentFocusSessionId === activeSession.id;
+          
+          // Only auto-enter Focus Mode if we're not already in FOCUS state
+          // and we don't have a manually started session (no sessionStartTime means no manual session)
+          if (appState !== AppState.FOCUS && !sessionStartTime) {
+            // Calculate elapsed seconds from session start time
+            const sessionStart = new Date(activeSession.startTime);
+            const now = new Date();
+            const elapsedMs = now.getTime() - sessionStart.getTime();
+            const elapsedSec = Math.floor(elapsedMs / 1000);
+            
+            // Set up the focus session state for auto-created session
+            setCurrentFocusSessionId(activeSession.id);
+            setSessionStartTime(sessionStart);
+            setElapsedSeconds(Math.max(0, elapsedSec));
+            
+            // Find the friend from the session participants
+            const otherUsers = activeSession.users.filter((u: any) => u.user.id !== userId);
+            if (otherUsers.length > 0) {
+              // Try to find the friend in the friends list
+              const friendUserId = otherUsers[0].user.id;
+              const friend = friends.find(f => f.userId === friendUserId);
+              if (friend) {
+                setSelectedFriend(friend);
+              }
+            }
+            
+            // Enter Focus Mode
+            setAppState(AppState.FOCUS);
+            setFocusStatus(FocusStatus.ACTIVE);
+          } else if (appState === AppState.FOCUS && isSameSession) {
+            // Update elapsed time if we're already in Focus Mode for this auto-created session
+            const sessionStart = new Date(activeSession.startTime);
+            const now = new Date();
+            const elapsedMs = now.getTime() - sessionStart.getTime();
+            const elapsedSec = Math.floor(elapsedMs / 1000);
+            // Update elapsed time to sync with server
+            setElapsedSeconds(Math.max(0, elapsedSec));
+          }
+        } else {
+          // No active sessions - if we're in Focus Mode due to auto-created session, exit
+          // Check if we have a currentFocusSessionId (means it was auto-created)
+          if (appState === AppState.FOCUS && currentFocusSessionId) {
+            // Session ended, go back to dashboard
+            setAppState(AppState.DASHBOARD);
+            setCurrentFocusSessionId(null);
+            setElapsedSeconds(0);
+            setSessionStartTime(null);
+            setSelectedFriend(null);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check active sessions:', error);
+      }
+    };
+
+    // Check immediately on mount
+    checkActiveSessions();
+
+    // Check every 5 seconds for active sessions (more frequent for better UX)
+    activeSessionCheckIntervalRef.current = setInterval(checkActiveSessions, 5000);
+
+    return () => {
+      if (activeSessionCheckIntervalRef.current) {
+        clearInterval(activeSessionCheckIntervalRef.current);
+      }
+    };
+  }, [userId, appState, sessionStartTime, currentFocusSessionId, friends]);
 
   // --- Handlers ---
   const startSearch = () => {
@@ -112,17 +317,43 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
     const endTime = new Date();
     setSessionEndTime(endTime);
     
-    // Save focus session to database
-    // Support multiple friends in a session (friendIds can be empty array)
-    // Allow 0 second sessions to be recorded
-    if (elapsedSeconds >= 0 && sessionStartTime) {
-      setIsSaving(true);
-      try {
-        // Pass friendIds as an array (empty if no friend selected)
-        const friendIds = selectedFriend ? [selectedFriend.id] : [];
+    setIsSaving(true);
+    try {
+      // If session already exists (auto-created or previously created), end it for all participants
+      if (currentFocusSessionId) {
+        const response = await fetch(`/api/sessions/${currentFocusSessionId}/end`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            endTime: endTime.toISOString(),
+            minutes: Math.floor(elapsedSeconds / 60),
+          }),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            setSessionRecorded(true);
+            console.log('Focus session ended successfully:', result.session);
+            // Switch to SUMMARY state
+            setAppState(AppState.SUMMARY);
+            return;
+          }
+        }
+      }
+      
+      // If no existing session, create a new one
+      // Support multiple friends in a session (friendIds can be empty array)
+      // Allow 0 second sessions to be recorded
+      if (elapsedSeconds >= 0 && sessionStartTime) {
+        // Pass userIds: current user + friend's userId if friend is selected
+        const userIds = selectedFriend && selectedFriend.userId
+          ? [userId, selectedFriend.userId].sort() // Sort to ensure consistent ordering
+          : [userId];
         const result = await createFocusSession(
-          userId, 
-          friendIds, 
+          userIds, 
           elapsedSeconds,
           sessionStartTime,
           endTime
@@ -134,15 +365,15 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
         } else {
           console.error('Failed to save focus session:', result.error);
         }
-      } catch (error) {
-        console.error('Failed to save focus session:', error);
-      } finally {
-        setIsSaving(false);
+      } else {
+        if (!sessionStartTime) {
+          console.warn('Session not recorded: sessionStartTime is missing');
+        }
       }
-    } else {
-      if (!sessionStartTime) {
-        console.warn('Session not recorded: sessionStartTime is missing');
-      }
+    } catch (error) {
+      console.error('Failed to end/save focus session:', error);
+    } finally {
+      setIsSaving(false);
     }
     
     // Only switch to SUMMARY state after attempting to save
@@ -156,12 +387,13 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
       const ensureSessionRecorded = async () => {
         setIsSaving(true);
         try {
-          // Pass friendIds as an array (empty if no friend selected)
-          const friendIds = selectedFriend ? [selectedFriend.id] : [];
+          // Pass userIds: current user + friend's userId if friend is selected
+          const userIds = selectedFriend && selectedFriend.userId
+            ? [userId, selectedFriend.userId].sort() // Sort to ensure consistent ordering
+            : [userId];
           const endTime = sessionEndTime || new Date();
           const result = await createFocusSession(
-            userId, 
-            friendIds, 
+            userIds, 
             elapsedSeconds,
             sessionStartTime,
             endTime

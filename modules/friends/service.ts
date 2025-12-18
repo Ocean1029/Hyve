@@ -72,10 +72,16 @@ export const getFriendListService = async (sourceUserId: string): Promise<Friend
   
   return friends.map((f: any, index: number) => {
     // Collect memories from all focus sessions with this friend
+    // Note: We need to find sessions where both current user and friend participated
+    // For now, we'll get memories from sessions where the friend's user participated
     const allMemories: any[] = [];
-    f.focusSessionFriends?.forEach((fsf: any) => {
-      if (fsf.focusSession?.memories) {
-        allMemories.push(...fsf.focusSession.memories);
+    f.focusSessionUsers?.forEach((fsu: any) => {
+      if (fsu.focusSession?.memories) {
+        // Filter memories to only include those from the friend's user
+        const friendMemories = fsu.focusSession.memories.filter(
+          (m: any) => m.userId === f.userId
+        );
+        allMemories.push(...friendMemories);
       }
     });
     
@@ -86,9 +92,9 @@ export const getFriendListService = async (sourceUserId: string): Promise<Friend
       .map((m: any) => {
         // Find the FocusSession that this memory belongs to
         let focusSessionMinutes: number | undefined;
-        f.focusSessionFriends?.forEach((fsf: any) => {
-          if (fsf.focusSession?.id === m.focusSessionId) {
-            focusSessionMinutes = fsf.focusSession.minutes;
+        f.focusSessionUsers?.forEach((fsu: any) => {
+          if (fsu.focusSession?.id === m.focusSessionId) {
+            focusSessionMinutes = fsu.focusSession.minutes;
           }
         });
         
@@ -106,13 +112,14 @@ export const getFriendListService = async (sourceUserId: string): Promise<Friend
     
     return {
       id: f.id,
+      userId: f.userId, // Include the actual user ID
       name: f.user.name || 'Unknown User',
       avatar: f.user.image || '',
       totalHours: f.totalHours,
       streak: f.streak,
       recentMemories,
       friendCount: friendCounts[index],
-      sessionCount: f.focusSessionFriends?.length || 0,
+      sessionCount: f.focusSessionUsers?.length || 0,
     };
   });
 };
@@ -149,9 +156,13 @@ export const getFriendsForMessagesService = async (sourceUserId: string): Promis
   return sortedFriends.map((f: any) => {
     // Collect memories from all focus sessions with this friend
     const allMemories: any[] = [];
-    f.focusSessionFriends?.forEach((fsf: any) => {
-      if (fsf.focusSession?.memories) {
-        allMemories.push(...fsf.focusSession.memories);
+    f.focusSessionUsers?.forEach((fsu: any) => {
+      if (fsu.focusSession?.memories) {
+        // Filter memories to only include those from the friend's user
+        const friendMemories = fsu.focusSession.memories.filter(
+          (m: any) => m.userId === f.userId
+        );
+        allMemories.push(...friendMemories);
       }
     });
     
@@ -162,9 +173,9 @@ export const getFriendsForMessagesService = async (sourceUserId: string): Promis
       .map((m: any) => {
         // Find the FocusSession that this memory belongs to
         let focusSessionMinutes: number | undefined;
-        f.focusSessionFriends?.forEach((fsf: any) => {
-          if (fsf.focusSession?.id === m.focusSessionId) {
-            focusSessionMinutes = fsf.focusSession.minutes;
+        f.focusSessionUsers?.forEach((fsu: any) => {
+          if (fsu.focusSession?.id === m.focusSessionId) {
+            focusSessionMinutes = fsu.focusSession.minutes;
           }
         });
         
@@ -182,6 +193,7 @@ export const getFriendsForMessagesService = async (sourceUserId: string): Promis
     
     return {
       id: f.id,
+      userId: f.userId, // Include the actual user ID
       name: f.user.name || 'Unknown User',
       avatar: f.user.image || '',
       totalHours: f.totalHours,
@@ -206,9 +218,13 @@ export const getFriendByIdService = async (friendId: string, sourceUserId: strin
   
   // Collect memories from all focus sessions with this friend
   const allMemories: any[] = [];
-  friend.focusSessionFriends?.forEach((fsf: any) => {
-    if (fsf.focusSession?.memories) {
-      allMemories.push(...fsf.focusSession.memories);
+  friend.focusSessionUsers?.forEach((fsu: any) => {
+    if (fsu.focusSession?.memories) {
+      // Filter memories to only include those from the friend's user
+      const friendMemories = fsu.focusSession.memories.filter(
+        (m: any) => m.userId === friend.userId
+      );
+      allMemories.push(...friendMemories);
     }
   });
   
@@ -219,9 +235,9 @@ export const getFriendByIdService = async (friendId: string, sourceUserId: strin
       .map((m: any) => {
         // Find the FocusSession that this memory belongs to
         let focusSessionMinutes: number | undefined;
-        friend.focusSessionFriends?.forEach((fsf: any) => {
-          if (fsf.focusSession?.id === m.focusSessionId) {
-            focusSessionMinutes = fsf.focusSession.minutes;
+        friend.focusSessionUsers?.forEach((fsu: any) => {
+          if (fsu.focusSession?.id === m.focusSessionId) {
+            focusSessionMinutes = fsu.focusSession.minutes;
           }
         });
         
@@ -241,10 +257,11 @@ export const getFriendByIdService = async (friendId: string, sourceUserId: strin
   const friendCount = await getUserFriendCount(friend.user.id);
   
   // Get session count (number of focus sessions with this friend)
-  const sessionCount = friend.focusSessionFriends?.length || 0;
+  const sessionCount = friend.focusSessionUsers?.length || 0;
   
   return {
     id: friend.id,
+    userId: friend.userId, // Include the actual user ID
     name: friend.user.name || 'Unknown User',
     avatar: friend.user.image || '',
     totalHours: friend.totalHours,
@@ -284,15 +301,16 @@ export const getSpringBloomData = async (sourceUserId: string): Promise<SpringBl
           let totalMinutes = 0;
           const memoryContents: string[] = [];
 
-          f.focusSessionFriends?.forEach((fsf: any) => {
-            if (fsf.focusSession) {
+          f.focusSessionUsers?.forEach((fsu: any) => {
+            if (fsu.focusSession) {
               // Add minutes from this focus session
-              totalMinutes += fsf.focusSession.minutes || 0;
+              totalMinutes += fsu.focusSession.minutes || 0;
 
-              // Collect memory contents
-              if (fsf.focusSession.memories) {
-                fsf.focusSession.memories.forEach((memory: any) => {
-                  if (memory.content && memory.content.trim()) {
+              // Collect memory contents (only from the friend's user)
+              if (fsu.focusSession.memories) {
+                fsu.focusSession.memories.forEach((memory: any) => {
+                  // Only include memories from the friend's user
+                  if (memory.userId === f.userId && memory.content && memory.content.trim()) {
                     memoryContents.push(memory.content.trim());
                   }
                 });

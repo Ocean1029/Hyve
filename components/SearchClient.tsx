@@ -22,7 +22,7 @@ type SearchResult = {
   createdAt: Date;
   friendCount?: number;
   _count?: {
-    focusSessions?: number;
+    focusSessionsAsUser?: number;
   };
 };
 

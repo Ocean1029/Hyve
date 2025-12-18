@@ -59,13 +59,25 @@ export async function getUserStats(userId: string) {
   try {
     const [totalSessions, totalMemories, totalMinutes] = await Promise.all([
       prisma.focusSession.count({
-        where: { userId },
+        where: {
+          users: {
+            some: {
+              userId: userId,
+            },
+          },
+        },
       }),
       prisma.memory.count({
         where: { userId },
       }),
       prisma.focusSession.aggregate({
-        where: { userId },
+        where: {
+          users: {
+            some: {
+              userId: userId,
+            },
+          },
+        },
         _sum: {
           minutes: true,
         },

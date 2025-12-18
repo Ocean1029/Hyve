@@ -19,13 +19,14 @@ model User {
   sessions      Session[]
 
   // Custom Relations
-  focusSessions    FocusSession[]
-  friendsAsUser    Friend[]        @relation("FriendUser")
-  friendsAsSource  Friend[]        @relation("FriendSource")
-  heartbeats       Heartbeat[]
-  locations        UserLocation[]
-  sentRequests     FriendRequest[] @relation("FriendRequestSender")
-  receivedRequests FriendRequest[] @relation("FriendRequestReceiver")
+  focusSessionsAsUser FocusSessionUser[]
+  friendsAsUser       Friend[]        @relation("FriendUser")
+  friendsAsSource     Friend[]        @relation("FriendSource")
+  heartbeats          Heartbeat[]
+  locations           UserLocation[]
+  sentRequests        FriendRequest[] @relation("FriendRequestSender")
+  receivedRequests    FriendRequest[] @relation("FriendRequestReceiver")
+  memories            Memory[]
 
   // Presence tracking
   lastSeenAt DateTime?
@@ -89,10 +90,9 @@ model Friend {
   streak     Int   @default(0)
 
   // Relations
-  user                User                 @relation("FriendUser", fields: [userId], references: [id], onDelete: Cascade)
-  sourceUser          User                 @relation("FriendSource", fields: [sourceUserId], references: [id], onDelete: Cascade)
-  focusSessionFriends FocusSessionFriend[]
-  messages            Message[]
+  user       User       @relation("FriendUser", fields: [userId], references: [id], onDelete: Cascade)
+  sourceUser User       @relation("FriendSource", fields: [sourceUserId], references: [id], onDelete: Cascade)
+  messages   Message[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -108,7 +108,9 @@ model Memory {
   location   String? // Location where the memory was created
   happyIndex Int? // Happiness index score (0-10)
 
+  userId         String
   focusSessionId String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   focusSession   FocusSession @relation(fields: [focusSessionId], references: [id], onDelete: Cascade)
 
   photos Photo[]
@@ -121,11 +123,9 @@ model FocusSession {
   startTime DateTime @default(now())
   endTime   DateTime @default(now())
   minutes   Int      @default(0)
+  status    String   @default("active") // 'active', 'completed', 'cancelled'
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  friends  FocusSessionFriend[]
+  users    FocusSessionUser[]
   memories Memory[]
 
   createdAt DateTime @default(now())
@@ -143,19 +143,21 @@ model Message {
   createdAt DateTime @default(now())
 }
 
-model FocusSessionFriend {
+model FocusSessionUser {
   id             String @id @default(cuid())
   focusSessionId String
-  friendId       String
+  userId         String
+  isPaused       Boolean @default(false) // Track if this user has paused the session (picked up phone)
 
   focusSession FocusSession @relation(fields: [focusSessionId], references: [id], onDelete: Cascade)
-  friend       Friend       @relation(fields: [friendId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@unique([focusSessionId, friendId])
+  @@unique([focusSessionId, userId])
   @@index([focusSessionId])
-  @@index([friendId])
+  @@index([userId])
 }
 
 model Photo {

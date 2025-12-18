@@ -26,15 +26,31 @@ export const getMyProfileService = async (userId: string) => {
       where: { sourceUserId: userId },
     }),
     prisma.focusSession.count({
-      where: { userId },
+      where: {
+        users: {
+          some: {
+            userId: userId,
+          },
+        },
+      },
     }),
     prisma.focusSession.aggregate({
-      where: { userId },
+      where: {
+        users: {
+          some: {
+            userId: userId,
+          },
+        },
+      },
       _sum: { minutes: true },
     }),
     prisma.focusSession.aggregate({
       where: {
-        userId,
+        users: {
+          some: {
+            userId: userId,
+          },
+        },
         startTime: {
           gte: today,
           lt: tomorrow,

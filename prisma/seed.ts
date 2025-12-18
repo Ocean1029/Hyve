@@ -140,8 +140,8 @@ async function main() {
       },
     });
 
-    // Create FocusSessionFriend relationships and Memories
-    // For each interaction, create a focus session and link it to the friend
+    // Create FocusSessionUser relationships and Memories
+    // For each interaction, create a focus session and link it to the users
     for (const interaction of f.interactions) {
       // Find or create a focus session for this interaction
       // Use the most recent session or create a new one
@@ -156,25 +156,42 @@ async function main() {
             minutes: 30, // Default duration
             startTime: sessionDate,
             endTime: new Date(sessionDate.getTime() + 30 * 60 * 1000),
-            userId: alex.id,
+            status: 'completed',
           },
         });
+        
+        // Add users to the session
+        await prisma.focusSessionUser.createMany({
+          data: [
+            { focusSessionId: focusSession.id, userId: alex.id },
+            { focusSessionId: focusSession.id, userId: friend.userId },
+          ],
+        });
+        
         createdSessions.push(focusSession);
       }
       
-      // Create FocusSessionFriend relationship if it doesn't exist
-      const existingFSF = await prisma.focusSessionFriend.findFirst({
+      // Ensure both users are in the session
+      const existingUsers = await prisma.focusSessionUser.findMany({
         where: {
           focusSessionId: focusSession.id,
-          friendId: friend.id,
         },
       });
       
-      if (!existingFSF) {
-        await prisma.focusSessionFriend.create({
+      const userIds = existingUsers.map((u) => u.userId);
+      if (!userIds.includes(alex.id)) {
+        await prisma.focusSessionUser.create({
           data: {
             focusSessionId: focusSession.id,
-            friendId: friend.id,
+            userId: alex.id,
+          },
+        });
+      }
+      if (!userIds.includes(friend.userId)) {
+        await prisma.focusSessionUser.create({
+          data: {
+            focusSessionId: focusSession.id,
+            userId: friend.userId,
           },
         });
       }
@@ -183,6 +200,7 @@ async function main() {
       const existingMemory = await prisma.memory.findFirst({
         where: {
           focusSessionId: focusSession.id,
+          userId: alex.id, // Memories belong to specific users
           type: 'note',
           content: interaction.activity,
         },
@@ -195,6 +213,7 @@ async function main() {
             content: interaction.activity,
             timestamp: focusSession.startTime,
             focusSessionId: focusSession.id,
+            userId: alex.id, // Assign to alex
           },
         });
       }

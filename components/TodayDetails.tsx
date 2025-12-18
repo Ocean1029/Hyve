@@ -17,13 +17,11 @@ interface TodaySession {
   startTime: Date;
   endTime: Date;
   minutes: number;
-  friends: Array<{
-    friend: {
+  users: Array<{
+    user: {
       id: string;
-      user: {
-        name: string | null;
-        image: string | null;
-      };
+      name: string | null;
+      image: string | null;
     };
   }>;
   memories: Array<{
@@ -157,7 +155,9 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
   const calculateTotalScore = (): number => {
     if (sessions.length === 0) return 0;
     const totalScore = sessions.reduce((sum, session) => {
-      return sum + calculateScore(session.minutes, session.friends.length);
+      // Count users (excluding current user if needed, or count all)
+      const userCount = session.users?.length || 0;
+      return sum + calculateScore(session.minutes, userCount);
     }, 0);
     return Math.round(totalScore / sessions.length);
   };
@@ -293,7 +293,7 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
         ) : sessions.length > 0 ? (
           <div className="space-y-10">
             {sessions.map((session) => {
-              const participants = session.friends.map(f => f.friend.user.name || 'Unknown');
+              const participants = session.users?.map(u => u.user.name || 'Unknown') || [];
               // Get activity name from first memory's content, or use default
               const activityName = session.memories?.[0]?.content || 'Focus Session';
               // Get location from first memory that has location
@@ -355,20 +355,20 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
                       {participants.length > 0 && (
                         <div className="flex items-center justify-between">
                           <div className="flex -space-x-2">
-                            {session.friends.map((f) => (
+                            {session.users?.map((u) => (
                               <div
-                                key={f.friend.id}
+                                key={u.user.id}
                                 className="w-8 h-8 rounded-full border-2 border-zinc-900 overflow-hidden"
                               >
-                                {f.friend.user.image ? (
+                                {u.user.image ? (
                                   <img 
-                                    src={f.friend.user.image} 
-                                    alt={f.friend.user.name || ''}
+                                    src={u.user.image} 
+                                    alt={u.user.name || ''}
                                     className="w-full h-full object-cover"
                                   />
                                 ) : (
                                   <div className="w-full h-full bg-zinc-700 flex items-center justify-center text-xs text-white font-bold">
-                                    {(f.friend.user.name || 'U')[0].toUpperCase()}
+                                    {(u.user.name || 'U')[0].toUpperCase()}
                                   </div>
                                 )}
                               </div>

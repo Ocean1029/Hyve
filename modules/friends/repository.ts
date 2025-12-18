@@ -6,30 +6,80 @@ import prisma from '@/lib/prisma';
  * sourceUserId = currentUserId to get the current user's friend list (no duplicates)
  */
 export const getFriendsWithDetails = async (sourceUserId: string) => {
-  return await prisma.friend.findMany({
+  const friends = await prisma.friend.findMany({
     where: {
       sourceUserId: sourceUserId,
     },
     include: {
       user: true, // Include User data for name, avatar
-      focusSessionFriends: {
-        include: {
-          focusSession: {
-            include: {
-              memories: {
-                include: {
-                  photos: true,
-                },
-                orderBy: {
-                  timestamp: 'desc',
-                },
-                take: 5, // Get recent memories
+    },
+  });
+
+  // Get focus sessions where both current user and friend participated
+  const friendUserIds = friends.map((f) => f.userId);
+  
+  if (friendUserIds.length === 0) {
+    return friends.map((f) => ({ ...f, focusSessionUsers: [] }));
+  }
+
+  // Find sessions that contain both sourceUserId and at least one friend userId
+  const focusSessions = await prisma.focusSession.findMany({
+    where: {
+      AND: [
+        {
+          users: {
+            some: {
+              userId: sourceUserId,
+            },
+          },
+        },
+        {
+          users: {
+            some: {
+              userId: {
+                in: friendUserIds,
               },
             },
           },
         },
+      ],
+    },
+    include: {
+      users: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
+          },
+        },
+      },
+      memories: {
+        include: {
+          photos: true,
+        },
+        orderBy: {
+          timestamp: 'desc',
+        },
+        take: 5, // Get recent memories
       },
     },
+  });
+
+  // Map focus sessions to friends
+  return friends.map((friend) => {
+    const friendSessions = focusSessions.filter((session) =>
+      session.users.some((fsu) => fsu.userId === friend.userId)
+    );
+
+    return {
+      ...friend,
+      focusSessionUsers: friendSessions.map((session) => ({
+        focusSession: session,
+      })),
+    };
   });
 };
 
@@ -46,23 +96,6 @@ export const getFriendsWithLastMessage = async (sourceUserId: string) => {
     },
     include: {
       user: true, // Include User data for name, avatar, bio
-      focusSessionFriends: {
-        include: {
-          focusSession: {
-            include: {
-              memories: {
-                include: {
-                  photos: true,
-                },
-                orderBy: {
-                  timestamp: 'desc',
-                },
-                take: 5, // Get recent memories
-              },
-            },
-          },
-        },
-      },
       messages: {
         orderBy: {
           timestamp: 'desc',
@@ -75,7 +108,72 @@ export const getFriendsWithLastMessage = async (sourceUserId: string) => {
     },
   });
 
-  return friends;
+  // Get focus sessions where both current user and friends participated
+  const friendUserIds = friends.map((f) => f.userId);
+  
+  if (friendUserIds.length === 0) {
+    return friends.map((f) => ({ ...f, focusSessionUsers: [] }));
+  }
+
+  // Find sessions that contain both sourceUserId and at least one friend userId
+  const focusSessions = await prisma.focusSession.findMany({
+    where: {
+      AND: [
+        {
+          users: {
+            some: {
+              userId: sourceUserId,
+            },
+          },
+        },
+        {
+          users: {
+            some: {
+              userId: {
+                in: friendUserIds,
+              },
+            },
+          },
+        },
+      ],
+    },
+    include: {
+      users: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
+          },
+        },
+      },
+      memories: {
+        include: {
+          photos: true,
+        },
+        orderBy: {
+          timestamp: 'desc',
+        },
+        take: 5, // Get recent memories
+      },
+    },
+  });
+
+  // Map focus sessions to friends
+  return friends.map((friend) => {
+    const friendSessions = focusSessions.filter((session) =>
+      session.users.some((fsu) => fsu.userId === friend.userId)
+    );
+
+    return {
+      ...friend,
+      focusSessionUsers: friendSessions.map((session) => ({
+        focusSession: session,
+      })),
+    };
+  });
 };
 
 export const checkIfFriendExists = async (userId: string, sourceUserId: string) => {
@@ -92,32 +190,70 @@ export const checkIfFriendExists = async (userId: string, sourceUserId: string) 
 
 export const getFriendById = async (friendId: string, sourceUserId: string) => {
   // Get a friend by ID, ensuring it belongs to the source user
-  return await prisma.friend.findFirst({
+  const friend = await prisma.friend.findFirst({
     where: {
       id: friendId,
       sourceUserId: sourceUserId,
     },
     include: {
       user: true, // Include User data for name, avatar
-      focusSessionFriends: {
+    },
+  });
+
+  if (!friend) {
+    return null;
+  }
+
+  // Get focus sessions where both current user and friend participated
+  const focusSessions = await prisma.focusSession.findMany({
+    where: {
+      AND: [
+        {
+          users: {
+            some: {
+              userId: sourceUserId,
+            },
+          },
+        },
+        {
+          users: {
+            some: {
+              userId: friend.userId,
+            },
+          },
+        },
+      ],
+    },
+    include: {
+      users: {
         include: {
-          focusSession: {
-            include: {
-              memories: {
-                include: {
-                  photos: true,
-                },
-                orderBy: {
-                  timestamp: 'desc',
-                },
-                take: 10, // Get recent memories for profile
-              },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
             },
           },
         },
       },
+      memories: {
+        include: {
+          photos: true,
+        },
+        orderBy: {
+          timestamp: 'desc',
+        },
+        take: 10, // Get recent memories for profile
+      },
     },
   });
+
+  return {
+    ...friend,
+    focusSessionUsers: focusSessions.map((session) => ({
+      focusSession: session,
+    })),
+  };
 };
 
 /**
@@ -140,51 +276,81 @@ export const getFriendsForSpringBloom = async (sourceUserId: string) => {
   threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
   threeMonthsAgo.setHours(0, 0, 0, 0);
 
-  return await prisma.friend.findMany({
+  // Get friends who have participated in focus sessions with the source user
+  // We need to find focus sessions where both users participated
+  const focusSessions = await prisma.focusSession.findMany({
     where: {
-      sourceUserId: sourceUserId,
-      focusSessionFriends: {
+      users: {
         some: {
-          focusSession: {
-            startTime: {
-              gte: threeMonthsAgo,
-            },
-          },
+          userId: sourceUserId,
         },
+      },
+      startTime: {
+        gte: threeMonthsAgo,
       },
     },
     include: {
-      user: true, // Include User data for name, avatar
-      focusSessionFriends: {
+      users: {
+        include: {
+          user: true,
+        },
+      },
+      memories: {
         where: {
-          focusSession: {
-            startTime: {
-              gte: threeMonthsAgo,
-            },
+          content: {
+            not: null,
           },
         },
-        include: {
-          focusSession: {
-            include: {
-              memories: {
-                where: {
-                  content: {
-                    not: null,
-                  },
-                },
-                select: {
-                  id: true,
-                  content: true,
-                  timestamp: true,
-                },
-                orderBy: {
-                  timestamp: 'desc',
-                },
-              },
-            },
-          },
+        select: {
+          id: true,
+          content: true,
+          timestamp: true,
+          userId: true,
+        },
+        orderBy: {
+          timestamp: 'desc',
         },
       },
     },
+  });
+
+  // Get unique friend user IDs from these sessions
+  const friendUserIds = new Set<string>();
+  focusSessions.forEach((session) => {
+    session.users.forEach((fsu: any) => {
+      if (fsu.userId !== sourceUserId) {
+        friendUserIds.add(fsu.userId);
+      }
+    });
+  });
+
+  // Get friends for these user IDs
+  const friends = await prisma.friend.findMany({
+    where: {
+      sourceUserId: sourceUserId,
+      userId: {
+        in: Array.from(friendUserIds),
+      },
+    },
+    include: {
+      user: true,
+    },
+  });
+
+  // Map sessions to friends
+  return friends.map((friend) => {
+    const friendSessions = focusSessions.filter((session) =>
+      session.users.some((fsu: any) => fsu.userId === friend.userId)
+    );
+
+    return {
+      ...friend,
+      focusSessionUsers: friendSessions.map((session) => ({
+        focusSession: {
+          ...session,
+          memories: session.memories.filter((m: any) => m.userId === friend.userId),
+        },
+      })),
+    };
   });
 };

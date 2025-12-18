@@ -18,7 +18,7 @@ interface UserProfileProps {
     createdAt: Date;
     friendCount?: number;
     _count?: {
-      focusSessions?: number;
+      focusSessionsAsUser?: number;
     };
   };
   onClose: () => void;
@@ -197,7 +197,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onClose, onAddFriend, i
               <div className="flex items-center justify-center gap-2 mb-1">
                 <Clock className="w-4 h-4 text-blue-400" />
                 <span className="text-2xl font-black text-white">
-                  {user._count?.focusSessions || 0}
+                  {user._count?.focusSessionsAsUser || 0}
                 </span>
               </div>
               <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Sessions</p>

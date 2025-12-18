@@ -38,17 +38,17 @@ export async function getConversation(friendId: string, limit = 50) {
  */
 export async function getFriendFocusSessions(friendId: string) {
   try {
-    const focusSessionFriends = await getFocusSessionsByFriendId(friendId);
+    const focusSessions = await getFocusSessionsByFriendId(friendId);
     
     return { 
       success: true, 
-      sessions: focusSessionFriends.map((fsf: any) => ({
-        id: fsf.focusSession.id,
-        startTime: fsf.focusSession.startTime,
-        endTime: fsf.focusSession.endTime,
-        minutes: fsf.focusSession.minutes,
-        createdAt: fsf.focusSession.createdAt,
-        memories: fsf.focusSession.memories.map((m: any) => ({
+      sessions: focusSessions.map((fs: any) => ({
+        id: fs.id,
+        startTime: fs.startTime,
+        endTime: fs.endTime,
+        minutes: fs.minutes,
+        createdAt: fs.createdAt,
+        memories: fs.memories.map((m: any) => ({
           id: m.id,
           type: m.type,
           content: m.content,

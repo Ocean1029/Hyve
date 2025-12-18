@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createMemory } from './repository';
 import prisma from '@/lib/prisma';
+import { auth } from '@/auth';
 
 /**
  * Create a new memory associated with a focus session
@@ -15,7 +16,19 @@ export async function createMemoryAction(
   happyIndex?: number
 ) {
   try {
-    const memory = await createMemory(focusSessionId, type, content, location, happyIndex);
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    const memory = await createMemory(
+      focusSessionId,
+      session.user.id,
+      type,
+      content,
+      location,
+      happyIndex
+    );
 
     // Revalidate relevant pages
     revalidatePath('/friends');
@@ -67,6 +80,11 @@ export async function createMemoryWithPhoto(
   mood?: string
 ) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
     // Normalize photoUrl to array
     const photoUrls = photoUrl 
       ? (Array.isArray(photoUrl) ? photoUrl : [photoUrl])
@@ -78,6 +96,7 @@ export async function createMemoryWithPhoto(
       const memory = await tx.memory.create({
         data: {
           focusSessionId,
+          userId: session.user.id,
           type: mood || '📚 Study',
           content,
           location,
