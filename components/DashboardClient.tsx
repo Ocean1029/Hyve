@@ -75,10 +75,11 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
     dismissBanner: dismissSensorBanner
   } = useSensorPermission();
 
-  // Integrate sensor data with simulation button: prioritize sensor, fallback to simulation
+  // Integrate sensor data with simulation button: prioritize sensor, fallback to false (face up/PAUSED) to avoid false positives
+  // When sensor is unavailable or state is unknown (null), default to false (face up) to prevent incorrect timing
   const isFaceDown = sensorAvailable && sensorIsFaceDown !== null 
     ? sensorIsFaceDown 
-    : isPhoneFaceDown;
+    : false; // Default to false (face up/PAUSED) when sensor state is unknown
 
   // --- Effects ---
   useEffect(() => {
@@ -95,6 +96,8 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
   }, [appState, focusStatus]);
 
   // Update focusStatus based on device orientation (sensor or simulation) and other users' pause status
+  // This effect handles both initial state when entering FOCUS mode and ongoing state synchronization
+  // When isFaceDown changes from null to an actual value, this will correctly update the status
   useEffect(() => {
     if (appState === AppState.FOCUS) {
       // Session is paused if:
@@ -247,8 +250,12 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
               }
               
               // Enter Focus Mode
+              // Set initial focusStatus based on actual isFaceDown state
+              // If sensor is not ready or phone is face up, start as PAUSED
+              // The useEffect at line 98 will handle state synchronization
               setAppState(AppState.FOCUS);
-              setFocusStatus(FocusStatus.ACTIVE);
+              // Default to PAUSED, let the useEffect handle the actual state based on isFaceDown
+              setFocusStatus(FocusStatus.PAUSED);
               return;
             }
           }
@@ -375,8 +382,12 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
             }
             
             // Enter Focus Mode
+            // Set initial focusStatus based on actual isFaceDown state
+            // If sensor is not ready or phone is face up, start as PAUSED
+            // The useEffect at line 98 will handle state synchronization
             setAppState(AppState.FOCUS);
-            setFocusStatus(FocusStatus.ACTIVE);
+            // Default to PAUSED, let the useEffect handle the actual state based on isFaceDown
+            setFocusStatus(FocusStatus.PAUSED);
           } else if (appState === AppState.FOCUS && isSameSession) {
             // Check if any other user has paused the session
             const otherUserPaused = activeSession.users.some(
@@ -462,6 +473,9 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
     // Reset pause tracking when starting new session
     setTotalPausedSeconds(0);
     setPauseStartTime(null);
+    // Set initial focusStatus based on actual isFaceDown state
+    // Default to PAUSED, let the useEffect handle the actual state based on isFaceDown
+    setFocusStatus(FocusStatus.PAUSED);
   };
 
   const endSession = async () => {
