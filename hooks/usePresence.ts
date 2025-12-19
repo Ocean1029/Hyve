@@ -55,6 +55,11 @@ export function usePresence(): UsePresenceReturn {
 
       eventSource.onmessage = (event) => {
         try {
+          // Skip empty or invalid messages
+          if (!event.data || event.data.trim() === '') {
+            return;
+          }
+          
           const data = JSON.parse(event.data);
           
           if (data.type === 'status' && data.statuses) {

@@ -196,6 +196,11 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
     
     eventSource.onmessage = (event) => {
       try {
+        // Skip empty or invalid messages
+        if (!event.data || event.data.trim() === '') {
+          return;
+        }
+        
         const data = JSON.parse(event.data);
         
         if (data.type === 'session_status' && data.sessions) {
