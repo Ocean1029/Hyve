@@ -1,6 +1,7 @@
 import './globals.css';
 import PresenceProvider from '@/components/PresenceProvider';
 import LocationTracker from '@/components/LocationTracker';
+import SensorPermissionProvider from '@/components/SensorPermissionProvider';
 import SwipePreviewProvider from '@/components/SwipePreviewProvider';
 
 export const metadata = {
@@ -18,9 +19,11 @@ export default function RootLayout({
       <body>
         <PresenceProvider />
         <LocationTracker />
-        <SwipePreviewProvider>
-          {children}
-        </SwipePreviewProvider>
+        <SensorPermissionProvider>
+          <SwipePreviewProvider>
+            {children}
+          </SwipePreviewProvider>
+        </SensorPermissionProvider>
       </body>
     </html>
   );

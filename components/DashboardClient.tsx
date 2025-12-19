@@ -14,7 +14,8 @@ import FocusMode from '@/components/FocusMode';
 import SessionSummary from '@/components/SessionSummary';
 import { generateIceBreaker } from '@/lib/services/geminiService';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
-import { useDeviceOrientation } from '@/hooks/useDeviceOrientation';
+import { useSensorPermission } from '@/components/SensorPermissionProvider';
+import SensorPermissionBanner from '@/components/SensorPermissionBanner';
 import { createFocusSession, getActiveFocusSessions } from '@/modules/sessions/actions';
 import { createMemoryWithPhoto } from '@/modules/memories/actions';
 import { getSpringBloomDataAction } from '@/modules/friends/actions';
@@ -64,13 +65,15 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
   const userManuallyExitedRef = useRef(false); // Track if user manually exited from session
   const prevFocusStatusRef = useRef<FocusStatus>(FocusStatus.PAUSED); // Track previous focusStatus for transition detection
 
-  // Device orientation sensor hook
+  // Device orientation sensor from global context
   const { 
     isFaceDown: sensorIsFaceDown, 
     permissionStatus, 
     sensorAvailable, 
-    requestPermission 
-  } = useDeviceOrientation();
+    requestPermission,
+    showBanner: showSensorBanner,
+    dismissBanner: dismissSensorBanner
+  } = useSensorPermission();
 
   // Integrate sensor data with simulation button: prioritize sensor, fallback to simulation
   const isFaceDown = sensorAvailable && sensorIsFaceDown !== null 
@@ -660,6 +663,16 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
     // Main Container ensuring iPhone dimensions on Desktop
     <div className="w-full h-dvh bg-black flex items-center justify-center">
       <div className="w-full h-full max-w-[414px] bg-zinc-950 relative overflow-hidden shadow-2xl border-x border-zinc-900/50">
+        {/* Sensor Permission Banner - Only show on dashboard */}
+        {appState === AppState.DASHBOARD && showSensorBanner && (
+          <div className="absolute top-0 left-0 right-0 z-50">
+            <SensorPermissionBanner
+              onRequestPermission={requestPermission}
+              onDismiss={dismissSensorBanner}
+            />
+          </div>
+        )}
+        
         <SwipePreviewWrapper currentPath="/">
           {/* Dashboard Content */}
           <div className="w-full h-full">

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { Sparkles } from 'lucide-react';
 import Hyve from './Hyve';
 import { FocusStatus } from '@/lib/types';
@@ -34,19 +34,6 @@ const FocusMode: React.FC<FocusModeProps> = ({
   permissionStatus,
   onRequestPermission,
 }) => {
-  const hasRequestedPermission = useRef(false);
-
-  // Auto-request permission on first mount
-  useEffect(() => {
-    if (!hasRequestedPermission.current && permissionStatus === 'prompt') {
-      hasRequestedPermission.current = true;
-      // Small delay to ensure component is fully mounted
-      setTimeout(() => {
-        onRequestPermission();
-      }, 100);
-    }
-  }, [permissionStatus, onRequestPermission]);
-
   return (
     <div className="absolute inset-0 z-[60]">
         <div className="absolute inset-0 bg-black/40 backdrop-blur-md backdrop-saturate-50 transition-all duration-500"></div>
@@ -55,7 +42,6 @@ const FocusMode: React.FC<FocusModeProps> = ({
 
         {/* Sensor Status - Top Left Corner */}
         <div className="absolute top-4 left-4 z-50 flex flex-col gap-2 items-start">
-          {/* Permission Request Button (iOS 13+) */}
           {permissionStatus === 'prompt' && (
             <button
               onClick={onRequestPermission}
@@ -65,21 +51,18 @@ const FocusMode: React.FC<FocusModeProps> = ({
             </button>
           )}
           
-          {/* Sensor Status Indicator */}
           {sensorAvailable && permissionStatus === 'granted' && (
             <div className="px-3 py-1 rounded-full text-[9px] font-bold border tracking-wider uppercase bg-green-500/20 text-green-300 border-green-500/30">
               Sensor Active
             </div>
           )}
 
-          {/* Sensor Unavailable Indicator */}
           {permissionStatus === 'unavailable' && (
             <div className="px-3 py-1 rounded-full text-[9px] font-bold border tracking-wider uppercase bg-gray-500/20 text-gray-400 border-gray-500/30">
               Sensor N/A
             </div>
           )}
 
-          {/* Permission Denied Indicator */}
           {permissionStatus === 'denied' && (
             <div className="px-3 py-1 rounded-full text-[9px] font-bold border tracking-wider uppercase bg-red-500/20 text-red-300 border-red-500/30">
               Sensor Denied
@@ -87,7 +70,7 @@ const FocusMode: React.FC<FocusModeProps> = ({
           )}
         </div>
 
-        {/* Simulation Button - Top Right Corner (Gray Dot) */}
+        {/* Simulation Button - Top Right Corner */}
         <div className="absolute top-4 right-4 z-50">
           <button
             onClick={onToggleSimulation}
@@ -114,7 +97,6 @@ const FocusMode: React.FC<FocusModeProps> = ({
             )}
             </div>
             
-            {/* Interaction Layer: Ice Breaker */}
             {focusStatus === FocusStatus.PAUSED && (
                 <div className="absolute bottom-8 w-full px-8">
                 {iceBreaker ? (
@@ -141,7 +123,6 @@ const FocusMode: React.FC<FocusModeProps> = ({
             )}
         </div>
 
-        {/* Footer Controls */}
         <div className={`p-8 flex justify-center transition-all duration-500 ${focusStatus === FocusStatus.ACTIVE ? 'opacity-0 translate-y-10 pointer-events-none' : 'opacity-100'}`}>
             <button
             onClick={onEndSession}
@@ -156,4 +137,3 @@ const FocusMode: React.FC<FocusModeProps> = ({
 };
 
 export default FocusMode;
-
