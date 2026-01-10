@@ -158,6 +158,7 @@ model FocusSessionUser {
   @@unique([focusSessionId, userId])
   @@index([focusSessionId])
   @@index([userId])
+  @@index([isPaused])
 }
 
 model Photo {

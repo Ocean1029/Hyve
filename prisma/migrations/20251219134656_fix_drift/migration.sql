@@ -1,0 +1,2 @@
+-- This migration fixes the drift between migration history and database state
+-- The database is already in sync with the schema, this is just a marker migration

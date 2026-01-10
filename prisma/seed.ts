@@ -1,4 +1,4 @@
-import prisma from '@/lib/prisma';
+import prisma from '../lib/prisma';
 
 async function main() {
   console.log('Start seeding ...');
@@ -40,29 +40,45 @@ async function main() {
     date.setHours(14, 0, 0, 0); // Set to 2 PM
     
     // Check if session for this date and user already exists
-    const existingSession = await prisma.focusSession.findFirst({
+    // Since FocusSession no longer has userId, we need to check via FocusSessionUser
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    const existingSessionUser = await prisma.focusSessionUser.findFirst({
       where: {
         userId: alex.id,
-        startTime: {
-          gte: new Date(date.setHours(0, 0, 0, 0)),
-          lt: new Date(date.setHours(23, 59, 59, 999)),
+        focusSession: {
+          startTime: {
+            gte: startOfDay,
+            lt: endOfDay,
+          },
         },
+      },
+      include: {
+        focusSession: true,
       },
     });
 
-    if (!existingSession) {
+    if (!existingSessionUser) {
       const session = await prisma.focusSession.create({
         data: {
           minutes: chartData[i],
           startTime: date,
           endTime: new Date(date.getTime() + chartData[i] * 60 * 1000),
-          userId: alex.id,
+          status: 'completed',
+          users: {
+            create: {
+              userId: alex.id,
+            },
+          },
         },
       });
       createdSessions.push(session);
       createdSessionsCount++;
     } else {
-      createdSessions.push(existingSession);
+      createdSessions.push(existingSessionUser.focusSession);
     }
   }
   console.log(`Created ${createdSessionsCount} new focus sessions (${7 - createdSessionsCount} already existed)`);
@@ -197,11 +213,11 @@ async function main() {
       }
       
       // Create Memory for this interaction
+      // Note: Memory type should use vibe check values (e.g., '📚 Study') instead of 'note'
       const existingMemory = await prisma.memory.findFirst({
         where: {
           focusSessionId: focusSession.id,
           userId: alex.id, // Memories belong to specific users
-          type: 'note',
           content: interaction.activity,
         },
       });
@@ -209,7 +225,7 @@ async function main() {
       if (!existingMemory) {
         await prisma.memory.create({
           data: {
-            type: 'note',
+            type: '📚 Study', // Use vibe check value instead of 'note'
             content: interaction.activity,
             timestamp: focusSession.startTime,
             focusSessionId: focusSession.id,
