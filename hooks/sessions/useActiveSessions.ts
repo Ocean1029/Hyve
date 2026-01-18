@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { AppState, FocusStatus, Friend } from '@/lib/types';
-import { checkActiveSessions, CheckActiveSessionsParams } from './checkActiveSessions';
+import { checkActiveSessions, CheckActiveSessionsParams } from '@/hooks/sessions/checkActiveSessions';
 
 interface UseActiveSessionsProps {
   userId: string;

@@ -79,7 +79,7 @@ export function useFocusSession({
 
         if (response.ok) {
           const result = await response.json();
-          if (result.success) {
+          if (result.success && result.session) {
             setSessionRecorded(true);
             console.log('Focus session ended successfully:', result.session);
             setIsSaving(false);
@@ -102,13 +102,13 @@ export function useFocusSession({
           sessionStartTime,
           endTime
         );
-        if (result.success) {
-          setSessionRecorded(true);
-          setCurrentFocusSessionId(result.session.id);
-          console.log('Focus session recorded successfully:', result.session);
-          setIsSaving(false);
-          return { success: true };
-        } else {
+      if (result.success && result.session) {
+        setSessionRecorded(true);
+        setCurrentFocusSessionId(result.session.id);
+        console.log('Focus session recorded successfully:', result.session);
+        setIsSaving(false);
+        return { success: true };
+      } else {
           console.error('Failed to save focus session:', result.error);
           setIsSaving(false);
           return { success: false, error: result.error };
@@ -147,7 +147,7 @@ export function useFocusSession({
         sessionStartTime,
         endTime
       );
-      if (result.success) {
+      if (result.success && result.session) {
         setSessionRecorded(true);
         setCurrentFocusSessionId(result.session.id);
         console.log('Focus session recorded successfully (backup):', result.session);

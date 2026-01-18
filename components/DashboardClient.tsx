@@ -19,12 +19,12 @@ import SensorPermissionBanner from '@/components/SensorPermissionBanner';
 import { createMemoryWithPhoto } from '@/modules/memories/actions';
 import SwipePreviewWrapper from '@/components/SwipePreviewWrapper';
 import { formatTime } from '@/lib/utils/time';
-import { useFocusPause } from '@/hooks/useFocusPause';
-import { useFocusStatus } from '@/hooks/useFocusStatus';
-import { useFocusSession } from '@/hooks/useFocusSession';
-import { useSessionPauseSync } from '@/hooks/useSessionPauseSync';
-import { useSessionStream } from '@/hooks/useSessionStream';
-import { useActiveSessions } from '@/hooks/useActiveSessions';
+import { useFocusPause } from '@/hooks/sessions/useFocusPause';
+import { useFocusStatus } from '@/hooks/sessions/useFocusStatus';
+import { useFocusSession } from '@/hooks/sessions/useFocusSession';
+import { useSessionPauseSync } from '@/hooks/sessions/useSessionPauseSync';
+import { useSessionStream } from '@/hooks/sessions/useSessionStream';
+import { useActiveSessions } from '@/hooks/sessions/useActiveSessions';
 import { useSpringBloom } from '@/hooks/useSpringBloom';
 
 interface DashboardClientProps {
