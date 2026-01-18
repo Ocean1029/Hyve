@@ -1,7 +1,7 @@
 // app/api/sessions/[sessionId]/pause/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import prisma from '@/lib/prisma';
+import { updatePauseStatusService } from '@/modules/sessions/service';
 
 /**
  * POST /api/sessions/[sessionId]/pause
@@ -26,81 +26,20 @@ export async function POST(
     const body = await request.json();
     const { isPaused } = body;
 
-    if (typeof isPaused !== 'boolean') {
+    const result = await updatePauseStatusService(sessionId, userId, isPaused);
+
+    if (!result.success) {
       return NextResponse.json(
-        { success: false, error: 'isPaused must be a boolean' },
-        { status: 400 }
+        { success: false, error: result.error },
+        { status: result.statusCode || 500 }
       );
     }
-
-    // Verify user is part of this session
-    const sessionUser = await prisma.focusSessionUser.findUnique({
-      where: {
-        focusSessionId_userId: {
-          focusSessionId: sessionId,
-          userId: userId,
-        },
-      },
-      include: {
-        focusSession: true,
-      },
-    });
-
-    if (!sessionUser) {
-      return NextResponse.json(
-        { success: false, error: 'User is not part of this session' },
-        { status: 403 }
-      );
-    }
-
-    // Check if session is still active
-    if (sessionUser.focusSession.status !== 'active') {
-      return NextResponse.json(
-        { success: false, error: 'Session is not active' },
-        { status: 400 }
-      );
-    }
-
-    // Update current user's pause status
-    await prisma.focusSessionUser.update({
-      where: {
-        id: sessionUser.id,
-      },
-      data: {
-        isPaused: isPaused,
-        updatedAt: new Date(),
-      },
-    });
-
-    // Get all users in this session to return updated status
-    const sessionUsers = await prisma.focusSessionUser.findMany({
-      where: {
-        focusSessionId: sessionId,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
-          },
-        },
-      },
-    });
-
-    // Check if any user has paused (if any user picks up phone, session is paused for all)
-    const hasAnyPaused = sessionUsers.some((su: typeof sessionUsers[0]) => su.isPaused);
 
     return NextResponse.json({
       success: true,
-      sessionId: sessionId,
-      isPaused: hasAnyPaused, // Overall session pause status (true if any user paused)
-      users: sessionUsers.map((su: typeof sessionUsers[0]) => ({
-        userId: su.userId,
-        userName: su.user.name,
-        userImage: su.user.image,
-        isPaused: su.isPaused,
-      })),
+      sessionId: result.sessionId,
+      isPaused: result.isPaused,
+      users: result.users,
     });
   } catch (error) {
     console.error('Error updating pause status:', error);

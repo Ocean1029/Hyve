@@ -1,7 +1,7 @@
 // app/api/sessions/[sessionId]/end/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import prisma from '@/lib/prisma';
+import { endSessionService } from '@/modules/sessions/service';
 
 /**
  * POST /api/sessions/[sessionId]/end
@@ -26,67 +26,23 @@ export async function POST(
     const body = await request.json();
     const { endTime, minutes } = body;
 
-    // Verify user is part of this session
-    const sessionUser = await prisma.focusSessionUser.findUnique({
-      where: {
-        focusSessionId_userId: {
-          focusSessionId: sessionId,
-          userId: userId,
-        },
-      },
-      include: {
-        focusSession: true,
-      },
-    });
+    const result = await endSessionService(
+      sessionId,
+      userId,
+      endTime ? new Date(endTime) : undefined,
+      minutes
+    );
 
-    if (!sessionUser) {
+    if (!result.success) {
       return NextResponse.json(
-        { success: false, error: 'User is not part of this session' },
-        { status: 403 }
+        { success: false, error: result.error },
+        { status: result.statusCode || 500 }
       );
     }
-
-    // Check if session is still active
-    if (sessionUser.focusSession.status !== 'active') {
-      return NextResponse.json(
-        { success: false, error: 'Session is already ended' },
-        { status: 400 }
-      );
-    }
-
-    // Update session status to 'completed' for all participants
-    const updatedSession = await prisma.focusSession.update({
-      where: {
-        id: sessionId,
-      },
-      data: {
-        status: 'completed',
-        endTime: endTime ? new Date(endTime) : new Date(),
-        minutes: minutes !== undefined ? minutes : sessionUser.focusSession.minutes,
-      },
-      include: {
-        users: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                image: true,
-              },
-            },
-          },
-        },
-        memories: {
-          include: {
-            photos: true,
-          },
-        },
-      },
-    });
 
     return NextResponse.json({
       success: true,
-      session: updatedSession,
+      session: result.session,
     });
   } catch (error) {
     console.error('Error ending session:', error);

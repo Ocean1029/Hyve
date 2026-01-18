@@ -1,7 +1,7 @@
 // app/api/sessions/stream/route.ts
 import { NextRequest } from 'next/server';
 import { auth } from '@/auth';
-import prisma from '@/lib/prisma';
+import { getSessionStreamDataService } from '@/modules/sessions/service';
 
 /**
  * GET /api/sessions/stream
@@ -33,109 +33,20 @@ export async function GET(request: NextRequest) {
           }
 
           try {
-            // Get all active sessions for this user
-            const activeSessions = await prisma.focusSession.findMany({
-              where: {
-                status: 'active',
-                users: {
-                  some: {
-                    userId: userId,
-                  },
-                },
-              },
-              include: {
-                users: {
-                  include: {
-                    user: {
-                      select: {
-                        id: true,
-                        name: true,
-                        image: true,
-                      },
-                    },
-                  },
-                },
-              },
-            });
-
-            // Format session status
-            const sessionStatuses = activeSessions.map((session: any) => {
-              const hasAnyPaused = session.users.some((su: any) => su.isPaused);
-              return {
-                sessionId: session.id,
-                status: session.status,
-                isPaused: hasAnyPaused,
-                startTime: session.startTime,
-                endTime: session.endTime,
-                minutes: session.minutes,
-                users: session.users.map((su: any) => ({
-                  userId: su.userId,
-                  userName: su.user.name,
-                  userImage: su.user.image,
-                  isPaused: su.isPaused,
-                })),
-              };
-            });
-            
-            // Also check for recently completed sessions (within last minute) that the user participated in
-            // This helps catch sessions that just ended
-            // Use endTime instead of updatedAt since FocusSession doesn't have updatedAt field
-            const recentlyCompletedSessions = await prisma.focusSession.findMany({
-              where: {
-                status: 'completed',
-                users: {
-                  some: {
-                    userId: userId,
-                  },
-                },
-                endTime: {
-                  gte: new Date(Date.now() - 60000), // Last minute
-                },
-              },
-              include: {
-                users: {
-                  include: {
-                    user: {
-                      select: {
-                        id: true,
-                        name: true,
-                        image: true,
-                      },
-                    },
-                  },
-                },
-              },
-              take: 5,
-            });
-            
-            // Add completed sessions to the list
-            recentlyCompletedSessions.forEach((session: any) => {
-              sessionStatuses.push({
-                sessionId: session.id,
-                status: session.status,
-                isPaused: false,
-                startTime: session.startTime,
-                endTime: session.endTime,
-                minutes: session.minutes,
-                users: session.users.map((su: any) => ({
-                  userId: su.userId,
-                  userName: su.user.name,
-                  userImage: su.user.image,
-                  isPaused: false,
-                })),
-              });
-            });
+            const result = await getSessionStreamDataService(userId);
 
             // Check again before sending (controller might have closed during async operations)
             if (isClosed) {
               return;
             }
 
-            const data = JSON.stringify({ 
-              type: 'session_status', 
-              sessions: sessionStatuses 
-            });
-            controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+            if (result.success) {
+              const data = JSON.stringify({ 
+                type: 'session_status', 
+                sessions: result.sessions 
+              });
+              controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+            }
           } catch (error: any) {
             // Ignore errors if controller is closed (client disconnected)
             if (error?.code === 'ERR_INVALID_STATE' || error?.message?.includes('closed')) {

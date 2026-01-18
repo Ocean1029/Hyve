@@ -50,7 +50,7 @@ async function main() {
       where: {
         userId: alex.id,
         focusSession: {
-          startTime: {
+        startTime: {
             gte: startOfDay,
             lt: endOfDay,
           },
@@ -70,7 +70,7 @@ async function main() {
           status: 'completed',
           users: {
             create: {
-              userId: alex.id,
+          userId: alex.id,
             },
           },
         },

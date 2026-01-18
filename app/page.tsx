@@ -1,5 +1,5 @@
 import { getFriendListService } from '@/modules/friends/service';
-import { getWeeklyFocusChartData } from '@/modules/sessions/service';
+import { getWeeklyFocusMinutes } from '@/modules/sessions/service';
 import { getUserWithPosts } from '@/modules/users/repository';
 import DashboardClient from '@/components/DashboardClient';
 import { auth } from '@/auth';
@@ -16,7 +16,7 @@ export default async function Page() {
   const userId = session.user.id;
   const [friends, chartData, user] = await Promise.all([
     getFriendListService(userId),
-    getWeeklyFocusChartData(userId),
+    getWeeklyFocusMinutes(userId),
     getUserWithPosts(userId),
   ]);
 
