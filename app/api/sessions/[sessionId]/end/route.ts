@@ -1,7 +1,7 @@
 // app/api/sessions/[sessionId]/end/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { endSessionService } from '@/modules/sessions/service';
+import { endFocusSessionService } from '@/modules/sessions/service';
 
 /**
  * POST /api/sessions/[sessionId]/end
@@ -26,7 +26,7 @@ export async function POST(
     const body = await request.json();
     const { endTime, minutes } = body;
 
-    const result = await endSessionService(
+    const result = await endFocusSessionService(
       sessionId,
       userId,
       endTime ? new Date(endTime) : undefined,

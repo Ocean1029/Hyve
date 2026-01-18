@@ -6,7 +6,7 @@ import {
   getFriendsOnlineStatus,
   isUserOnline,
 } from './repository';
-import { checkAndCreateFocusSession } from '@/modules/sessions/service';
+import { checkAndCreateFocusSessionService } from '@/modules/sessions/service';
 
 /**
  * Service to update user's heartbeat (last seen time)
@@ -18,7 +18,7 @@ export const updateUserHeartbeat = async (userId: string) => {
     
     // Check for online friends and create focus sessions automatically
     // This runs asynchronously to not block the heartbeat response
-    checkAndCreateFocusSession(userId).catch((error) => {
+    checkAndCreateFocusSessionService(userId).catch((error) => {
       // Log error but don't fail the heartbeat
       console.error('Error in automatic focus session creation:', error);
     });

@@ -14,7 +14,7 @@ import {
 import { ChartDataPoint } from '@/lib/types';
 import { getFriendsOnlineStatus } from '@/modules/presence/repository';
 
-export const getWeeklyFocusMinutes = async (userId: string): Promise<ChartDataPoint[]> => {
+export const getWeeklyFocusMinutesService = async (userId: string): Promise<ChartDataPoint[]> => {
   const endDate = new Date();
   const startDate = new Date();
   startDate.setDate(endDate.getDate() - 6); // Last 7 days including today
@@ -57,7 +57,7 @@ export const getWeeklyFocusMinutes = async (userId: string): Promise<ChartDataPo
  * This function is called during heartbeat to detect online friends
  * and create focus sessions automatically
  */
-export const checkAndCreateFocusSession = async (currentUserId: string): Promise<void> => {
+export const checkAndCreateFocusSessionService = async (currentUserId: string): Promise<void> => {
   try {
     // Get all friends' online status
     const friendsStatus = await getFriendsOnlineStatus(currentUserId);
@@ -109,7 +109,7 @@ export const checkAndCreateFocusSession = async (currentUserId: string): Promise
     }
   } catch (error) {
     // Log error but don't throw - heartbeat should continue even if session creation fails
-    console.error('Error in checkAndCreateFocusSession:', error);
+    console.error('Error in checkAndCreateFocusSessionService:', error);
   }
 };
 
@@ -203,7 +203,7 @@ export const getActiveFocusSessionsService = async (userId: string) => {
 /**
  * End a focus session with permission validation
  */
-export const endSessionService = async (
+export const endFocusSessionService = async (
   sessionId: string,
   userId: string,
   endTime?: Date,
