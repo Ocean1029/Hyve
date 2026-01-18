@@ -1,7 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { Grid, Heart, Users, Clock, Flame, Settings, ChevronRight, Calendar, Trophy } from 'lucide-react';
-import { Memory } from '../lib/types';
+import { Memory } from '@/lib/types';
 
 interface MyProfileProps {
   user?: {

@@ -3,10 +3,10 @@
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Friend } from '@/lib/types';
-import Messages from '@/components/Messages';
-import BottomNav from '@/components/BottomNav';
+import Messages from '@/components/messages/Messages';
+import BottomNav from '@/components/common/BottomNav';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
-import SwipePreviewWrapper from '@/components/SwipePreviewWrapper';
+import SwipePreviewWrapper from '@/components/common/SwipePreviewWrapper';
 
 interface MessagesClientProps {
   friends: Friend[];

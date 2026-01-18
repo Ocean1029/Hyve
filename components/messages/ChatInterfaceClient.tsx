@@ -3,7 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Friend } from '@/lib/types';
-import ChatInterface from './ChatInterface';
+import ChatInterface from '@/components/messages/ChatInterface';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 
 interface ChatInterfaceClientProps {

@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import Settings from './Settings';
-import BottomNav from './BottomNav';
+import Settings from '@/components/settings/Settings';
+import BottomNav from '@/components/common/BottomNav';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 
 interface SettingsClientProps {

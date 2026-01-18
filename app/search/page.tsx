@@ -1,4 +1,4 @@
-import SearchClient from '@/components/SearchClient';
+import SearchClient from '@/components/search/SearchClient';
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 

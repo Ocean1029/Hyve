@@ -7,10 +7,10 @@ import { Search, Loader2, Copy, Check } from 'lucide-react';
 import { searchUsers, getRecommendedUsers } from '@/modules/search/actions';
 import { addFriendFromUser, checkIfUserIsFriend } from '@/modules/friends/actions';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
-import BottomNav from './BottomNav';
-import UserProfile from './UserProfile';
-import SearchBar from './SearchBar';
-import SwipePreviewWrapper from './SwipePreviewWrapper';
+import BottomNav from '@/components/common/BottomNav';
+import UserProfile from '@/components/profile/UserProfile';
+import SearchBar from '@/components/search/SearchBar';
+import SwipePreviewWrapper from '@/components/common/SwipePreviewWrapper';
 
 type SearchResult = {
   id: string;

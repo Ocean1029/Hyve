@@ -1,5 +1,5 @@
 import { getFriendByIdService } from '@/modules/friends/service';
-import ChatInterfaceClient from '@/components/ChatInterfaceClient';
+import ChatInterfaceClient from '@/components/messages/ChatInterfaceClient';
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import { notFound } from 'next/navigation';

@@ -1,8 +1,8 @@
 import './globals.css';
-import PresenceProvider from '@/components/PresenceProvider';
-import LocationTracker from '@/components/LocationTracker';
-import SensorPermissionProvider from '@/components/SensorPermissionProvider';
-import SwipePreviewProvider from '@/components/SwipePreviewProvider';
+import PresenceProvider from '@/components/presence/PresenceProvider';
+import LocationTracker from '@/components/presence/LocationTracker';
+import SensorPermissionProvider from '@/components/sensor/SensorPermissionProvider';
+import SwipePreviewProvider from '@/components/common/SwipePreviewProvider';
 
 export const metadata = {
   title: 'Hyve',

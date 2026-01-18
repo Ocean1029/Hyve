@@ -1,10 +1,10 @@
 'use client';
 
 import React from 'react';
-import TodayDetails from '@/components/TodayDetails';
-import BottomNav from '@/components/BottomNav';
+import TodayDetails from '@/components/memory/TodayDetails';
+import BottomNav from '@/components/common/BottomNav';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
-import SwipePreviewWrapper from '@/components/SwipePreviewWrapper';
+import SwipePreviewWrapper from '@/components/common/SwipePreviewWrapper';
 
 interface TodayClientProps {
   userId: string;

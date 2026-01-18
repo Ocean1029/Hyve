@@ -1,6 +1,6 @@
 import React from 'react';
 import { Sparkles } from 'lucide-react';
-import Hyve from './Hyve';
+import Hyve from '@/components/common/Hyve';
 import { FocusStatus } from '@/lib/types';
 
 interface FocusModeProps {

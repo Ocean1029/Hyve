@@ -9,8 +9,8 @@ import { sendFriendRequest, checkFriendRequestStatus } from '@/modules/friend-re
 import { checkIfUserIsFriend } from '@/modules/friends/actions';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { formatDistance } from '@/lib/utils/distance';
-import BottomNav from './BottomNav';
-import UserProfile from './UserProfile';
+import BottomNav from '@/components/common/BottomNav';
+import UserProfile from '@/components/profile/UserProfile';
 
 type NearbyUser = {
   id: string;

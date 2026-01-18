@@ -1,10 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Message, Friend } from '@/lib/types';
 import { usePresence } from '@/hooks/usePresence';
-import SearchBar from './SearchBar';
+import { getPendingRequests } from '@/modules/friend-requests/actions';
+import { acceptFriendRequest, rejectFriendRequest } from '@/modules/friend-requests/actions';
+import SearchBar from '@/components/search/SearchBar';
+import Image from 'next/image';
+import { Check, X } from 'lucide-react';
 
-interface MessagesProps {
+interface FriendsProps {
     friends: Friend[];
     onViewProfile: (friend: Friend) => void;
     userId: string;
@@ -63,12 +67,38 @@ const generateMessagesFromFriends = (friends: Friend[]): Message[] => {
   });
 };
 
-const Messages: React.FC<MessagesProps> = ({ friends, onViewProfile, userId }) => {
+type FriendRequest = {
+  id: string;
+  sender: {
+    id: string;
+    userId: string;
+    name: string | null;
+    image: string | null;
+  };
+  createdAt: Date;
+};
+
+const Friends: React.FC<FriendsProps> = ({ friends, onViewProfile, userId }) => {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
+  const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(true);
   
   // Get real-time presence status
   const { friendStatuses, isOnline } = usePresence();
+
+  // Load pending friend requests
+  useEffect(() => {
+    const loadRequests = async () => {
+      setLoadingRequests(true);
+      const result = await getPendingRequests();
+      if (result.success && result.requests) {
+        setPendingRequests(result.requests);
+      }
+      setLoadingRequests(false);
+    };
+    loadRequests();
+  }, []);
 
   // Get online friends for the active friends section
   const onlineFriends = useMemo(() => {
@@ -76,7 +106,7 @@ const Messages: React.FC<MessagesProps> = ({ friends, onViewProfile, userId }) =
   }, [friends, isOnline]);
 
   const handleOpenChat = (friendId: string) => {
-    router.push(`/messages/${friendId}`);
+    router.push(`/friends/${friendId}`);
   };
 
   const handleAvatarClick = (e: React.MouseEvent | React.TouchEvent, friendId: string) => {
@@ -85,6 +115,21 @@ const Messages: React.FC<MessagesProps> = ({ friends, onViewProfile, userId }) =
     const friend = friends.find(f => f.id === friendId);
     if (friend) {
         onViewProfile(friend);
+    }
+  };
+
+  const handleAcceptRequest = async (requestId: string) => {
+    const result = await acceptFriendRequest(requestId);
+    if (result.success) {
+      setPendingRequests(prev => prev.filter(req => req.id !== requestId));
+      router.refresh();
+    }
+  };
+
+  const handleRejectRequest = async (requestId: string) => {
+    const result = await rejectFriendRequest(requestId);
+    if (result.success) {
+      setPendingRequests(prev => prev.filter(req => req.id !== requestId));
     }
   };
 
@@ -104,7 +149,7 @@ const Messages: React.FC<MessagesProps> = ({ friends, onViewProfile, userId }) =
       
       {/* Header */}
       <div className="px-6 flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-black text-stone-200 tracking-tight">Messages</h1>
+        <h1 className="text-3xl font-black text-stone-200 tracking-tight">Friends</h1>
       </div>
 
       {/* Search Bar */}
@@ -116,6 +161,60 @@ const Messages: React.FC<MessagesProps> = ({ friends, onViewProfile, userId }) =
           showGradient={true}
         />
       </div>
+
+      {/* Pending Friend Requests */}
+      {pendingRequests.length > 0 && (
+        <div className="px-6 mb-6">
+          <h2 className="text-sm font-bold text-zinc-400 mb-3 uppercase tracking-wider">Pending Requests</h2>
+          <div className="space-y-2">
+            {pendingRequests.map((request) => (
+              <div
+                key={request.id}
+                className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex items-center gap-4"
+              >
+                <div className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-zinc-800">
+                  {request.sender.image ? (
+                    <Image
+                      src={request.sender.image}
+                      alt={request.sender.name || 'User'}
+                      fill
+                      className="object-cover"
+                      sizes="48px"
+                      unoptimized={!request.sender.image.includes('googleusercontent.com')}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-rose-500 to-purple-600 flex items-center justify-center">
+                      <span className="text-white font-bold text-lg">
+                        {(request.sender.name || 'U').charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-white font-bold text-sm truncate">
+                    {request.sender.name || 'Unknown User'}
+                  </h3>
+                  <p className="text-zinc-500 text-xs">Wants to be friends</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleAcceptRequest(request.id)}
+                    className="p-2 bg-emerald-500 text-white rounded-full hover:bg-emerald-600 transition-colors"
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleRejectRequest(request.id)}
+                    className="p-2 bg-zinc-800 text-zinc-400 rounded-full hover:bg-zinc-700 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Active / Focusing Now (Stories Style) */}
       <div className="mb-6 pl-6 overflow-x-auto scrollbar-hide">
@@ -188,4 +287,5 @@ const Messages: React.FC<MessagesProps> = ({ friends, onViewProfile, userId }) =
   );
 };
 
-export default Messages;
+export default Friends;
+

@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronLeft, Calendar, Clock, Hash, Flame } from 'lucide-react';
-import { Friend } from '../lib/types';
+import { Friend } from '@/lib/types';
 
 interface FriendProfileProps {
   friend: Friend;

@@ -4,7 +4,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Clock, MapPin, Users, Activity, Flame, Camera, Edit, Star, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getTodayFocusSessions } from '@/modules/sessions/actions';
-import PostMemory from './PostMemory';
+import PostMemory from '@/components/memory/PostMemory';
 import { createMemoryWithPhoto, updateMemoryWithPhoto } from '@/modules/memories/actions';
 
 interface TodayDetailsProps {

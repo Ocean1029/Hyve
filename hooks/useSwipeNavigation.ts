@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSwipePreview } from '@/components/SwipePreviewProvider';
+import { useSwipePreview } from '@/components/common/SwipePreviewProvider';
 
 interface SwipeNavigationConfig {
   currentPath: string;

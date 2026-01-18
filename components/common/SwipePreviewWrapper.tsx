@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { useSwipePreview } from './SwipePreviewProvider';
+import { useSwipePreview } from '@/components/common/SwipePreviewProvider';
 import { useRouter } from 'next/navigation';
-import PagePreview from './PagePreview';
+import PagePreview from '@/components/common/PagePreview';
 
 interface SwipePreviewWrapperProps {
   children: React.ReactNode;

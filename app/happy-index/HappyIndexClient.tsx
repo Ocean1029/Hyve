@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import HappyIndex from '@/components/HappyIndex';
-import BottomNav from '@/components/BottomNav';
+import HappyIndex from '@/components/features/HappyIndex';
+import BottomNav from '@/components/common/BottomNav';
 import {
   WeeklyHappyIndexDataPoint,
   PeakHappinessMemory,

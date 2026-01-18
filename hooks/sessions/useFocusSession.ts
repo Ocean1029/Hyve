@@ -102,7 +102,7 @@ export function useFocusSession({
           sessionStartTime,
           endTime
         );
-      if (result.success && result.session) {
+      if (result.success && 'session' in result && result.session) {
         setSessionRecorded(true);
         setCurrentFocusSessionId(result.session.id);
         console.log('Focus session recorded successfully:', result.session);
@@ -147,7 +147,7 @@ export function useFocusSession({
         sessionStartTime,
         endTime
       );
-      if (result.success && result.session) {
+      if (result.success && 'session' in result && result.session) {
         setSessionRecorded(true);
         setCurrentFocusSessionId(result.session.id);
         console.log('Focus session recorded successfully (backup):', result.session);

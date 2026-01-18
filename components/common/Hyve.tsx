@@ -1,5 +1,5 @@
 import React from 'react';
-import { FocusStatus } from '../lib/types';
+import { FocusStatus } from '@/lib/types';
 
 interface HyveProps {
   status: FocusStatus;

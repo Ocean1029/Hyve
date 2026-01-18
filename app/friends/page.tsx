@@ -1,5 +1,5 @@
 import { getFriendsForMessagesService } from '@/modules/friends/service';
-import FriendsClient from '@/components/FriendsClient';
+import FriendsClient from '@/components/friends/FriendsClient';
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 

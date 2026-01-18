@@ -1,6 +1,6 @@
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
-import SettingsClient from '@/components/SettingsClient';
+import SettingsClient from '@/components/settings/SettingsClient';
 import { getUserWithPosts } from '@/modules/users/repository';
 
 export default async function SettingsPage() {

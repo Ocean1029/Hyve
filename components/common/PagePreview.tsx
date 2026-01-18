@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { useSwipePreview } from './SwipePreviewProvider';
+import { useSwipePreview } from '@/components/common/SwipePreviewProvider';
 
 interface PagePreviewProps {
   route: string;

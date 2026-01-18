@@ -1,5 +1,5 @@
 import { getMyProfileService } from '@/modules/users/service';
-import ProfileClient from '@/components/ProfileClient';
+import ProfileClient from '@/components/profile/ProfileClient';
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 

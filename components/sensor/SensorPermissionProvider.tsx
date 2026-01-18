@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { useDeviceOrientation } from '@/hooks/useDeviceOrientation';
-import SensorPermissionOnboarding from './SensorPermissionOnboarding';
+import SensorPermissionOnboarding from '@/components/sensor/SensorPermissionOnboarding';
 
 // Context type definition
 interface SensorPermissionContextType {

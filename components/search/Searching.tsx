@@ -1,5 +1,5 @@
 import React from 'react';
-import Radar from './Radar';
+import Radar from '@/components/common/Radar';
 
 interface SearchingProps {
   onCancel: () => void;

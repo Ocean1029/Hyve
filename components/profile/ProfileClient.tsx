@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import MyProfile from '@/components/MyProfile';
-import BottomNav from '@/components/BottomNav';
+import MyProfile from '@/components/profile/MyProfile';
+import BottomNav from '@/components/common/BottomNav';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
-import SwipePreviewWrapper from '@/components/SwipePreviewWrapper';
+import SwipePreviewWrapper from '@/components/common/SwipePreviewWrapper';
 
 interface ProfileClientProps {
   user: any; // Define proper User type later

@@ -1,4 +1,4 @@
-import FindFriendsClient from '@/components/FindFriendsClient';
+import FindFriendsClient from '@/components/friends/FindFriendsClient';
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 

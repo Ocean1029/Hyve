@@ -1,7 +1,7 @@
 import { getFriendListService } from '@/modules/friends/service';
 import { getWeeklyFocusMinutes } from '@/modules/sessions/service';
 import { getUserWithPosts } from '@/modules/users/repository';
-import DashboardClient from '@/components/DashboardClient';
+import DashboardClient from '@/components/dashboard/DashboardClient';
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 
