@@ -12,7 +12,7 @@ import { checkAndCreateFocusSessionService } from '@/modules/sessions/service';
  * Service to update user's heartbeat (last seen time)
  * Also checks for online friends and automatically creates focus sessions
  */
-export const updateUserHeartbeat = async (userId: string) => {
+export const updateUserHeartbeatService = async (userId: string) => {
   try {
     await updateLastSeen(userId);
     
@@ -33,7 +33,7 @@ export const updateUserHeartbeat = async (userId: string) => {
 /**
  * Service to get user's online status
  */
-export const getUserOnlineStatus = async (userId: string) => {
+export const getUserOnlineStatusService = async (userId: string) => {
   try {
     const lastSeen = await getLastSeen(userId);
     if (!lastSeen) {
@@ -53,7 +53,7 @@ export const getUserOnlineStatus = async (userId: string) => {
 /**
  * Service to get multiple users' online status
  */
-export const getMultipleUsersStatus = async (userIds: string[]) => {
+export const getMultipleUsersStatusService = async (userIds: string[]) => {
   try {
     const statuses = await getUsersOnlineStatus(userIds);
     return statuses;

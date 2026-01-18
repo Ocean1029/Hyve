@@ -284,7 +284,7 @@ export interface SpringBloomEntry {
   tags: string[];
 }
 
-export const getSpringBloomData = async (sourceUserId: string): Promise<SpringBloomEntry[]> => {
+export const getSpringBloomDataService = async (sourceUserId: string): Promise<SpringBloomEntry[]> => {
   try {
     // Get friends with focus sessions in the last 3 months
     const friends = await getFriendsForSpringBloom(sourceUserId);
@@ -355,7 +355,7 @@ export const getSpringBloomData = async (sourceUserId: string): Promise<SpringBl
 
     return rankedFriends;
   } catch (error) {
-    console.error('Error in getSpringBloomData:', error);
+    console.error('Error in getSpringBloomDataService:', error);
     return [];
   }
 };

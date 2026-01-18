@@ -3,9 +3,9 @@
 
 import { auth } from '@/auth';
 import {
-  updateUserHeartbeat,
-  getUserOnlineStatus,
-  getMultipleUsersStatus,
+  updateUserHeartbeatService,
+  getUserOnlineStatusService,
+  getMultipleUsersStatusService,
   getFriendsStatusService,
 } from './service';
 
@@ -19,7 +19,7 @@ export async function updateHeartbeat() {
       return { success: false, error: 'Unauthorized' };
     }
 
-    return await updateUserHeartbeat(session.user.id);
+    return await updateUserHeartbeatService(session.user.id);
   } catch (error) {
     console.error('Error in updateHeartbeat action:', error);
     return { success: false, error: 'Internal server error' };
@@ -36,7 +36,7 @@ export async function getMyOnlineStatus() {
       return { isOnline: false, lastSeenAt: null };
     }
 
-    return await getUserOnlineStatus(session.user.id);
+    return await getUserOnlineStatusService(session.user.id);
   } catch (error) {
     console.error('Error in getMyOnlineStatus action:', error);
     return { isOnline: false, lastSeenAt: null };
@@ -53,7 +53,7 @@ export async function getUsersStatus(userIds: string[]) {
       return [];
     }
 
-    return await getMultipleUsersStatus(userIds);
+    return await getMultipleUsersStatusService(userIds);
   } catch (error) {
     console.error('Error in getUsersStatus action:', error);
     return [];

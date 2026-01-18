@@ -44,7 +44,7 @@ export async function updateUserLocationService(
  * Get nearby online users
  * Combines location data with online status
  */
-export async function getNearbyOnlineUsers(
+export async function getNearbyOnlineUsersService(
   userId: string,
   latitude: number,
   longitude: number,

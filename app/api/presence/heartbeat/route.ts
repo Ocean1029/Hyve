@@ -1,7 +1,7 @@
 // app/api/presence/heartbeat/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { updateUserHeartbeat } from '@/modules/presence/service';
+import { updateUserHeartbeatService } from '@/modules/presence/service';
 
 /**
  * POST /api/presence/heartbeat
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await updateUserHeartbeat(session.user.id);
+    const result = await updateUserHeartbeatService(session.user.id);
     
     if (result.success) {
       return NextResponse.json({ success: true });

@@ -36,7 +36,7 @@ export interface PeakHappinessMemory {
  * Get weekly happy index data for the last 7 days
  * Groups memories by day and calculates average happyIndex for each day
  */
-export const getWeeklyHappyIndexData = async (
+export const getWeeklyHappyIndexDataService = async (
   userId: string
 ): Promise<WeeklyHappyIndexDataPoint[]> => {
   const endDate = new Date();
@@ -104,7 +104,7 @@ export const getWeeklyHappyIndexData = async (
  * Get peak happiness memories (memories with highest happyIndex)
  * Returns top memories with full relations including focusSession, friends, and photos
  */
-export const getPeakHappinessMemories = async (
+export const getPeakHappinessMemoriesService = async (
   userId: string,
   limit: number = 5
 ): Promise<PeakHappinessMemory[]> => {

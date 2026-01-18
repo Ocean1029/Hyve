@@ -2,8 +2,8 @@ import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import HappyIndexClient from './HappyIndexClient';
 import {
-  getWeeklyHappyIndexData,
-  getPeakHappinessMemories,
+  getWeeklyHappyIndexDataService,
+  getPeakHappinessMemoriesService,
 } from '@/modules/memories/service';
 
 export default async function HappyIndexPage() {
@@ -15,8 +15,8 @@ export default async function HappyIndexPage() {
 
   const userId = session.user.id;
   const [weeklyData, peakMemories] = await Promise.all([
-    getWeeklyHappyIndexData(userId),
-    getPeakHappinessMemories(userId, 5),
+    getWeeklyHappyIndexDataService(userId),
+    getPeakHappinessMemoriesService(userId, 5),
   ]);
 
   return (

@@ -3,7 +3,7 @@
 import { auth } from '@/auth';
 import {
   updateUserLocationService,
-  getNearbyOnlineUsers,
+  getNearbyOnlineUsersService,
 } from './service';
 
 /**
@@ -44,7 +44,7 @@ export async function findNearbyOnlineUsers(
       return { success: false, error: 'Unauthorized', users: [] };
     }
 
-    return await getNearbyOnlineUsers(
+    return await getNearbyOnlineUsersService(
       session.user.id,
       latitude,
       longitude,

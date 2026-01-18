@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import prisma from '@/lib/prisma';
 import { auth } from '@/auth';
-import { getSpringBloomData, SpringBloomEntry } from './service';
+import { getSpringBloomDataService, SpringBloomEntry } from './service';
 
 export async function addFriendFromUser(userId: string) {
   try {
@@ -258,7 +258,7 @@ export async function getSpringBloomDataAction(): Promise<{ success: boolean; da
     console.log('Spring Bloom: Loading data for user', sourceUserId);
 
     // Get Spring Bloom data
-    const data = await getSpringBloomData(sourceUserId);
+    const data = await getSpringBloomDataService(sourceUserId);
     console.log('Spring Bloom: Data loaded successfully', data.length, 'friends');
 
     return { success: true, data };
