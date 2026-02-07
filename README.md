@@ -6,6 +6,29 @@ A frictionless social focus application designed for students to connect, focus 
 
 Hyve is a real-time social focus platform that combines productivity tracking with social connection. The application encourages users to maintain focus by tracking phone usage, while simultaneously building connections with friends through shared focus sessions, AI-powered conversations, and collaborative experiences.
 
+This repository is a **monorepo** containing both the web application (Next.js) and mobile application (React Native/Expo), with shared code packages for maximum code reuse and maintainability.
+
+## Project Structure
+
+This is a monorepo managed with npm workspaces:
+
+```
+hyve/
+├── apps/
+│   ├── web/              # Next.js web application
+│   │   └── README.md      # Web app setup and usage guide
+│   └── mobile/           # Expo React Native iOS app
+│       └── README.md      # Mobile app setup and usage guide
+├── packages/
+│   ├── types/            # Shared TypeScript type definitions
+│   ├── utils/            # Shared utility functions
+│   ├── shared/           # Shared business logic, services, API client
+│   ├── hooks/            # Shared React hooks
+│   └── ui/               # Shared UI components (React Native primitives)
+├── package.json          # Root workspace configuration
+└── README.md             # This file
+```
+
 ## Key Features
 
 ### Core Functionality
@@ -31,9 +54,10 @@ Hyve is a real-time social focus platform that combines productivity tracking wi
 
 ### Frontend
 
-- **Framework**: Next.js 15 with App Router
+- **Web Framework**: Next.js 15 with App Router
+- **Mobile Framework**: React Native with Expo
 - **Language**: TypeScript
-- **Styling**: Tailwind CSS
+- **Styling**: Tailwind CSS (Web), React Native StyleSheet (Mobile)
 - **UI Components**: Custom React components with Lucide React icons
 - **Charts**: Recharts for data visualization
 - **State Management**: React hooks and context API
@@ -49,20 +73,21 @@ Hyve is a real-time social focus platform that combines productivity tracking wi
 ### AI & Services
 
 - **AI Integration**: Google Gemini 2.5 Flash for chat and ice breaker generation
-- **Image Processing**: Next.js Image optimization
-- **Deployment**: Vercel-ready configuration
+- **Image Processing**: Next.js Image optimization, Cloudinary
+- **Deployment**: Vercel-ready configuration (Web), Expo EAS Build (Mobile)
 
 ## Prerequisites
 
 Before you begin, ensure you have the following installed:
 
 - **Node.js** 18.0 or higher
-- **npm** or **yarn** package manager
+- **npm** 9.0 or higher
 - **PostgreSQL** 15 or higher (or use Docker Compose)
+- **Xcode** (for iOS development, macOS only)
 - **Google Gemini API Key** ([Get one here](https://ai.google.dev/))
 - **Cloudinary Account** ([Sign up here](https://cloudinary.com/)) for image uploads
 
-## Installation
+## Quick Start
 
 ### 1. Clone the Repository
 
@@ -73,13 +98,15 @@ cd hyve
 
 ### 2. Install Dependencies
 
+Install dependencies for all workspaces (web, mobile, and shared packages):
+
 ```bash
 npm install
 ```
 
 ### 3. Set Up Environment Variables
 
-Create a `.env` file in the root directory with the following variables:
+Create a `.env` file in `apps/web/` directory with the following variables:
 
 ```bash
 # Database
@@ -90,8 +117,8 @@ AUTH_SECRET="your-auth-secret-here" # Generate with: openssl rand -base64 32
 AUTH_URL="http://localhost:3000"
 
 # Google OAuth (for authentication)
-GOOGLE_CLIENT_ID="your-google-client-id"
-GOOGLE_CLIENT_SECRET="your-google-client-secret"
+AUTH_GOOGLE_ID="your-google-client-id"
+AUTH_GOOGLE_SECRET="your-google-client-secret"
 
 # AI Integration
 GEMINI_API_KEY="your-gemini-api-key"
@@ -104,6 +131,12 @@ CLOUDINARY_API_SECRET="your-cloudinary-api-secret"
 # NextAuth
 NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="your-nextauth-secret-here" # Generate with: openssl rand -base64 32
+```
+
+For mobile app, create `apps/mobile/.env` or configure in `app.json`:
+
+```bash
+EXPO_PUBLIC_API_URL="http://localhost:3000"
 ```
 
 ### 4. Set Up Database
@@ -128,7 +161,7 @@ This will start a PostgreSQL container with the following configuration:
 CREATE DATABASE hyve_db;
 ```
 
-2. Update the `DATABASE_URL` in your `.env.local` file to match your local PostgreSQL configuration.
+2. Update the `DATABASE_URL` in your `apps/web/.env` file to match your local PostgreSQL configuration.
 
 ### 5. Run Database Migrations
 
@@ -136,7 +169,13 @@ CREATE DATABASE hyve_db;
 npm run db:migrate
 ```
 
-### 6. Seed the Database (Optional)
+### 6. Generate Prisma Client
+
+```bash
+npm run db:generate
+```
+
+### 7. Seed the Database (Optional)
 
 Populate the database with sample data:
 
@@ -144,200 +183,101 @@ Populate the database with sample data:
 npm run db:seed
 ```
 
-### 7. Generate Prisma Client
+## Development
+
+### Start Web Application
 
 ```bash
-npm run db:generate
+npm run dev:web
+# or
+npm run dev --workspace=apps/web
 ```
 
-### 8. Start the Development Server
+The web app will be available at [http://localhost:3000](http://localhost:3000).
+
+See [apps/web/README.md](apps/web/README.md) for detailed web app documentation.
+
+### Start Mobile Application
 
 ```bash
-npm run dev
+npm run dev:mobile
+# or
+npm run dev --workspace=apps/mobile
 ```
 
-The application will be available at [http://localhost:3000](http://localhost:3000).
+Then press `i` to open iOS Simulator (requires Xcode on macOS).
 
-## Project Structure
-
-```
-hyve/
-├── app/                          # Next.js App Router directory
-│   ├── api/                      # API routes
-│   │   ├── auth/
-│   │   │   └── [...nextauth]/   # NextAuth authentication routes
-│   │   ├── generate-chat-response/  # AI chat response generation
-│   │   ├── generate-icebreaker/     # AI ice breaker generation
-│   │   └── presence/                # Real-time presence API
-│   │       ├── heartbeat/           # User heartbeat tracking
-│   │       ├── status/              # User status retrieval
-│   │       └── stream/               # SSE presence stream
-│   ├── login/                      # Login page
-│   ├── messages/                   # Messages pages
-│   │   └── [personid]/              # Individual chat page
-│   ├── profile/                     # User profile page
-│   ├── search/                      # Friend search page
-│   ├── settings/                    # Settings page
-│   ├── globals.css                  # Global styles
-│   ├── layout.tsx                   # Root layout
-│   └── page.tsx                     # Home page
-├── components/                      # React components
-│   ├── BottomNav.tsx                # Bottom navigation bar
-│   ├── ChatInterface.tsx            # Chat interface component
-│   ├── ChatInterfaceClient.tsx      # Client-side chat wrapper
-│   ├── Dashboard.tsx                # Dashboard component
-│   ├── DashboardClient.tsx          # Client-side dashboard wrapper
-│   ├── FocusMode.tsx                # Focus mode overlay
-│   ├── Found.tsx                    # Friend found component
-│   ├── FriendProfile.tsx            # Friend profile view
-│   ├── HappyIndex.tsx                # Happiness tracking
-│   ├── Hyve.tsx                      # Animated hyve component
-│   ├── Messages.tsx                  # Messages list
-│   ├── MessagesClient.tsx            # Client-side messages wrapper
-│   ├── MyProfile.tsx                 # User profile
-│   ├── PostMemory.tsx                # Memory posting
-│   ├── PresenceProvider.tsx         # Presence context provider
-│   ├── ProfileClient.tsx             # Client-side profile wrapper
-│   ├── Radar.tsx                     # Friend discovery animation
-│   ├── SearchClient.tsx              # Client-side search wrapper
-│   ├── Searching.tsx                 # Search state component
-│   ├── SessionSummary.tsx            # Session summary
-│   ├── Settings.tsx                  # Settings component
-│   ├── SettingsClient.tsx            # Client-side settings wrapper
-│   ├── SpringRecap.tsx                # Seasonal recap
-│   ├── TodayDetails.tsx              # Daily summary
-│   └── UserProfile.tsx               # User profile view
-├── hooks/                           # Custom React hooks
-│   ├── usePresence.ts                # Presence tracking hook
-│   └── useSwipeNavigation.ts        # Swipe navigation hook
-├── lib/                              # Shared libraries
-│   ├── prisma.ts                     # Prisma client instance
-│   ├── services/
-│   │   └── geminiService.ts          # Gemini AI service
-│   └── types.ts                      # TypeScript type definitions
-├── modules/                          # Feature modules
-│   ├── friends/                      # Friend management
-│   │   ├── actions.ts                # Server actions
-│   │   ├── repository.ts             # Data access layer
-│   │   └── service.ts                # Business logic
-│   ├── interactions/                 # User interactions
-│   ├── messages/                     # Messaging system
-│   ├── posts/                        # Post management
-│   ├── presence/                      # Presence tracking
-│   ├── search/                       # Search functionality
-│   ├── sessions/                     # Focus sessions
-│   └── users/                        # User management
-├── prisma/                           # Prisma configuration
-│   ├── migrations/                   # Database migrations
-│   ├── schema.prisma                 # Database schema
-│   └── seed.ts                       # Database seed script
-├── auth.ts                           # NextAuth configuration
-├── middleware.ts                     # Next.js middleware
-├── next.config.js                    # Next.js configuration
-├── tailwind.config.js                # Tailwind CSS configuration
-├── tsconfig.json                     # TypeScript configuration
-└── package.json                      # Project dependencies
-```
+See [apps/mobile/README.md](apps/mobile/README.md) for detailed mobile app documentation.
 
 ## Available Scripts
 
-### Development
+### Root Level Scripts
 
-- `npm run dev` - Start the development server with hot reload
-- `npm run build` - Build the application for production
-- `npm start` - Start the production server
-- `npm run lint` - Run ESLint to check code quality
-
-### Database
-
-- `npm run db:generate` - Generate Prisma Client from schema
+- `npm run dev` - Start web development server
+- `npm run dev:web` - Start web development server
+- `npm run dev:mobile` - Start mobile development server
+- `npm run build:web` - Build web application for production
+- `npm run build:mobile` - Build mobile application
+- `npm run lint` - Run ESLint on web app
+- `npm run db:generate` - Generate Prisma Client
 - `npm run db:migrate` - Run database migrations
-- `npm run db:seed` - Seed the database with sample data
+- `npm run db:seed` - Seed the database
+- `npm run db:reset` - Reset the database
 
-## API Routes
+## Code Sharing Strategy
 
-### Authentication
+This monorepo uses shared packages to maximize code reuse:
 
-- `POST /api/auth/[...nextauth]` - NextAuth.js authentication endpoints
+- **@hyve/types**: Shared TypeScript type definitions used across web and mobile
+- **@hyve/utils**: Shared utility functions (distance calculations, time formatting, etc.)
+- **@hyve/shared**: Shared business logic including API client, services, and modules
+- **@hyve/hooks**: Shared React hooks that work in both web and mobile environments
+- **@hyve/ui**: Shared UI components using React Native primitives (works in web via react-native-web)
 
-### AI Integration
+### Important Notes
 
-- `POST /api/generate-chat-response` - Generate AI chat responses using Gemini
-- `POST /api/generate-icebreaker` - Generate conversation starters
+1. **Server Actions**: Next.js server actions cannot be used in React Native. All data operations must go through API routes.
 
-### Presence
+2. **Prisma Client**: Prisma Client cannot run in React Native. All database operations must be done through API routes from the web app.
 
-- `POST /api/presence/heartbeat` - Update user heartbeat and last seen timestamp
-- `GET /api/presence/status` - Get friends' online status
-- `GET /api/presence/stream` - Server-Sent Events stream for real-time presence updates
+3. **API Client**: The `@hyve/shared` package includes an API client that automatically handles differences between web (relative URLs) and mobile (absolute URLs).
 
-### Image Upload
+## Project Structure Details
 
-- `POST /api/upload` - Upload image files to Cloudinary (requires authentication, accepts multipart/form-data with 'file' field)
+### Apps
 
-## Database Schema
+- **apps/web**: Next.js web application with server-side rendering, API routes, and server actions
+- **apps/mobile**: Expo React Native application for iOS (and future Android support)
 
-The application uses PostgreSQL with Prisma ORM. Key models include:
+### Packages
 
-- **User**: User accounts with authentication and profile information
-- **Friend**: Friend relationships between users
-- **FocusSession**: Focus session tracking and analytics
-- **Post**: User-generated content and memories
-- **Message**: Chat messages between users
-- **Interaction**: User interaction history
-- **Heartbeat**: Real-time presence tracking data
-- **Account/Session**: NextAuth authentication models
-
-## Development Guidelines
-
-### Code Style
-
-- Use TypeScript for all new files
-- Follow the existing component structure (separate client/server components)
-- Use Tailwind CSS for styling
-- Implement proper error handling and loading states
-
-### Adding New Features
-
-1. Create feature module in `modules/` directory
-2. Implement repository layer for data access
-3. Add service layer for business logic
-4. Create server actions for Next.js integration
-5. Build React components in `components/` directory
-6. Add API routes if needed in `app/api/`
-
-### Database Changes
-
-1. Update `prisma/schema.prisma`
-2. Create migration: `npm run db:migrate`
-3. Generate Prisma Client: `npm run db:generate`
+- **packages/types**: Pure TypeScript type definitions, no dependencies
+- **packages/utils**: Pure utility functions, no React or platform dependencies
+- **packages/shared**: Business logic, API client, and services (some server-side code for web only)
+- **packages/hooks**: React hooks with platform-specific adaptations where needed
+- **packages/ui**: React Native primitive components that work in both web and mobile
 
 ## Deployment
 
-### Vercel Deployment
+### Web Application
 
-The application is configured for easy deployment on Vercel:
+Deploy the web app to Vercel or your preferred platform:
 
 1. Push your code to a Git repository
-2. Import the project in Vercel
+2. Import the project in Vercel (point to `apps/web` directory)
 3. Configure environment variables in Vercel dashboard
 4. Deploy
 
-### Environment Variables for Production
+### Mobile Application
 
-Ensure all environment variables from `.env.local` are configured in your deployment platform:
+Use Expo EAS Build to create iOS builds:
 
-- `DATABASE_URL` - Production database connection string
-- `AUTH_SECRET` - Authentication secret
-- `AUTH_URL` - Production application URL
-- `GOOGLE_CLIENT_ID` - Google OAuth client ID
-- `GOOGLE_CLIENT_SECRET` - Google OAuth client secret
-- `GEMINI_API_KEY` - Gemini API key
-- `CLOUDINARY_CLOUD_NAME` - Cloudinary cloud name
-- `CLOUDINARY_API_KEY` - Cloudinary API key
-- `CLOUDINARY_API_SECRET` - Cloudinary API secret
-- `NEXTAUTH_URL` - Production URL
-- `NEXTAUTH_SECRET` - NextAuth secret
+```bash
+cd apps/mobile
+eas build --platform ios
+```
+
+For App Store submission, you'll need an Apple Developer account ($99/year).
 
 ## Contributing
 
@@ -359,4 +299,4 @@ For issues, questions, or contributions, please open an issue on the repository.
 
 ---
 
-Built with ❤️ using Next.js, TypeScript, and modern web technologies.
+Built with ❤️ using Next.js, React Native, TypeScript, and modern web technologies.

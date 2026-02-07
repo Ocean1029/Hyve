@@ -1,0 +1,46 @@
+{
+  "name": "@hyve/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:generate": "prisma generate",
+    "db:seed": "prisma db seed",
+    "db:migrate": "prisma migrate dev",
+    "db:reset": "prisma migrate reset"
+  },
+  "dependencies": {
+    "@auth/prisma-adapter": "^2.7.4",
+    "@google/genai": "^1.30.0",
+    "@hyve/types": "*",
+    "@hyve/ui": "*",
+    "@hyve/utils": "*",
+    "@prisma/client": "^6.0.0",
+    "cloudinary": "^2.8.0",
+    "lucide-react": "^0.555.0",
+    "next": "^16.1.6",
+    "next-auth": "^5.0.0-beta.30",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "recharts": "^3.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "autoprefixer": "^10.4.0",
+    "eslint": "^9.39.2",
+    "eslint-config-next": "^15.0.0",
+    "postcss": "^8.4.0",
+    "prisma": "^6.0.0",
+    "tailwindcss": "^3.4.0",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.8.2"
+  },
+  "prisma": {
+    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
+  }
+}
