@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, Send, Flame, MapPin, Clock } from 'lucide-react';
-import { Friend, ChatMessage } from '@hyve/types';
+import { Friend, ChatMessage, SendMessageSchema } from '@hyve/types';
 import { sendMessage, getConversation, getFriendFocusSessions } from '@/modules/messages/actions';
 
 interface ChatInterfaceProps {
@@ -12,6 +12,7 @@ interface ChatInterfaceProps {
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ friend, userId, onBack }) => {
   const [inputValue, setInputValue] = useState('');
   const [isLoadingMessages, setIsLoadingMessages] = useState(true);
+  const [messageError, setMessageError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load messages from database
@@ -171,9 +172,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ friend, userId, onBack })
   }, [messages]);
 
   const handleSend = async () => {
-    if (!inputValue.trim()) return;
+    setMessageError(null);
+    
+    // Validate message using Zod schema
+    const validation = SendMessageSchema.safeParse({ message: inputValue });
+    if (!validation.success) {
+      const errorMessage = validation.error.errors
+        .map((e) => e.message)
+        .join(', ');
+      setMessageError(errorMessage);
+      return;
+    }
 
-    const userText = inputValue;
+    const userText = validation.data.message;
     const tempId = Date.now().toString();
 
     // Optimistically add user message to UI
@@ -315,11 +326,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ friend, userId, onBack })
 
       {/* Input Area - Fixed at bottom */}
       <div className="flex-none p-4 bg-zinc-950 border-t border-zinc-900 safe-area-bottom z-50">
+        {messageError && (
+          <div className="mb-2 p-2 bg-rose-500/20 border border-rose-500/50 rounded-lg">
+            <p className="text-xs text-rose-400 font-medium">{messageError}</p>
+          </div>
+        )}
         <div className="flex items-center gap-3">
           <input
             type="text"
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            onChange={(e) => {
+              setInputValue(e.target.value);
+              setMessageError(null);
+            }}
             onKeyDown={handleKeyDown}
             placeholder={`Message ${friend.name}...`}
             className="flex-1 bg-zinc-900 text-white placeholder-zinc-500 text-sm px-5 py-3.5 rounded-full focus:outline-none focus:ring-1 focus:ring-zinc-700 transition-all border border-zinc-800"

@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { updatePauseStatusService } from '@/modules/sessions/service';
+import { PauseSessionRequestSchema } from '@hyve/types';
+import { validateRequest } from '@/lib/validation';
 
 /**
  * POST /api/sessions/[sessionId]/pause
@@ -23,8 +25,14 @@ export async function POST(
 
     const userId = session.user.id;
     const { sessionId } = await params;
-    const body = await request.json();
-    const { isPaused } = body;
+
+    // Validate request body
+    const validation = await validateRequest(request, PauseSessionRequestSchema);
+    if (!validation.success) {
+      return validation.response;
+    }
+
+    const { isPaused } = validation.data;
 
     const result = await updatePauseStatusService(sessionId, userId, isPaused);
 

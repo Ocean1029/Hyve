@@ -2,6 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { endFocusSessionService } from '@/modules/sessions/service';
+import { EndSessionRequestSchema } from '@hyve/types';
+import { validateRequest } from '@/lib/validation';
 
 /**
  * POST /api/sessions/[sessionId]/end
@@ -23,8 +25,14 @@ export async function POST(
 
     const userId = session.user.id;
     const { sessionId } = await params;
-    const body = await request.json();
-    const { endTime, minutes } = body;
+
+    // Validate request body
+    const validation = await validateRequest(request, EndSessionRequestSchema);
+    if (!validation.success) {
+      return validation.response;
+    }
+
+    const { endTime, minutes } = validation.data;
 
     const result = await endFocusSessionService(
       sessionId,

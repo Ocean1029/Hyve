@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
+import { GenerateChatResponseRequestSchema } from '@hyve/types';
+import { validateRequest } from '@/lib/validation';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function POST(request: NextRequest) {
   try {
-    const { friendName, friendBio, lastMessage } = await request.json();
+    // Validate request body
+    const validation = await validateRequest(request, GenerateChatResponseRequestSchema);
+    if (!validation.success) {
+      return validation.response;
+    }
+
+    const { friendName, friendBio, lastMessage } = validation.data;
 
     const bioDescription = friendBio && friendBio.trim() 
       ? `described as "${friendBio}"` 

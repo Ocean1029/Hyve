@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { X, Music, Image as ImageIcon, Plus, MapPin, ChevronRight, Star, Loader2, Calendar } from 'lucide-react';
-import { Friend } from '@hyve/types';
+import { Friend, MemoryFormSchema } from '@hyve/types';
 
 interface PostMemoryProps {
   durationSeconds: number;
@@ -403,12 +403,36 @@ const PostMemory: React.FC<PostMemoryProps> = ({
 
       {/* Footer CTA */}
       <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-zinc-950 via-zinc-950 to-transparent z-40">
+        {formError && (
+          <div className="mb-3 p-3 bg-rose-500/20 border border-rose-500/50 rounded-lg">
+            <p className="text-xs text-rose-400 font-medium">{formError}</p>
+          </div>
+        )}
         <button 
           onClick={() => {
-            if (!eventName.trim()) {
-              alert('Event Name is required');
+            setFormError(null);
+            // Validate form data using Zod schema
+            const formData = {
+              eventName,
+              caption: caption || undefined,
+              location: location || undefined,
+              category: selectedCategory as '📚 Study' | '🍔 Eat' | '🏋️ Gym' | '🚗 Drive' | '☕ Chill' | '🎮 Game' | '🎨 Create',
+              rating,
+              photos: photoUrls.length > 0 ? photoUrls : undefined,
+            };
+
+            const validation = MemoryFormSchema.safeParse(formData);
+            if (!validation.success) {
+              const errorMessage = validation.error.errors
+                .map((e) => {
+                  const path = e.path.length > 0 ? `${e.path.join('.')}: ` : '';
+                  return `${path}${e.message}`;
+                })
+                .join(', ');
+              setFormError(errorMessage);
               return;
             }
+
             onPost(photoUrls.length > 0 ? photoUrls : undefined, eventName, caption, location, selectedCategory, rating);
           }}
           disabled={isSaving || !eventName.trim()}

@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
+import { GenerateIcebreakerRequestSchema } from '@hyve/types';
+import { validateRequest } from '@/lib/validation';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function POST(request: NextRequest) {
   try {
-    const { context = "college students hanging out" } = await request.json();
+    // Validate request body
+    const validation = await validateRequest(request, GenerateIcebreakerRequestSchema);
+    if (!validation.success) {
+      return validation.response;
+    }
+
+    const { context } = validation.data;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',

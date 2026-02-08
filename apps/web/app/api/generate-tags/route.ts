@@ -1,14 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
+import { GenerateTagsRequestSchema } from '@hyve/types';
+import { validateRequest } from '@/lib/validation';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function POST(request: NextRequest) {
   try {
-    const { memoryContents } = await request.json();
+    // Validate request body
+    const validation = await validateRequest(request, GenerateTagsRequestSchema);
+    if (!validation.success) {
+      return validation.response;
+    }
+
+    const { memoryContents } = validation.data;
 
     // If no memory contents or empty array, return empty tags
-    if (!memoryContents || !Array.isArray(memoryContents) || memoryContents.length === 0) {
+    if (memoryContents.length === 0) {
       return NextResponse.json({ tags: [] });
     }
 

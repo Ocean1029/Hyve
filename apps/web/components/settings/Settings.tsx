@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Smartphone, Mail, Globe, Bell, Shield, LogOut, ChevronRight, User, Edit2, Check, X as XIcon, Lock, Unlock } from 'lucide-react';
 import { updateUserProfile, logout } from '@/modules/users/actions';
+import { UpdateNameSchema } from '@hyve/types';
 
 interface SettingsProps {
   user?: {
@@ -76,8 +77,19 @@ const Settings: React.FC<SettingsProps> = ({ user, onClose }) => {
     setNameError(null);
     setNameSuccess(false);
 
+    // Validate name using Zod schema
+    const validation = UpdateNameSchema.safeParse({ name: nameValue.trim() });
+    if (!validation.success) {
+      const errorMessage = validation.error.errors
+        .map((e) => e.message)
+        .join(', ');
+      setNameError(errorMessage);
+      setIsSavingName(false);
+      return;
+    }
+
     try {
-      const result = await updateUserProfile(user.id, { name: nameValue.trim() });
+      const result = await updateUserProfile(user.id, { name: validation.data.name });
       
       if (result.success) {
         setNameSuccess(true);
