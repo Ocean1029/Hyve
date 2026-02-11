@@ -1,5 +1,6 @@
 // modules/memories/service.ts
 import prisma from '@/lib/prisma';
+import { createMemory } from './repository';
 
 export interface WeeklyHappyIndexDataPoint {
   day: string;
@@ -176,4 +177,117 @@ export const getPeakHappinessMemoriesService = async (
     },
   }));
 };
+
+/**
+ * Create a memory (used by API)
+ */
+export async function createMemoryService(
+  focusSessionId: string,
+  userId: string,
+  type: string,
+  content?: string,
+  location?: string,
+  happyIndex?: number
+) {
+  const memory = await createMemory(
+    focusSessionId,
+    userId,
+    type,
+    content,
+    location,
+    happyIndex
+  );
+  return { success: true, memory };
+}
+
+/**
+ * Add a photo to a memory
+ */
+export async function addPhotoToMemoryService(memoryId: string, photoUrl: string) {
+  const photo = await prisma.photo.create({
+    data: { memoryId, photoUrl },
+  });
+  return { success: true, photo };
+}
+
+/**
+ * Create a memory with photos in a single transaction
+ */
+export async function createMemoryWithPhotoService(
+  userId: string,
+  focusSessionId: string,
+  photoUrl?: string | string[],
+  content?: string,
+  location?: string,
+  happyIndex?: number,
+  mood?: string
+) {
+  const photoUrls = photoUrl
+    ? Array.isArray(photoUrl) ? photoUrl : [photoUrl]
+    : [];
+  const result = await prisma.$transaction(async (tx: typeof prisma) => {
+    const memory = await tx.memory.create({
+      data: {
+        focusSessionId,
+        userId,
+        type: mood || '📚 Study',
+        content,
+        location,
+        happyIndex,
+        timestamp: new Date(),
+      },
+    });
+    const photos = [];
+    for (const url of photoUrls) {
+      if (url && String(url).trim() !== '') {
+        const photo = await tx.photo.create({
+          data: { memoryId: memory.id, photoUrl: String(url) },
+        });
+        photos.push(photo);
+      }
+    }
+    return { memory, photos };
+  });
+  return { success: true, memory: result.memory, photos: result.photos };
+}
+
+/**
+ * Update a memory with photos in a single transaction
+ */
+export async function updateMemoryWithPhotoService(
+  memoryId: string,
+  photoUrl?: string | string[],
+  content?: string,
+  location?: string,
+  happyIndex?: number,
+  mood?: string
+) {
+  const photoUrls = photoUrl
+    ? Array.isArray(photoUrl) ? photoUrl : [photoUrl]
+    : [];
+  const result = await prisma.$transaction(async (tx: typeof prisma) => {
+    const updateData: { content?: string; location?: string; happyIndex?: number; type?: string } = {
+      content,
+      location,
+      happyIndex,
+    };
+    if (mood) updateData.type = mood;
+    const memory = await tx.memory.update({
+      where: { id: memoryId },
+      data: updateData,
+    });
+    await tx.photo.deleteMany({ where: { memoryId } });
+    const photos = [];
+    for (const url of photoUrls) {
+      if (url && String(url).trim() !== '') {
+        const photo = await tx.photo.create({
+          data: { memoryId: memory.id, photoUrl: String(url) },
+        });
+        photos.push(photo);
+      }
+    }
+    return { memory, photos };
+  });
+  return { success: true, memory: result.memory, photos: result.photos };
+}
 

@@ -4,9 +4,39 @@ import { auth } from '@/auth';
 import { getSessionStreamDataService } from '@/modules/sessions/service';
 
 /**
- * GET /api/sessions/stream
- * Server-Sent Events stream for real-time focus session status updates
- * Sends updates when session pause status changes or session ends
+ * @swagger
+ * /api/sessions/stream:
+ *   get:
+ *     summary: Stream real-time focus session updates
+ *     description: "Server-Sent Events (SSE) stream that provides real-time focus session status updates. Sends initial active sessions status and then polls every 2 seconds for updates when session pause status changes or session ends. Note: This endpoint returns a text/event-stream response that may not be fully testable in Swagger UI."
+ *     tags:
+ *       - Sessions
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: SSE stream with session status updates
+ *         content:
+ *           text/event-stream:
+ *             schema:
+ *               type: string
+ *             example: |
+ *               data: {"type":"session_status","sessions":[{"id":"session-1","status":"active","isPaused":false,"users":[{"userId":"alex-chen","isPaused":false}]}]}
+ *               
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *               example: "Unauthorized"
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *               example: "Internal server error"
  */
 export async function GET(request: NextRequest) {
   try {

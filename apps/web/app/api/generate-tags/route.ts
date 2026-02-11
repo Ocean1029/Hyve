@@ -5,6 +5,51 @@ import { validateRequest } from '@/lib/validation';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
+/**
+ * @swagger
+ * /api/generate-tags:
+ *   post:
+ *     summary: Generate activity tags from memories
+ *     description: Analyze memory contents and generate 2-3 short activity tags (2-4 words each) that describe shared experiences using Google Gemini AI
+ *     tags:
+ *       - AI
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/GenerateTagsRequest'
+ *           example:
+ *             memoryContents:
+ *               - "Late night study session"
+ *               - "Coffee break"
+ *               - "Gym workout together"
+ *     responses:
+ *       200:
+ *         description: Successfully generated tags
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/GenerateTagsResponse'
+ *             example:
+ *               tags:
+ *                 - "Late Night Study"
+ *                 - "Coffee Runs"
+ *       400:
+ *         description: Invalid request body
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error or AI service error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/GenerateTagsResponse'
+ *             example:
+ *               tags: []
+ */
 export async function POST(request: NextRequest) {
   try {
     // Validate request body

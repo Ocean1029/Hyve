@@ -6,9 +6,90 @@ import { PauseSessionRequestSchema } from '@hyve/types';
 import { validateRequest } from '@/lib/validation';
 
 /**
- * POST /api/sessions/[sessionId]/pause
- * Update user's pause status in a focus session
- * When any user picks up their phone (isPaused = true), all participants' sessions are paused
+ * @swagger
+ * /api/sessions/{sessionId}/pause:
+ *   post:
+ *     summary: Pause or resume a focus session
+ *     description: Update user's pause status in a focus session. When any user picks up their phone (isPaused = true), all participants' sessions are paused.
+ *     tags:
+ *       - Sessions
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: sessionId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "session-1"
+ *         description: Focus session ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/PauseSessionRequest'
+ *           example:
+ *             isPaused: true
+ *     responses:
+ *       200:
+ *         description: Pause status updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 sessionId:
+ *                   type: string
+ *                   example: "session-1"
+ *                 isPaused:
+ *                   type: boolean
+ *                   example: true
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       userId:
+ *                         type: string
+ *                         example: "alex-chen"
+ *                       isPaused:
+ *                         type: boolean
+ *                         example: true
+ *       400:
+ *         description: Invalid request body
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Session not found or user not a participant
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "Session not found"
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 export async function POST(
   request: NextRequest,

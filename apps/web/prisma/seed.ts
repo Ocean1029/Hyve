@@ -39,38 +39,28 @@ async function main() {
     date.setDate(date.getDate() - dayOffset);
     date.setHours(14, 0, 0, 0); // Set to 2 PM
     
-    // Check if session for this date and user already exists
-    // Since FocusSession no longer has userId, we need to check via FocusSessionUser
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Use fixed session IDs: session-1, session-2, etc.
+    const sessionId = `session-${i + 1}`;
     
-    const existingSessionUser = await prisma.focusSessionUser.findFirst({
-      where: {
-        userId: alex.id,
-        focusSession: {
-        startTime: {
-            gte: startOfDay,
-            lt: endOfDay,
-          },
-        },
-      },
+    // Check if session with this ID already exists
+    const existingSession = await prisma.focusSession.findUnique({
+      where: { id: sessionId },
       include: {
-        focusSession: true,
+        users: true,
       },
     });
 
-    if (!existingSessionUser) {
+    if (!existingSession) {
       const session = await prisma.focusSession.create({
         data: {
+          id: sessionId,
           minutes: chartData[i],
           startTime: date,
           endTime: new Date(date.getTime() + chartData[i] * 60 * 1000),
           status: 'completed',
           users: {
             create: {
-          userId: alex.id,
+              userId: alex.id,
             },
           },
         },
@@ -78,7 +68,7 @@ async function main() {
       createdSessions.push(session);
       createdSessionsCount++;
     } else {
-      createdSessions.push(existingSessionUser.focusSession);
+      createdSessions.push(existingSession);
     }
   }
   console.log(`Created ${createdSessionsCount} new focus sessions (${7 - createdSessionsCount} already existed)`);
@@ -87,6 +77,7 @@ async function main() {
   // First, create User records for each friend
   const friendsData = [
     {
+      id: 'kai-user',
       name: 'Kai',
       email: 'kai@example.com',
       image: 'https://picsum.photos/100/100?random=1',
@@ -98,6 +89,7 @@ async function main() {
       ],
     },
     {
+      id: 'sarah-user',
       name: 'Sarah',
       email: 'sarah@example.com',
       image: 'https://picsum.photos/100/100?random=2',
@@ -108,6 +100,7 @@ async function main() {
       ],
     },
     {
+      id: 'leo-user',
       name: 'Leo',
       email: 'leo@example.com',
       image: 'https://picsum.photos/100/100?random=3',
@@ -119,19 +112,36 @@ async function main() {
 
   let createdFriendsCount = 0;
   for (const f of friendsData) {
-    // Create or get User for this friend
-    const friendUser = await prisma.user.upsert({
+    // Create or get User for this friend with fixed ID
+    // First, check if user exists by email (in case it was created with a different ID)
+    const existingByEmail = await prisma.user.findUnique({
       where: { email: f.email },
+    });
+
+    // If user exists with different ID, we need to delete it first to recreate with fixed ID
+    if (existingByEmail && existingByEmail.id !== f.id) {
+      // Delete the existing user (cascade will handle related records)
+      await prisma.user.delete({
+        where: { id: existingByEmail.id },
+      });
+    }
+
+    // Now upsert with fixed ID
+    const friendUser = await prisma.user.upsert({
+      where: { id: f.id },
       update: {
         // Update if user exists but fields are missing
         name: f.name,
+        email: f.email,
         image: f.image,
+        userId: f.id, // Ensure userId matches id
       },
       create: {
+        id: f.id,
         name: f.name,
         email: f.email,
         image: f.image,
-        userId: '', // Temporary value, will be set to id by Prisma extension in lib/prisma.ts
+        userId: f.id, // Set to id, will be handled by Prisma extension in lib/prisma.ts
       },
     });
 
@@ -165,10 +175,15 @@ async function main() {
       
       if (!focusSession) {
         // Create a new focus session if none exists
+        // Use a fixed ID based on friend and interaction index
         const sessionDate = new Date();
         sessionDate.setDate(sessionDate.getDate() - 1); // Yesterday
-        focusSession = await prisma.focusSession.create({
-          data: {
+        const sharedSessionId = `session-shared-${friendUser.id}-${createdFriendsCount}`;
+        focusSession = await prisma.focusSession.upsert({
+          where: { id: sharedSessionId },
+          update: {},
+          create: {
+            id: sharedSessionId,
             minutes: 30, // Default duration
             startTime: sessionDate,
             endTime: new Date(sessionDate.getTime() + 30 * 60 * 1000),
@@ -176,13 +191,40 @@ async function main() {
           },
         });
         
-        // Add users to the session
-        await prisma.focusSessionUser.createMany({
-          data: [
-            { focusSessionId: focusSession.id, userId: alex.id },
-            { focusSessionId: focusSession.id, userId: friend.userId },
-          ],
+        // Add users to the session if not already added
+        const existingUser1 = await prisma.focusSessionUser.findUnique({
+          where: {
+            focusSessionId_userId: {
+              focusSessionId: focusSession.id,
+              userId: alex.id,
+            },
+          },
         });
+        if (!existingUser1) {
+          await prisma.focusSessionUser.create({
+            data: {
+              focusSessionId: focusSession.id,
+              userId: alex.id,
+            },
+          });
+        }
+        
+        const existingUser2 = await prisma.focusSessionUser.findUnique({
+          where: {
+            focusSessionId_userId: {
+              focusSessionId: focusSession.id,
+              userId: friend.userId,
+            },
+          },
+        });
+        if (!existingUser2) {
+          await prisma.focusSessionUser.create({
+            data: {
+              focusSessionId: focusSession.id,
+              userId: friend.userId,
+            },
+          });
+        }
         
         createdSessions.push(focusSession);
       }

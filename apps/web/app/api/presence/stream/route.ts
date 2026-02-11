@@ -4,8 +4,39 @@ import { auth } from '@/auth';
 import { getFriendsStatusService } from '@/modules/presence/service';
 
 /**
- * GET /api/presence/stream
- * Server-Sent Events stream for real-time presence updates
+ * @swagger
+ * /api/presence/stream:
+ *   get:
+ *     summary: Stream real-time presence updates
+ *     description: "Server-Sent Events (SSE) stream that provides real-time presence updates for friends. Sends initial status and then polls every 10 seconds for updates. Note: This endpoint returns a text/event-stream response that may not be fully testable in Swagger UI."
+ *     tags:
+ *       - Presence
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: SSE stream with presence updates
+ *         content:
+ *           text/event-stream:
+ *             schema:
+ *               type: string
+ *             example: |
+ *               data: {"type":"status","statuses":[{"userId":"kai-user","isOnline":true,"lastSeenAt":"2024-01-15T14:30:00Z"}]}
+ *               
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *               example: "Unauthorized"
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *               example: "Internal server error"
  */
 export async function GET(request: NextRequest) {
   try {

@@ -1,7 +1,65 @@
 // modules/friends/service.ts
+import prisma from '@/lib/prisma';
 import { getFriendsWithDetails, getFriendsWithLastMessage, getFriendById, getFriendsForSpringBloom, getUserFriendCount } from './repository';
 import { Friend } from '@hyve/types';
 import { GoogleGenAI } from '@google/genai';
+
+/**
+ * Create a friend relationship (sourceUserId adds userId as friend)
+ */
+export async function createFriendService(sourceUserId: string, userId: string) {
+  if (sourceUserId === userId) {
+    return { success: false, error: 'Cannot add yourself as a friend' };
+  }
+  const targetUser = await prisma.user.findUnique({ where: { id: userId } });
+  if (!targetUser) {
+    return { success: false, error: 'User not found' };
+  }
+  const existingFriend = await prisma.friend.findUnique({
+    where: {
+      userId_sourceUserId: { userId, sourceUserId },
+    },
+  });
+  if (existingFriend) {
+    return { success: false, error: 'Friend already exists', alreadyExists: true };
+  }
+  try {
+    const friend = await prisma.$transaction(async (tx: typeof prisma) => {
+      const existing = await tx.friend.findUnique({
+        where: { userId_sourceUserId: { userId, sourceUserId } },
+      });
+      if (existing) throw new Error('Friend relationship already exists');
+      return await tx.friend.create({
+        data: { userId, sourceUserId },
+        include: { user: true },
+      });
+    });
+    return { success: true, friend };
+  } catch (error: any) {
+    if (error.code === 'P2002' || error.message?.includes('already exists')) {
+      return { success: false, error: 'Friend already exists', alreadyExists: true };
+    }
+    return { success: false, error: error.message || 'Failed to create friend' };
+  }
+}
+
+/**
+ * Delete a friend relationship. Verifies the friend record belongs to current user (sourceUserId).
+ */
+export async function deleteFriendService(friendId: string, sourceUserId: string) {
+  const friend = await prisma.friend.findUnique({ where: { id: friendId } });
+  if (!friend) {
+    return { success: false, error: 'Friend not found' };
+  }
+  if (friend.sourceUserId !== sourceUserId) {
+    return { success: false, error: 'Forbidden' };
+  }
+  await prisma.interaction.deleteMany({ where: { friendId } });
+  await prisma.post.deleteMany({ where: { friendId } });
+  await prisma.focusSession.deleteMany({ where: { friendId } });
+  await prisma.friend.delete({ where: { id: friendId } });
+  return { success: true };
+}
 
 /**
  * Generate tags from memory contents using Gemini API

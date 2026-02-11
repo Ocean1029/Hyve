@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { testLoginAsAlex } from './test-login';
 
 export default function TestLoginButton() {
   const [isLoading, setIsLoading] = useState(false);
@@ -9,12 +8,15 @@ export default function TestLoginButton() {
   const handleTestLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
-    
+
     setIsLoading(true);
     try {
-      const result = await testLoginAsAlex();
+      const res = await fetch('/api/auth/test-login', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const result = await res.json();
       if (result.success) {
-        // Force a hard refresh to ensure session is recognized
         window.location.href = '/';
       } else {
         alert(result.error || 'Failed to login');

@@ -403,14 +403,14 @@ const PostMemory: React.FC<PostMemoryProps> = ({
 
       {/* Footer CTA */}
       <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-zinc-950 via-zinc-950 to-transparent z-40">
-        {formError && (
+        {uploadError && (
           <div className="mb-3 p-3 bg-rose-500/20 border border-rose-500/50 rounded-lg">
-            <p className="text-xs text-rose-400 font-medium">{formError}</p>
+            <p className="text-xs text-rose-400 font-medium">{uploadError}</p>
           </div>
         )}
         <button 
           onClick={() => {
-            setFormError(null);
+            setUploadError('');
             // Validate form data using Zod schema
             const formData = {
               eventName,
@@ -429,7 +429,7 @@ const PostMemory: React.FC<PostMemoryProps> = ({
                   return `${path}${e.message}`;
                 })
                 .join(', ');
-              setFormError(errorMessage);
+              setUploadError(errorMessage);
               return;
             }
 

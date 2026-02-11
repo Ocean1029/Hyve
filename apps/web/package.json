@@ -19,6 +19,7 @@
     "@hyve/ui": "*",
     "@hyve/utils": "*",
     "zod": "^3.23.8",
+    "zod-to-json-schema": "^3.25.0",
     "@prisma/client": "^6.0.0",
     "cloudinary": "^2.8.0",
     "lucide-react": "^0.555.0",
@@ -26,7 +27,9 @@
     "next-auth": "^5.0.0-beta.30",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "recharts": "^3.5.1"
+    "recharts": "^3.5.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-dist": "^5.17.14"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

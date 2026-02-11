@@ -23,8 +23,62 @@ const ALLOWED_MIME_TYPES = [
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
 
 /**
- * POST /api/upload
- * Upload an image file to Cloudinary
+ * @swagger
+ * /api/upload:
+ *   post:
+ *     summary: Upload an image file
+ *     description: "Upload an image file to Cloudinary. Accepts multipart/form-data with a 'file' field. Maximum file size is 10MB. Allowed formats: JPEG, JPG, PNG, WebP, GIF."
+ *     tags:
+ *       - Upload
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: Image file to upload (max 10MB)
+ *     responses:
+ *       200:
+ *         description: File uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UploadResponse'
+ *             example:
+ *               success: true
+ *               url: "https://res.cloudinary.com/example/image/upload/v1234567890/memories/alex-chen/image.jpg"
+ *       400:
+ *         description: Bad request (no file, invalid file type, or file too large)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UploadResponse'
+ *             example:
+ *               success: false
+ *               error: "Invalid file type. Only images are allowed."
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error or Cloudinary service error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UploadResponse'
+ *             example:
+ *               success: false
+ *               error: "Failed to upload file"
  */
 export async function POST(request: NextRequest) {
   try {

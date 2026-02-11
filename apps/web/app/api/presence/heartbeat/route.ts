@@ -4,8 +4,54 @@ import { auth } from '@/auth';
 import { updateUserHeartbeatService } from '@/modules/presence/service';
 
 /**
- * POST /api/presence/heartbeat
- * Update current user's last seen timestamp
+ * @swagger
+ * /api/presence/heartbeat:
+ *   post:
+ *     summary: Update user heartbeat
+ *     description: Update the current authenticated user's last seen timestamp to indicate they are online
+ *     tags:
+ *       - Presence
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Heartbeat updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *             example:
+ *               success: true
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "Unauthorized"
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "Internal server error"
  */
 export async function POST(request: NextRequest) {
   try {
