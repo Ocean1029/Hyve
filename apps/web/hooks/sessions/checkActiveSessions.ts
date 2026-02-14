@@ -1,5 +1,4 @@
 import { AppState, FocusStatus, Friend } from '@hyve/types';
-import { getActiveFocusSessions } from '@/modules/sessions/actions';
 
 export interface CheckActiveSessionsParams {
   userId: string;
@@ -18,15 +17,36 @@ export interface CheckActiveSessionsParams {
   setSelectedFriend: (friend: Friend | null) => void;
   setAppState: (state: AppState) => void;
   setFocusStatus: (status: FocusStatus) => void;
+  setSessionEndTime: (time: Date | null) => void;
+  setSessionRecorded: (recorded: boolean) => void;
   setIsSessionPausedByOthers: (paused: boolean) => void;
 }
 
 /**
+ * Session format from GET /api/sessions/active (getSessionStreamDataService)
+ */
+interface ApiSession {
+  sessionId: string;
+  status: string;
+  isPaused?: boolean;
+  startTime: string;
+  endTime: string | null;
+  minutes: number;
+  users: Array<{
+    userId: string;
+    userName: string | null;
+    userImage: string | null;
+    isPaused: boolean;
+  }>;
+}
+
+/**
  * Check active focus sessions and update state accordingly
- * Handles three scenarios:
- * 1. Auto-enter Focus Mode when new session detected
- * 2. Sync existing session state
- * 3. Handle session end
+ * Handles four scenarios:
+ * 1. Auto-enter Focus Mode when new active session detected
+ * 2. Sync existing session state (pause status, elapsed time)
+ * 3. Handle session end by another user -> transition to SUMMARY
+ * 4. Empty sessions (ended > 1 min ago) -> return to DASHBOARD
  */
 export async function checkActiveSessions({
   userId,
@@ -45,81 +65,117 @@ export async function checkActiveSessions({
   setSelectedFriend,
   setAppState,
   setFocusStatus,
+  setSessionEndTime,
+  setSessionRecorded,
   setIsSessionPausedByOthers,
 }: CheckActiveSessionsParams): Promise<void> {
   try {
-    const result = await getActiveFocusSessions(userId);
-    if (result.success && result.sessions && result.sessions.length > 0) {
-      // User should only have one active session at a time
-      const activeSession = result.sessions[0];
-      
-      // Check if this is the same session we're tracking
-      const isSameSession = currentFocusSessionId === activeSession.id;
-      
-      // Only auto-enter Focus Mode if we're not already in FOCUS state
-      // and we don't have a manually started session (no sessionStartTime means no manual session)
-      // and user hasn't manually exited from a session
-      if (appState !== AppState.FOCUS && !sessionStartTime && !userManuallyExitedRef.current) {
-        // Calculate elapsed seconds from session start time
-        // Note: This is initial time, actual active time will be tracked by timer
+    const response = await fetch(
+      `/api/sessions/active?userId=${encodeURIComponent(userId)}`,
+      { credentials: 'include' }
+    );
+    const result = await response.json();
+
+    if (!result.success || !result.sessions) {
+      return;
+    }
+
+    const sessions: ApiSession[] = result.sessions;
+
+    // Find current session by sessionId (API returns sessionId, not id)
+    const currentSession = sessions.find(
+      (s) => s.sessionId === currentFocusSessionId
+    );
+
+    // Handle: session ended by another user -> transition to SUMMARY
+    if (
+      currentSession &&
+      currentSession.status !== 'active' &&
+      appState === AppState.FOCUS
+    ) {
+      const sessionMinutes = currentSession.minutes ?? 0;
+      const calculatedElapsedSeconds = sessionMinutes * 60;
+
+      const endTime = currentSession.endTime
+        ? new Date(currentSession.endTime)
+        : new Date();
+      setSessionEndTime(endTime);
+
+      if (sessionStartTime) {
+        if (calculatedElapsedSeconds > 0) {
+          setElapsedSeconds(calculatedElapsedSeconds);
+        }
+      } else if (currentSession.startTime) {
+        setSessionStartTime(new Date(currentSession.startTime));
+        if (calculatedElapsedSeconds > 0) {
+          setElapsedSeconds(calculatedElapsedSeconds);
+        }
+      }
+
+      setSessionRecorded(true);
+      setAppState(AppState.SUMMARY);
+      return;
+    }
+
+    // Find first active session for auto-enter
+    const activeSession = sessions.find((s) => s.status === 'active');
+
+    if (activeSession) {
+      const sessionId = activeSession.sessionId;
+      const isSameSession = currentFocusSessionId === sessionId;
+
+      // Auto-enter Focus Mode when new active session detected
+      if (
+        appState !== AppState.FOCUS &&
+        !sessionStartTime &&
+        !userManuallyExitedRef.current
+      ) {
         const sessionStart = new Date(activeSession.startTime);
         const now = new Date();
         const elapsedMs = now.getTime() - sessionStart.getTime();
         const elapsedSec = Math.floor(elapsedMs / 1000);
-        
-        // Set up the focus session state for auto-created session
-        setCurrentFocusSessionId(activeSession.id);
+
+        setCurrentFocusSessionId(sessionId);
         setSessionStartTime(sessionStart);
         setElapsedSeconds(Math.max(0, elapsedSec));
-        // Reset pause tracking when entering new session
         setTotalPausedSeconds(0);
         setPauseStartTime(null);
-        
-        // Find the friend from the session participants
-        const otherUsers = activeSession.users.filter((u: any) => u.user.id !== userId);
+
+        // Find friend from session participants (API format: users[].userId)
+        const otherUsers = activeSession.users.filter((u) => u.userId !== userId);
         if (otherUsers.length > 0) {
-          // Try to find the friend in the friends list
-          const friendUserId = otherUsers[0].user.id;
-          const friend = friends.find(f => f.userId === friendUserId);
+          const friendUserId = otherUsers[0].userId;
+          const friend = friends.find((f) => f.userId === friendUserId);
           if (friend) {
             setSelectedFriend(friend);
           }
         }
-        
-        // Enter Focus Mode
-        // Set initial focusStatus based on actual isFaceDown state
-        // If sensor is not ready or phone is face up, start as PAUSED
+
         setAppState(AppState.FOCUS);
-        // Default to PAUSED, let the useEffect handle the actual state based on isFaceDown
         setFocusStatus(FocusStatus.PAUSED);
       } else if (appState === AppState.FOCUS && isSameSession) {
-        // Check if any other user has paused the session
+        // Sync: check if any other user has paused
         const otherUserPaused = activeSession.users.some(
-          (u: any) => u.userId !== userId && u.isPaused
+          (u) => u.userId !== userId && u.isPaused
         );
-        
-        // Update isSessionPausedByOthers
         setIsSessionPausedByOthers(otherUserPaused);
-        
-        // Only update elapsed time if session is active (not paused)
-        // Calculate actual active time by subtracting paused time
+
+        // Update elapsed time when active (not paused)
         if (focusStatus === FocusStatus.ACTIVE) {
           const sessionStart = new Date(activeSession.startTime);
           const now = new Date();
           const totalElapsedMs = now.getTime() - sessionStart.getTime();
           const totalElapsedSec = Math.floor(totalElapsedMs / 1000);
-          // Subtract total paused time to get actual active time
-          const activeElapsedSec = Math.max(0, totalElapsedSec - totalPausedSeconds);
-          // Update elapsed time to sync with server only when active
+          const activeElapsedSec = Math.max(
+            0,
+            totalElapsedSec - totalPausedSeconds
+          );
           setElapsedSeconds(activeElapsedSec);
         }
-        // Don't update elapsed time when paused - timer is already stopped
       }
     } else {
-      // No active sessions - if we're in Focus Mode due to auto-created session, exit
-      // Check if we have a currentFocusSessionId (means it was auto-created)
+      // No active sessions - if we were in Focus Mode (auto-created), exit to DASHBOARD
       if (appState === AppState.FOCUS && currentFocusSessionId) {
-        // Session ended, go back to dashboard
         setAppState(AppState.DASHBOARD);
         setCurrentFocusSessionId(null);
         setElapsedSeconds(0);

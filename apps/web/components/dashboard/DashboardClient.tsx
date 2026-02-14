@@ -22,9 +22,7 @@ import { formatTime } from '@hyve/utils';
 import { useFocusPause } from '@/hooks/sessions/useFocusPause';
 import { useFocusStatus } from '@/hooks/sessions/useFocusStatus';
 import { useFocusSession } from '@/hooks/sessions/useFocusSession';
-import { useSessionPauseSync } from '@/hooks/sessions/useSessionPauseSync';
-import { useSessionStream } from '@/hooks/sessions/useSessionStream';
-import { useActiveSessions } from '@/hooks/sessions/useActiveSessions';
+import { useSessionPolling } from '@/hooks/sessions/useSessionPolling';
 import { useSpringBloom } from '@/hooks/useSpringBloom';
 
 interface DashboardClientProps {
@@ -83,8 +81,8 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
   // Focus status management
   const { focusStatus, setFocusStatus } = useFocusStatus({
     appState,
-            isFaceDown,
-            isSessionPausedByOthers,
+    isFaceDown,
+    isSessionPausedByOthers,
     onPauseStart: startPause,
     onPauseEnd: endPause,
   });
@@ -105,55 +103,19 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
     setSessionStart,
     setSessionId,
     setSessionEndTime: setSessionEndTimeFromHook,
+    setSessionRecorded,
   } = useFocusSession({
     appState,
     focusStatus,
     userId,
     selectedFriend,
     totalPausedSeconds,
-  });
-
-  // Sync pause status with server
-  useSessionPauseSync({
-    appState,
-    currentFocusSessionId,
     isFaceDown,
-    userId,
     setIsSessionPausedByOthers,
   });
 
-  // Listen to session stream
-  useSessionStream({
-    appState,
-    currentFocusSessionId,
-    userId,
-    sessionStartTime,
-    friends,
-    userManuallyExitedRef,
-    setCurrentFocusSessionId: setSessionId,
-    setSessionStartTime: (time) => {
-      if (time) {
-        setSessionStart(time, 0);
-          } else {
-        resetSession();
-          }
-    },
-    setElapsedSeconds: updateElapsedSeconds,
-    setTotalPausedSeconds: () => resetPauseTracking(),
-    setPauseStartTime: () => {}, // Handled by useFocusPause
-    setSelectedFriend,
-    setAppState,
-    setFocusStatus,
-    setSessionEndTime: setSessionEndTimeFromHook,
-    setSessionRecorded: () => {}, // Handled by useFocusSession
-    setIsSessionPausedByOthers,
-    elapsedSeconds,
-    focusStatus,
-    isFaceDown,
-  });
-
-  // Check for active sessions
-  useActiveSessions({
+  // Check for active sessions (polling replaces SSE stream)
+  useSessionPolling({
     userId,
     appState,
     sessionStartTime,
@@ -179,6 +141,8 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
     setSelectedFriend,
     setAppState,
     setFocusStatus,
+    setSessionEndTime: setSessionEndTimeFromHook,
+    setSessionRecorded,
     setIsSessionPausedByOthers,
   });
 

@@ -9,27 +9,20 @@ export function useFocusPause() {
   const [totalPausedSeconds, setTotalPausedSeconds] = useState(0);
   const [isSessionPausedByOthers, setIsSessionPausedByOthers] = useState(false);
 
-  /**
-   * Start tracking pause time
-   */
   const startPause = () => {
     setPauseStartTime(new Date());
   };
 
-  /**
-   * End pause and add duration to total paused time
-   */
   const endPause = () => {
     if (pauseStartTime) {
-      const pauseDuration = Math.floor((new Date().getTime() - pauseStartTime.getTime()) / 1000);
-      setTotalPausedSeconds(prev => prev + pauseDuration);
+      const pauseDuration = Math.floor(
+        (new Date().getTime() - pauseStartTime.getTime()) / 1000
+      );
+      setTotalPausedSeconds((prev) => prev + pauseDuration);
       setPauseStartTime(null);
     }
   };
 
-  /**
-   * Reset all pause tracking (used when starting a new session)
-   */
   const resetPauseTracking = () => {
     setPauseStartTime(null);
     setTotalPausedSeconds(0);

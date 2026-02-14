@@ -6,7 +6,6 @@ import {
   createFocusSessionService,
   getUserFocusSessionsService,
   getTodayFocusSessionsService,
-  getActiveFocusSessionsService,
 } from './service';
 
 /**
@@ -86,29 +85,5 @@ export async function getTodayFocusSessions(userId: string) {
     return { success: false, error: 'Internal server error', sessions: [], totalMinutes: 0 };
   }
 }
-
-/**
- * Server action to get active focus sessions for the current user
- * Returns sessions with status 'active' that the user is participating in
- */
-export async function getActiveFocusSessions(userId: string) {
-  try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return { success: false, error: 'Unauthorized', sessions: [] };
-    }
-
-    // Verify user can only access their own sessions
-    if (session.user.id !== userId) {
-      return { success: false, error: 'Forbidden', sessions: [] };
-    }
-
-    return await getActiveFocusSessionsService(userId);
-  } catch (error) {
-    console.error('Error in getActiveFocusSessions action:', error);
-    return { success: false, error: 'Internal server error', sessions: [] };
-  }
-}
-
 
 

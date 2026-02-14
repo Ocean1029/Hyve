@@ -203,7 +203,7 @@ import { usePresence } from '@hyve/hooks';
 
 ### Sessions
 
-- `GET /api/sessions/stream` - Stream active focus sessions
+- `GET /api/sessions/active` - Get active and recently completed focus sessions (polling)
 - `GET /api/sessions/[sessionId]/status` - Get session status
 - `POST /api/sessions/[sessionId]/pause` - Pause a session
 - `POST /api/sessions/[sessionId]/end` - End a session

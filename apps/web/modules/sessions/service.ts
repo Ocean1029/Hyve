@@ -3,7 +3,6 @@ import {
   getUserSessions,
   getActiveSessionsByUsers,
   createSession,
-  getActiveSessions,
   getSessionById,
   getSessionUser,
   getSessionUsers,
@@ -184,19 +183,6 @@ export const getTodayFocusSessionsService = async (userId: string) => {
   } catch (error) {
     console.error('Failed to get today focus sessions:', error);
     return { success: false, error: 'Failed to get today focus sessions' };
-  }
-};
-
-/**
- * Get active focus sessions for a user
- */
-export const getActiveFocusSessionsService = async (userId: string) => {
-  try {
-    const sessions = await getActiveSessions(userId);
-    return { success: true, sessions };
-  } catch (error) {
-    console.error('Failed to get active focus sessions:', error);
-    return { success: false, error: 'Failed to get active focus sessions' };
   }
 };
 

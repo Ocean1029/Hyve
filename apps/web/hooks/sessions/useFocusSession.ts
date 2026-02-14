@@ -9,6 +9,8 @@ interface UseFocusSessionProps {
   userId: string;
   selectedFriend: Friend | null;
   totalPausedSeconds: number;
+  isFaceDown: boolean;
+  setIsSessionPausedByOthers: (paused: boolean) => void;
 }
 
 /**
@@ -21,6 +23,8 @@ export function useFocusSession({
   userId,
   selectedFriend,
   totalPausedSeconds,
+  isFaceDown,
+  setIsSessionPausedByOthers,
 }: UseFocusSessionProps) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
@@ -43,6 +47,49 @@ export function useFocusSession({
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [appState, focusStatus]);
+
+  // Sync pause status with server when device orientation changes
+  useEffect(() => {
+    if (appState === AppState.FOCUS && currentFocusSessionId) {
+      const syncPauseStatus = async () => {
+        try {
+          const isPaused = !isFaceDown;
+          const response = await fetch(
+            `/api/sessions/${currentFocusSessionId}/pause`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ isPaused }),
+            }
+          );
+
+          if (response.ok) {
+            const result = await response.json();
+            if (result.users) {
+              const otherUserPaused = result.users.some(
+                (u: { userId: string; isPaused: boolean }) =>
+                  u.userId !== userId && u.isPaused
+              );
+              setIsSessionPausedByOthers(otherUserPaused);
+            }
+          } else {
+            console.error('Failed to sync pause status');
+          }
+        } catch (error) {
+          console.error('Error syncing pause status:', error);
+        }
+      };
+
+      const timeoutId = setTimeout(syncPauseStatus, 300);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [
+    isFaceDown,
+    appState,
+    currentFocusSessionId,
+    userId,
+    setIsSessionPausedByOthers,
+  ]);
 
   /**
    * Start a new focus session
@@ -209,5 +256,6 @@ export function useFocusSession({
     setSessionStart,
     setSessionId,
     setSessionEndTime,
+    setSessionRecorded,
   };
 }

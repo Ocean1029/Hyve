@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { AppState, FocusStatus, Friend } from '@hyve/types';
 import { checkActiveSessions, CheckActiveSessionsParams } from './checkActiveSessions';
 
-interface UseActiveSessionsProps {
+interface UseSessionPollingProps {
   userId: string;
   appState: AppState;
   sessionStartTime: Date | null;
@@ -19,15 +19,17 @@ interface UseActiveSessionsProps {
   setSelectedFriend: (friend: Friend | null) => void;
   setAppState: (state: AppState) => void;
   setFocusStatus: (status: FocusStatus) => void;
+  setSessionEndTime: (time: Date | null) => void;
+  setSessionRecorded: (recorded: boolean) => void;
   setIsSessionPausedByOthers: (paused: boolean) => void;
 }
 
 /**
- * Hook to periodically check for active focus sessions
+ * Hook to periodically poll for active focus sessions
  * Auto-enters Focus Mode when active session is detected
  * Syncs session state and participant information
  */
-export function useActiveSessions({
+export function useSessionPolling({
   userId,
   appState,
   sessionStartTime,
@@ -44,9 +46,11 @@ export function useActiveSessions({
   setSelectedFriend,
   setAppState,
   setFocusStatus,
+  setSessionEndTime,
+  setSessionRecorded,
   setIsSessionPausedByOthers,
-}: UseActiveSessionsProps) {
-  const activeSessionCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+}: UseSessionPollingProps) {
+  const sessionPollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Check immediately on mount
@@ -67,11 +71,12 @@ export function useActiveSessions({
       setSelectedFriend,
       setAppState,
       setFocusStatus,
+      setSessionEndTime,
+      setSessionRecorded,
       setIsSessionPausedByOthers,
     });
 
-    // Check every 3 seconds for active sessions (more frequent for better UX and faster detection)
-    activeSessionCheckIntervalRef.current = setInterval(() => {
+    sessionPollingIntervalRef.current = setInterval(() => {
       checkActiveSessions({
         userId,
         appState,
@@ -89,13 +94,15 @@ export function useActiveSessions({
         setSelectedFriend,
         setAppState,
         setFocusStatus,
+        setSessionEndTime,
+        setSessionRecorded,
         setIsSessionPausedByOthers,
       });
     }, 3000);
 
     return () => {
-      if (activeSessionCheckIntervalRef.current) {
-        clearInterval(activeSessionCheckIntervalRef.current);
+      if (sessionPollingIntervalRef.current) {
+        clearInterval(sessionPollingIntervalRef.current);
       }
     };
   }, [
@@ -115,6 +122,8 @@ export function useActiveSessions({
     setSelectedFriend,
     setAppState,
     setFocusStatus,
+    setSessionEndTime,
+    setSessionRecorded,
     setIsSessionPausedByOthers,
   ]);
 }
