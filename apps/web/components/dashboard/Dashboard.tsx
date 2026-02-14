@@ -108,8 +108,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                 Weekly Focus
             </h3>
             <div className="w-full bg-zinc-900/50 rounded-3xl px-2 py-4 border border-zinc-800/50 relative">
-                <div className="w-full h-48">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="w-full h-48 min-h-[192px]">
+                  <ResponsiveContainer
+                    width="100%"
+                    height="100%"
+                    initialDimension={{ width: 400, height: 192 }}
+                  >
                   <LineChart data={chartData} margin={{ top: 40, right: 20, left: 20, bottom: 20 }}>
                     <defs>
                     <linearGradient id="colorGradient" x1="0" y1="0" x2="1" y2="0">
