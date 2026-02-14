@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Friend, ChartDataPoint } from '@hyve/types';
+import { formatMinutesCompact } from '@hyve/utils';
 import ChartPeakDot from '@/components/common/ChartPeakDot';
 
 interface DashboardProps {
@@ -26,9 +27,6 @@ interface DashboardProps {
   onSpringRecap: () => void;
   onStartSession: () => void;
 }
-
-const formatFocusMinutes = (minutes: number) =>
-  minutes >= 60 ? `${Math.floor(minutes / 60)}h` : `${minutes}m`;
 
 const Dashboard: React.FC<DashboardProps> = ({ 
   friends, 
@@ -147,7 +145,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                         dataKey="minutes" 
                         stroke="url(#colorGradient)" 
                         strokeWidth={3} 
-                        dot={<ChartPeakDot data={chartData} valueKey="minutes" formatValue={formatFocusMinutes} />}
+                        dot={<ChartPeakDot data={chartData} valueKey="minutes" formatValue={formatMinutesCompact} />}
                         activeDot={false}
                         isAnimationActive={true}
                     />
