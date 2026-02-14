@@ -111,7 +111,7 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
     userId,
     selectedFriend,
     totalPausedSeconds,
-          });
+  });
 
   // Sync pause status with server
   useSessionPauseSync({
