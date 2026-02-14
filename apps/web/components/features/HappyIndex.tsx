@@ -8,54 +8,13 @@ import {
   WeeklyHappyIndexDataPoint,
   PeakHappinessMemory,
 } from '@/modules/memories/service';
+import ChartPeakDot from '@/components/common/ChartPeakDot';
 
 interface HappyIndexProps {
   userId: string;
   weeklyData: WeeklyHappyIndexDataPoint[];
   peakMemories: PeakHappinessMemory[];
 }
-
-// Custom Dot to render Peak and Low icons (similar to Dashboard Weekly Focus)
-const CustomDot = (props: any) => {
-  const { cx, cy, payload, data } = props;
-  
-  if (!data || data.length === 0) return null;
-
-  const values = data.map((d: any) => d.score).filter((v: number) => v > 0);
-  if (values.length === 0) return <circle cx={cx} cy={cy} r={0} />;
-  
-  const max = Math.max(...values);
-  const min = Math.min(...values);
-  
-  // High Peak
-  if (payload.score === max && payload.score > 0) {
-     return (
-        <g>
-           <circle cx={cx} cy={cy} r={6} fill="#fcd34d" stroke="#18181b" strokeWidth={3} />
-           <foreignObject x={cx - 20} y={cy - 28} width={40} height={20}>
-             <div className="text-[10px] font-bold text-amber-300 bg-amber-950/80 px-1 rounded-md text-center border border-amber-500/20">
-               {payload.score.toFixed(1)}
-             </div>
-           </foreignObject>
-        </g>
-     );
-  }
-  
-  // Low Peak (only show if there's a meaningful difference)
-  if (payload.score === min && payload.score > 0 && max - min > 1) {
-      return (
-        <g>
-           <circle cx={cx} cy={cy} r={6} fill="#fb7185" stroke="#18181b" strokeWidth={3} />
-           <foreignObject x={cx - 20} y={cy + 10} width={40} height={20}>
-              <div className="text-[10px] font-bold text-rose-300 bg-rose-950/80 px-1 rounded-md text-center border border-rose-500/20">
-               {payload.score.toFixed(1)}
-              </div>
-           </foreignObject>
-        </g>
-     );
-  }
-  return <circle cx={cx} cy={cy} r={0} />; 
-};
 
 const HappyIndex: React.FC<HappyIndexProps> = ({ userId, weeklyData, peakMemories }) => {
   const router = useRouter();
@@ -309,7 +268,15 @@ const HappyIndex: React.FC<HappyIndexProps> = ({ userId, weeklyData, peakMemorie
                     dataKey="score" 
                     stroke="url(#colorGradient)" 
                     strokeWidth={3} 
-                    dot={<CustomDot data={weeklyData} />} // Custom Peak/Low dots
+                    dot={
+                      <ChartPeakDot
+                        data={weeklyData}
+                        valueKey="score"
+                        formatValue={(v) => v.toFixed(1)}
+                        filterValues={(values) => values.filter((v) => v > 0)}
+                        showLowOnlyWhen={(min, max) => max - min > 1}
+                      />
+                    }
                     activeDot={false}
                     isAnimationActive={true}
                   />

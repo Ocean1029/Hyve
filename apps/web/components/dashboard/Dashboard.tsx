@@ -3,13 +3,13 @@ import {
   Users, 
   History, 
   Search, 
-  ChevronRight, 
   Flower2, 
   Smile, 
   Flame
 } from 'lucide-react';
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Friend, ChartDataPoint } from '@hyve/types';
+import ChartPeakDot from '@/components/common/ChartPeakDot';
 
 interface DashboardProps {
   friends: Friend[];
@@ -27,45 +27,8 @@ interface DashboardProps {
   onStartSession: () => void;
 }
 
-// Custom Dot to render Peak and Low icons
-const CustomDot = (props: any) => {
-  const { cx, cy, payload, data } = props;
-  
-  if (!data || data.length === 0) return null;
-
-  const values = data.map((d: any) => d.minutes);
-  const max = Math.max(...values);
-  const min = Math.min(...values);
-  
-  // High Peak
-  if (payload.minutes === max) {
-     return (
-        <g>
-           <circle cx={cx} cy={cy} r={6} fill="#fcd34d" stroke="#18181b" strokeWidth={3} />
-           <foreignObject x={cx - 20} y={cy - 28} width={40} height={20}>
-             <div className="text-[10px] font-bold text-amber-300 bg-amber-950/80 px-1 rounded-md text-center border border-amber-500/20">
-               {Math.floor(payload.minutes / 60)}h
-             </div>
-           </foreignObject>
-        </g>
-     );
-  }
-  
-  // Low Peak
-  if (payload.minutes === min) {
-      return (
-        <g>
-           <circle cx={cx} cy={cy} r={6} fill="#fb7185" stroke="#18181b" strokeWidth={3} />
-           <foreignObject x={cx - 20} y={cy + 10} width={40} height={20}>
-              <div className="text-[10px] font-bold text-rose-300 bg-rose-950/80 px-1 rounded-md text-center border border-rose-500/20">
-               {payload.minutes}m
-              </div>
-           </foreignObject>
-        </g>
-     );
-  }
-  return <circle cx={cx} cy={cy} r={0} />; 
-};
+const formatFocusMinutes = (minutes: number) =>
+  minutes >= 60 ? `${Math.floor(minutes / 60)}h` : `${minutes}m`;
 
 const Dashboard: React.FC<DashboardProps> = ({ 
   friends, 
@@ -184,7 +147,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                         dataKey="minutes" 
                         stroke="url(#colorGradient)" 
                         strokeWidth={3} 
-                        dot={<CustomDot data={chartData} />} // Custom Peak/Low dots
+                        dot={<ChartPeakDot data={chartData} valueKey="minutes" formatValue={formatFocusMinutes} />}
                         activeDot={false}
                         isAnimationActive={true}
                     />
