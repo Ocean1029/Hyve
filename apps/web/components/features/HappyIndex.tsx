@@ -231,8 +231,12 @@ const HappyIndex: React.FC<HappyIndexProps> = ({ userId, weeklyData, peakMemorie
             <h3 className="text-lg font-bold text-stone-200 tracking-tight">Weekly Mood Flow</h3>
           </div>
           <div className="w-full bg-zinc-900/50 rounded-3xl px-2 py-4 border border-zinc-800/50 relative">
-            <div className="w-full h-48">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="w-full h-48 min-h-[192px]">
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+                initialDimension={{ width: 400, height: 192 }}
+              >
                 <LineChart data={weeklyData} margin={{ top: 40, right: 20, left: 20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorGradient" x1="0" y1="0" x2="1" y2="0">

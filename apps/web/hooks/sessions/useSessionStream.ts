@@ -57,7 +57,8 @@ export function useSessionStream({
     }
 
     const eventSource = new EventSource('/api/sessions/stream');
-    
+    let isCleaningUp = false;
+
     eventSource.onmessage = (event) => {
       try {
         // Skip empty or invalid messages
@@ -187,11 +188,14 @@ export function useSessionStream({
     };
 
     eventSource.onerror = (error) => {
+      // EventSource fires 'error' when closed - skip logging during intentional cleanup
+      if (isCleaningUp) return;
       console.error('Session stream error:', error);
       eventSource.close();
     };
 
     return () => {
+      isCleaningUp = true;
       eventSource.close();
     };
   }, [
