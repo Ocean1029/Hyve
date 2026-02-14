@@ -1,7 +1,7 @@
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import SettingsClient from '@/components/settings/SettingsClient';
-import { getUserWithPosts } from '@/modules/users/repository';
+import { getUserById } from '@/modules/users/repository';
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -12,7 +12,7 @@ export default async function SettingsPage() {
   }
 
   const userId = session.user.id;
-  const user = await getUserWithPosts(userId);
+  const user = await getUserById(userId);
 
   if (!user) {
     redirect('/login');

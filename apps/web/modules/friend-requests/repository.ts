@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 
 /**
@@ -156,6 +157,57 @@ export async function updateFriendRequestStatus(
   return await prisma.friendRequest.update({
     where: { id: requestId },
     data: { status },
+  });
+}
+
+/**
+ * Accept friend request: create bidirectional Friend relationships and update request status
+ * Returns the friend relationship from receiver's perspective
+ */
+export async function acceptFriendRequestTransaction(
+  requestId: string,
+  senderId: string,
+  receiverId: string
+) {
+  return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const existingFriend1 = await tx.friend.findUnique({
+      where: {
+        userId_sourceUserId: { userId: senderId, sourceUserId: receiverId },
+      },
+    });
+    const existingFriend2 = await tx.friend.findUnique({
+      where: {
+        userId_sourceUserId: { userId: receiverId, sourceUserId: senderId },
+      },
+    });
+
+    if (existingFriend1 && existingFriend2) {
+      await tx.friendRequest.update({
+        where: { id: requestId },
+        data: { status: 'accepted' },
+      });
+      return { friend: existingFriend2, requestUpdated: true };
+    }
+
+    const friend1 =
+      existingFriend1 ||
+      (await tx.friend.create({
+        data: { userId: senderId, sourceUserId: receiverId },
+        include: { user: true },
+      }));
+    const friend2 =
+      existingFriend2 ||
+      (await tx.friend.create({
+        data: { userId: receiverId, sourceUserId: senderId },
+        include: { user: true },
+      }));
+
+    await tx.friendRequest.update({
+      where: { id: requestId },
+      data: { status: 'accepted' },
+    });
+
+    return { friend: friend1, requestUpdated: true };
   });
 }
 

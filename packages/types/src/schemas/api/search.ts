@@ -1,7 +1,31 @@
 import { z } from 'zod';
 
 /**
- * Search user item (from searchUsers / getRecommendedUsers)
+ * User search result (Prisma return shape from searchUsersByQuery / getUsersExcluding)
+ */
+export const UserSearchResultSchema = z.object({
+  id: z.string(),
+  userId: z.string().nullable(),
+  name: z.string().nullable(),
+  email: z.string().nullable(),
+  image: z.string().nullable(),
+  createdAt: z.coerce.date(),
+  _count: z.object({ focusSessionsAsUser: z.number() }),
+});
+
+export type UserSearchResult = z.infer<typeof UserSearchResultSchema>;
+
+/**
+ * User with friend count (extends UserSearchResult)
+ */
+export const UserWithFriendCountSchema = UserSearchResultSchema.extend({
+  friendCount: z.number(),
+});
+
+export type UserWithFriendCount = z.infer<typeof UserWithFriendCountSchema>;
+
+/**
+ * Search user item (from searchUsers / getRecommendedUsers API response)
  */
 const SearchUserItemSchema = z.object({
   id: z.string(),

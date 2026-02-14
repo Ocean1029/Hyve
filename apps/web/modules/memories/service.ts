@@ -1,6 +1,12 @@
 // modules/memories/service.ts
-import prisma from '@/lib/prisma';
-import { createMemory } from './repository';
+import {
+  createMemory,
+  getMemoriesWithHappyIndexByDateRange,
+  getPeakHappinessMemories,
+  createPhoto,
+  createMemoryWithPhotosTransaction,
+  updateMemoryWithPhotosTransaction,
+} from './repository';
 import type { WeeklyHappyIndexDataPoint, PeakHappinessMemory } from '@hyve/types';
 
 /**
@@ -16,23 +22,11 @@ export const getWeeklyHappyIndexDataService = async (
   startDate.setHours(0, 0, 0, 0); // Start of day
   endDate.setHours(23, 59, 59, 999); // End of day
 
-  // Get all memories with happyIndex from the user's focus sessions in the last 7 days
-  const memories = await prisma.memory.findMany({
-    where: {
-      userId: userId, // Filter by userId directly
-      happyIndex: {
-        not: null,
-      },
-      timestamp: {
-        gte: startDate,
-        lte: endDate,
-      },
-    },
-    select: {
-      timestamp: true,
-      happyIndex: true,
-    },
-  });
+  const memories = await getMemoriesWithHappyIndexByDateRange(
+    userId,
+    startDate,
+    endDate
+  );
 
   // Group happyIndex values by day (using date string as key to handle same day name across weeks)
   const daysMap = new Map<string, { dayName: string; scores: number[]; date: Date }>();
@@ -79,43 +73,9 @@ export const getPeakHappinessMemoriesService = async (
   userId: string,
   limit: number = 5
 ): Promise<PeakHappinessMemory[]> => {
-  const memories = await prisma.memory.findMany({
-    where: {
-      userId: userId, // Filter by userId directly
-      happyIndex: {
-        not: null,
-      },
-    },
-    include: {
-      photos: {
-        select: {
-          id: true,
-          photoUrl: true,
-        },
-      },
-      focusSession: {
-        include: {
-          users: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  image: true,
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    orderBy: {
-      happyIndex: 'desc',
-    },
-    take: limit,
-  });
+  const memories = await getPeakHappinessMemories(userId, limit);
 
-  return memories.map((memory: typeof memories[0]) => ({
+  return memories.map((memory: (typeof memories)[0]) => ({
     id: memory.id,
     content: memory.content,
     location: memory.location,
@@ -174,9 +134,7 @@ export async function createMemoryService(
  * Add a photo to a memory
  */
 export async function addPhotoToMemoryService(memoryId: string, photoUrl: string) {
-  const photo = await prisma.photo.create({
-    data: { memoryId, photoUrl },
-  });
+  const photo = await createPhoto(memoryId, photoUrl);
   return { success: true, photo };
 }
 
@@ -195,29 +153,12 @@ export async function createMemoryWithPhotoService(
   const photoUrls = photoUrl
     ? Array.isArray(photoUrl) ? photoUrl : [photoUrl]
     : [];
-  const result = await prisma.$transaction(async (tx: typeof prisma) => {
-    const memory = await tx.memory.create({
-      data: {
-        focusSessionId,
-        userId,
-        type: mood || '📚 Study',
-        content,
-        location,
-        happyIndex,
-        timestamp: new Date(),
-      },
-    });
-    const photos = [];
-    for (const url of photoUrls) {
-      if (url && String(url).trim() !== '') {
-        const photo = await tx.photo.create({
-          data: { memoryId: memory.id, photoUrl: String(url) },
-        });
-        photos.push(photo);
-      }
-    }
-    return { memory, photos };
-  });
+  const result = await createMemoryWithPhotosTransaction(
+    userId,
+    focusSessionId,
+    photoUrls,
+    { content, location, happyIndex, mood }
+  );
   return { success: true, memory: result.memory, photos: result.photos };
 }
 
@@ -235,28 +176,11 @@ export async function updateMemoryWithPhotoService(
   const photoUrls = photoUrl
     ? Array.isArray(photoUrl) ? photoUrl : [photoUrl]
     : [];
-  const result = await prisma.$transaction(async (tx: typeof prisma) => {
-    const updateData: { content?: string; location?: string; happyIndex?: number; type?: string } = {
-      content,
-      location,
-      happyIndex,
-    };
-    if (mood) updateData.type = mood;
-    const memory = await tx.memory.update({
-      where: { id: memoryId },
-      data: updateData,
-    });
-    await tx.photo.deleteMany({ where: { memoryId } });
-    const photos = [];
-    for (const url of photoUrls) {
-      if (url && String(url).trim() !== '') {
-        const photo = await tx.photo.create({
-          data: { memoryId: memory.id, photoUrl: String(url) },
-        });
-        photos.push(photo);
-      }
-    }
-    return { memory, photos };
+  const result = await updateMemoryWithPhotosTransaction(memoryId, photoUrls, {
+    content,
+    location,
+    happyIndex,
+    mood,
   });
   return { success: true, memory: result.memory, photos: result.photos };
 }

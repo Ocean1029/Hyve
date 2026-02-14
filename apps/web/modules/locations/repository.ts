@@ -64,7 +64,7 @@ export async function getUsersLatestLocations(userIds: string[]) {
  * Returns users with their distance from the given coordinates
  * Uses the most recent location for each user
  */
-export async function findNearbyUsers(
+export async function getNearbyUsers(
   userId: string,
   latitude: number,
   longitude: number,

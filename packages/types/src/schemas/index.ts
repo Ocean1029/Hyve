@@ -11,7 +11,6 @@ export * from './api/friend-requests';
 export * from './api/presence';
 export * from './api/locations';
 export * from './api/friends';
-export * from './api/interactions';
 export * from './api/memories';
 export * from './api/messages';
 export * from './api/search';

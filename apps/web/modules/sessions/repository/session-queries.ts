@@ -1,21 +1,8 @@
 // modules/sessions/repository/session-queries.ts
 import prisma from '@/lib/prisma';
+import type { GetUserSessionsOptions } from '@hyve/types';
 
-/**
- * Options for querying user focus sessions
- */
-export interface GetUserSessionsOptions {
-  userId: string;
-  userIds?: string[]; // Multiple user IDs (for finding sessions with specific users)
-  userMatchMode?: 'some' | 'every'; // Match mode: 'some' = at least one user, 'every' = all users must be in session
-  startDate?: Date;
-  endDate?: Date;
-  endTimeMin?: Date; // Minimum endTime (for filtering completed sessions by endTime)
-  limit?: number;
-  orderBy?: 'asc' | 'desc';
-  includeMemories?: boolean;
-  status?: 'active' | 'completed' | 'cancelled';
-}
+export type { GetUserSessionsOptions };
 
 /**
  * Unified function to get focus sessions for a user with various filtering options

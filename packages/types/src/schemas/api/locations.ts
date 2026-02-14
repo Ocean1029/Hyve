@@ -36,6 +36,21 @@ export const NearbyUserItemSchema = z.object({
 export type NearbyUserItem = z.infer<typeof NearbyUserItemSchema>;
 
 /**
+ * Nearby user with status (internal service return shape)
+ */
+export const NearbyUserWithStatusSchema = z.object({
+  id: z.string(),
+  userId: z.string().nullable(),
+  name: z.string().nullable(),
+  image: z.string().nullable(),
+  distance: z.number(),
+  isOnline: z.boolean(),
+  lastSeenAt: z.coerce.date().nullable(),
+});
+
+export type NearbyUserWithStatus = z.infer<typeof NearbyUserWithStatusSchema>;
+
+/**
  * Response for GET /api/locations/nearby
  */
 export const NearbyUsersResponseSchema = z.object({

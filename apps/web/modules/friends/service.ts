@@ -1,7 +1,17 @@
 // modules/friends/service.ts
-import prisma from '@/lib/prisma';
-import { getFriendsWithDetails, getFriendsWithLastMessage, getFriendById, getFriendsForSpringBloom, getUserFriendCount } from './repository';
-import { Friend } from '@hyve/types';
+import { getUserById } from '../users/repository';
+import {
+  getFriendsWithDetails,
+  getFriendsWithLastMessage,
+  getFriendById,
+  getFriendsForSpringBloom,
+  getUserFriendCount,
+  getFriendByUserPair,
+  getFriendRecordById,
+  createFriendTransaction,
+  deleteFriendById,
+} from './repository';
+import type { Friend, SpringBloomEntry } from '@hyve/types';
 import { GoogleGenAI } from '@google/genai';
 
 /**
@@ -11,29 +21,16 @@ export async function createFriendService(sourceUserId: string, userId: string) 
   if (sourceUserId === userId) {
     return { success: false, error: 'Cannot add yourself as a friend' };
   }
-  const targetUser = await prisma.user.findUnique({ where: { id: userId } });
+  const targetUser = await getUserById(userId);
   if (!targetUser) {
     return { success: false, error: 'User not found' };
   }
-  const existingFriend = await prisma.friend.findUnique({
-    where: {
-      userId_sourceUserId: { userId, sourceUserId },
-    },
-  });
+  const existingFriend = await getFriendByUserPair(userId, sourceUserId);
   if (existingFriend) {
     return { success: false, error: 'Friend already exists', alreadyExists: true };
   }
   try {
-    const friend = await prisma.$transaction(async (tx: typeof prisma) => {
-      const existing = await tx.friend.findUnique({
-        where: { userId_sourceUserId: { userId, sourceUserId } },
-      });
-      if (existing) throw new Error('Friend relationship already exists');
-      return await tx.friend.create({
-        data: { userId, sourceUserId },
-        include: { user: true },
-      });
-    });
+    const friend = await createFriendTransaction(sourceUserId, userId);
     return { success: true, friend };
   } catch (error: any) {
     if (error.code === 'P2002' || error.message?.includes('already exists')) {
@@ -45,19 +42,17 @@ export async function createFriendService(sourceUserId: string, userId: string) 
 
 /**
  * Delete a friend relationship. Verifies the friend record belongs to current user (sourceUserId).
+ * Message records are cascade-deleted by Prisma when Friend is deleted.
  */
 export async function deleteFriendService(friendId: string, sourceUserId: string) {
-  const friend = await prisma.friend.findUnique({ where: { id: friendId } });
+  const friend = await getFriendRecordById(friendId);
   if (!friend) {
     return { success: false, error: 'Friend not found' };
   }
   if (friend.sourceUserId !== sourceUserId) {
     return { success: false, error: 'Forbidden' };
   }
-  await prisma.interaction.deleteMany({ where: { friendId } });
-  await prisma.post.deleteMany({ where: { friendId } });
-  await prisma.focusSession.deleteMany({ where: { friendId } });
-  await prisma.friend.delete({ where: { id: friendId } });
+  await deleteFriendById(friendId);
   return { success: true };
 }
 
@@ -334,14 +329,6 @@ export const getFriendByIdService = async (friendId: string, sourceUserId: strin
  * Get Spring Bloom data for the last 3 months
  * Returns ranked list of friends with total hours and generated tags
  */
-export interface SpringBloomEntry {
-  rank: number;
-  name: string;
-  avatar: string;
-  hours: number;
-  tags: string[];
-}
-
 export const getSpringBloomDataService = async (sourceUserId: string): Promise<SpringBloomEntry[]> => {
   try {
     // Get friends with focus sessions in the last 3 months

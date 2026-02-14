@@ -47,20 +47,13 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('query') ?? '';
-    const result = await searchUsersService(currentUserId, query);
+    const users = await searchUsersService(query, currentUserId ?? undefined);
 
-    if (!result.success) {
-      return NextResponse.json(
-        { success: false, error: 'Search failed', users: [] },
-        { status: 500 }
-      );
-    }
-
-    const users = (result.users ?? []).map((u: { createdAt?: Date; [k: string]: unknown }) => ({
+    const usersSerialized = users.map((u) => ({
       ...u,
       createdAt: u.createdAt instanceof Date ? u.createdAt.toISOString() : u.createdAt,
     }));
-    return NextResponse.json({ success: true, users });
+    return NextResponse.json({ success: true, users: usersSerialized });
   } catch (error) {
     console.error('Error searching users:', error);
     return NextResponse.json(

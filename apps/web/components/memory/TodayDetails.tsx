@@ -105,8 +105,9 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
           // Reload sessions after a short delay to ensure state is updated
           await loadTodaySessions();
         } else {
-          console.error('Failed to update memory:', result.error);
-          alert(result.error || 'Failed to update memory. Please try again.');
+          const errMsg = 'error' in result ? result.error : 'Failed to update memory';
+          console.error('Failed to update memory:', errMsg);
+          alert(errMsg || 'Failed to update memory. Please try again.');
           setIsSaving(false);
         }
       } else {
@@ -128,8 +129,9 @@ const TodayDetails: React.FC<TodayDetailsProps> = ({ userId, onClose }) => {
           // Reload sessions after a short delay to ensure state is updated
           await loadTodaySessions();
         } else {
-          console.error('Failed to create memory:', result.error);
-          alert(result.error || 'Failed to create memory. Please try again.');
+          const errMsg = 'error' in result ? result.error : 'Failed to create memory';
+          console.error('Failed to create memory:', errMsg);
+          alert(errMsg || 'Failed to create memory. Please try again.');
           setIsSaving(false);
         }
       }

@@ -1,6 +1,24 @@
 import { z } from 'zod';
 
 /**
+ * Options for querying user focus sessions (repository)
+ */
+export const GetUserSessionsOptionsSchema = z.object({
+  userId: z.string(),
+  userIds: z.array(z.string()).optional(),
+  userMatchMode: z.enum(['some', 'every']).optional(),
+  startDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().optional(),
+  endTimeMin: z.coerce.date().optional(),
+  limit: z.number().int().positive().optional(),
+  orderBy: z.enum(['asc', 'desc']).optional(),
+  includeMemories: z.boolean().optional(),
+  status: z.enum(['active', 'completed', 'cancelled']).optional(),
+});
+
+export type GetUserSessionsOptions = z.infer<typeof GetUserSessionsOptionsSchema>;
+
+/**
  * Schema for ending a focus session
  */
 export const EndSessionRequestSchema = z.object({

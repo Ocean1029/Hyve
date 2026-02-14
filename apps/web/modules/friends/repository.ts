@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 
 /**
@@ -186,6 +187,65 @@ export const checkIfFriendExists = async (userId: string, sourceUserId: string) 
   });
 
   return !!existingFriend;
+};
+
+/**
+ * Get friend by composite key (userId, sourceUserId)
+ */
+export const getFriendByUserPair = async (userId: string, sourceUserId: string) => {
+  return await prisma.friend.findUnique({
+    where: {
+      userId_sourceUserId: { userId, sourceUserId },
+    },
+  });
+};
+
+/**
+ * Get friend record by ID (for ownership check before delete)
+ */
+export const getFriendRecordById = async (friendId: string) => {
+  return await prisma.friend.findUnique({
+    where: { id: friendId },
+  });
+};
+
+/**
+ * Create friend relationship in a transaction (with duplicate check)
+ */
+export const createFriendTransaction = async (sourceUserId: string, userId: string) => {
+  return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const existing = await tx.friend.findUnique({
+      where: { userId_sourceUserId: { userId, sourceUserId } },
+    });
+    if (existing) throw new Error('Friend relationship already exists');
+    return await tx.friend.create({
+      data: { userId, sourceUserId },
+      include: { user: true },
+    });
+  });
+};
+
+/**
+ * Delete friend by ID
+ */
+export const deleteFriendById = async (friendId: string) => {
+  return await prisma.friend.delete({
+    where: { id: friendId },
+  });
+};
+
+/**
+ * Check if friend relationship exists in either direction (bidirectional)
+ */
+export const checkFriendsExistBidirectional = async (
+  userId1: string,
+  userId2: string
+) => {
+  const [friend1, friend2] = await Promise.all([
+    getFriendByUserPair(userId1, userId2),
+    getFriendByUserPair(userId2, userId1),
+  ]);
+  return { exists: !!(friend1 || friend2), friend1, friend2 };
 };
 
 export const getFriendById = async (friendId: string, sourceUserId: string) => {

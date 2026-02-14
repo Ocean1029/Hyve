@@ -43,20 +43,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const result = await getRecommendedUsersService(session.user.id);
+    const users = await getRecommendedUsersService(session.user.id);
 
-    if (!result.success) {
-      return NextResponse.json(
-        { success: false, error: 'Failed to get recommended users', users: [] },
-        { status: 500 }
-      );
-    }
-
-    const users = (result.users ?? []).map((u: { createdAt?: Date; [k: string]: unknown }) => ({
+    const usersSerialized = users.map((u) => ({
       ...u,
       createdAt: u.createdAt instanceof Date ? u.createdAt.toISOString() : u.createdAt,
     }));
-    return NextResponse.json({ success: true, users });
+    return NextResponse.json({ success: true, users: usersSerialized });
   } catch (error) {
     console.error('Error getting recommended users:', error);
     return NextResponse.json(

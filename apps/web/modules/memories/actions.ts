@@ -7,6 +7,9 @@ import { auth } from '@/auth';
 import {
   getWeeklyHappyIndexDataService,
   getPeakHappinessMemoriesService,
+  createMemoryWithPhotoService,
+  updateMemoryWithPhotoService,
+  addPhotoToMemoryService,
 } from './service';
 
 /**
@@ -48,23 +51,28 @@ export async function createMemoryAction(
 /**
  * Add a photo to a memory
  */
-export async function addPhotoToMemory(
-  memoryId: string,
-  photoUrl: string
-) {
+export async function addPhotoToMemory(memoryId: string, photoUrl: string) {
   try {
-    const photo = await prisma.photo.create({
-      data: {
-        memoryId,
-        photoUrl,
-      },
-    });
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: 'Unauthorized' };
+    }
 
-    // Revalidate relevant pages
+    const memory = await prisma.memory.findUnique({
+      where: { id: memoryId },
+      select: { userId: true },
+    });
+    if (!memory) {
+      return { success: false, error: 'Memory not found' };
+    }
+    if (memory.userId !== session.user.id) {
+      return { success: false, error: 'Forbidden: can only add photo to own memory' };
+    }
+
+    const result = await addPhotoToMemoryService(memoryId, photoUrl);
     revalidatePath('/friends');
     revalidatePath('/');
-
-    return { success: true, photo };
+    return result;
   } catch (error) {
     console.error('Failed to add photo to memory:', error);
     return { success: false, error: 'Failed to add photo to memory' };
@@ -89,52 +97,22 @@ export async function createMemoryWithPhoto(
       return { success: false, error: 'Unauthorized' };
     }
 
-    const userId = session.user.id;
-
-    // Normalize photoUrl to array
-    const photoUrls = photoUrl 
-      ? (Array.isArray(photoUrl) ? photoUrl : [photoUrl])
-      : [];
-
-    // Use transaction to ensure both memory and photos are created atomically
-    const result = await prisma.$transaction(async (tx: any) => {
-      // Create the memory
-      const memory = await tx.memory.create({
-        data: {
-          focusSessionId,
-          userId: userId,
-          type: mood || '📚 Study',
-          content,
-          location,
-          happyIndex,
-          timestamp: new Date(),
-        },
-      });
-
-      // Create photos linked to the memory
-      const photos = [];
-      for (const url of photoUrls) {
-        if (url && url.trim() !== '') {
-          const photo = await tx.photo.create({
-            data: {
-              memoryId: memory.id,
-              photoUrl: url,
-            },
-          });
-          photos.push(photo);
-        }
-      }
-
-      return { memory, photos };
-    });
-
-    // Revalidate relevant pages
-    revalidatePath('/friends');
-    revalidatePath('/');
-    revalidatePath('/profile');
-    revalidatePath('/today');
-
-    return { success: true, memory: result.memory, photos: result.photos };
+    const result = await createMemoryWithPhotoService(
+      session.user.id,
+      focusSessionId,
+      photoUrl,
+      content,
+      location,
+      happyIndex,
+      mood
+    );
+    if (result.success) {
+      revalidatePath('/friends');
+      revalidatePath('/');
+      revalidatePath('/profile');
+      revalidatePath('/today');
+    }
+    return result;
   } catch (error) {
     console.error('Failed to create memory with photo:', error);
     return { success: false, error: 'Failed to create memory with photo' };
@@ -154,59 +132,37 @@ export async function updateMemoryWithPhoto(
   mood?: string
 ) {
   try {
-    // Normalize photoUrl to array
-    const photoUrls = photoUrl 
-      ? (Array.isArray(photoUrl) ? photoUrl : [photoUrl])
-      : [];
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: 'Unauthorized' };
+    }
 
-    // Use transaction to ensure both memory and photos are updated atomically
-    const result = await prisma.$transaction(async (tx: any) => {
-      // Update the memory
-      const updateData: any = {
-        content,
-        location,
-        happyIndex,
-      };
-      
-      // Only update type if mood is provided
-      if (mood) {
-        updateData.type = mood;
-      }
-      
-      const memory = await tx.memory.update({
-        where: { id: memoryId },
-        data: updateData,
-      });
-
-      // Delete existing photos
-      await tx.photo.deleteMany({
-        where: { memoryId },
-      });
-
-      // Create new photos linked to the memory
-      const photos = [];
-      for (const url of photoUrls) {
-        if (url && url.trim() !== '') {
-          const photo = await tx.photo.create({
-            data: {
-              memoryId: memory.id,
-              photoUrl: url,
-            },
-          });
-          photos.push(photo);
-        }
-      }
-
-      return { memory, photos };
+    const existingMemory = await prisma.memory.findUnique({
+      where: { id: memoryId },
+      select: { userId: true },
     });
+    if (!existingMemory) {
+      return { success: false, error: 'Memory not found' };
+    }
+    if (existingMemory.userId !== session.user.id) {
+      return { success: false, error: 'Forbidden: can only update own memory' };
+    }
 
-    // Revalidate relevant pages
-    revalidatePath('/friends');
-    revalidatePath('/');
-    revalidatePath('/profile');
-    revalidatePath('/today');
-
-    return { success: true, memory: result.memory, photos: result.photos };
+    const result = await updateMemoryWithPhotoService(
+      memoryId,
+      photoUrl,
+      content,
+      location,
+      happyIndex,
+      mood
+    );
+    if (result.success) {
+      revalidatePath('/friends');
+      revalidatePath('/');
+      revalidatePath('/profile');
+      revalidatePath('/today');
+    }
+    return result;
   } catch (error) {
     console.error('Failed to update memory with photo:', error);
     return { success: false, error: 'Failed to update memory with photo' };
@@ -220,9 +176,10 @@ export async function updateMemoryWithPhoto(
 export async function getWeeklyHappyIndexData() {
   const session = await auth();
   if (!session?.user?.id) {
-    return [];
+    return { success: false, error: 'Unauthorized', data: [] };
   }
-  return getWeeklyHappyIndexDataService(session.user.id);
+  const data = await getWeeklyHappyIndexDataService(session.user.id);
+  return { success: true, data };
 }
 
 /**
@@ -232,8 +189,9 @@ export async function getWeeklyHappyIndexData() {
 export async function getPeakHappinessMemories(limit: number = 5) {
   const session = await auth();
   if (!session?.user?.id) {
-    return [];
+    return { success: false, error: 'Unauthorized', data: [] };
   }
-  return getPeakHappinessMemoriesService(session.user.id, limit);
+  const data = await getPeakHappinessMemoriesService(session.user.id, limit);
+  return { success: true, data };
 }
 

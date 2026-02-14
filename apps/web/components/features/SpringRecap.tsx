@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { X, Share2, Sparkles, Coffee, Dumbbell, BookOpen, Music, Utensils, Tent, PartyPopper, Camera } from 'lucide-react';
+import type { SpringBloomEntry } from '@hyve/types';
 
 interface RecapEntry {
   rank: number;
@@ -10,18 +11,9 @@ interface RecapEntry {
   tags: { label: string; icon: React.ReactNode; color: string }[];
 }
 
-// Input data format from server (tags are strings)
-interface SpringBloomEntryInput {
-  rank: number;
-  name: string;
-  avatar: string;
-  hours: number;
-  tags: string[];
-}
-
 interface SpringRecapProps {
   onClose: () => void;
-  data?: SpringBloomEntryInput[];
+  data?: SpringBloomEntry[];
   loading?: boolean;
 }
 
@@ -91,7 +83,7 @@ const SpringRecap: React.FC<SpringRecapProps> = ({ onClose, data = [], loading =
   // Transform data with icons and colors
   const recapData: RecapEntry[] = data.map((entry) => ({
     ...entry,
-    tags: entry.tags.map((tagLabel) => {
+    tags: (entry.tags ?? []).map((tagLabel) => {
       const { icon, color } = getTagIconAndColor(tagLabel);
       return { label: tagLabel, icon, color };
     }),

@@ -14,10 +14,13 @@ export default async function HappyIndexPage() {
   }
 
   const userId = session.user.id;
-  const [weeklyData, peakMemories] = await Promise.all([
+  const [weeklyResult, peakResult] = await Promise.all([
     getWeeklyHappyIndexData(),
     getPeakHappinessMemories(5),
   ]);
+
+  const weeklyData = weeklyResult.success ? weeklyResult.data : [];
+  const peakMemories = peakResult.success ? peakResult.data : [];
 
   return (
     <HappyIndexClient

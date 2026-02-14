@@ -44,7 +44,33 @@ export const GetConversationResponseSchema = z.object({
 export type GetConversationResponse = z.infer<typeof GetConversationResponseSchema>;
 
 /**
- * Memory item in focus session
+ * Memory item in focus session summary (internal service return, uses Date)
+ */
+const FriendFocusSessionMemoryItemSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  content: z.string().nullable(),
+  timestamp: z.coerce.date(),
+  location: z.string().nullable(),
+  photos: z.array(z.string()),
+});
+
+/**
+ * Friend focus session summary (internal service return shape)
+ */
+export const FriendFocusSessionSummarySchema = z.object({
+  id: z.string(),
+  startTime: z.coerce.date(),
+  endTime: z.coerce.date(),
+  minutes: z.number(),
+  createdAt: z.coerce.date(),
+  memories: z.array(FriendFocusSessionMemoryItemSchema),
+});
+
+export type FriendFocusSessionSummary = z.infer<typeof FriendFocusSessionSummarySchema>;
+
+/**
+ * Memory item in focus session (API response, uses string for dates)
  */
 const SessionMemoryItemSchema = z.object({
   id: z.string(),

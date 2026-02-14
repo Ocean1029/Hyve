@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AppState } from '@hyve/types';
+import type { SpringBloomEntry } from '@hyve/types';
 import { getSpringBloomDataAction } from '@/modules/friends/actions';
-import { SpringBloomEntry } from '@/modules/friends/service';
 
 /**
  * Hook to load Spring Bloom data

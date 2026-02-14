@@ -1,25 +1,15 @@
+import type { NearbyUserWithStatus } from '@hyve/types';
 import {
   createUserLocation,
   getUserLocation,
-  findNearbyUsers,
+  getNearbyUsers,
   getUsersLatestLocations,
 } from './repository';
 import { isUserOnline } from '@/modules/presence/repository';
 
-// Type for user location with user relation and distance
+// Type for user location with user relation and distance (derived from repository)
 type UserLocationWithDistance = Awaited<ReturnType<typeof getUsersLatestLocations>>[0] & {
   distance: number;
-};
-
-// Type for the mapped user object with online status
-type NearbyUserWithStatus = {
-  id: string;
-  userId: string;
-  name: string | null;
-  image: string | null;
-  distance: number;
-  isOnline: boolean;
-  lastSeenAt: Date | null;
 };
 
 /**
@@ -52,7 +42,7 @@ export async function getNearbyOnlineUsersService(
 ) {
   try {
     // Get nearby users
-    const nearbyUsers = await findNearbyUsers(
+    const nearbyUsers = await getNearbyUsers(
       userId,
       latitude,
       longitude,

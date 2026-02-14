@@ -209,8 +209,9 @@ const DashboardClient: React.FC<DashboardClientProps> = ({ friends, chartData, u
         setAppState(AppState.DASHBOARD);
         setSelectedFriend(null);
       } else {
-        console.error('Failed to create memory:', result.error);
-        alert(result.error || 'Failed to create memory. Please try again.');
+        const errMsg = 'error' in result ? result.error : 'Failed to create memory';
+        console.error('Failed to create memory:', errMsg);
+        alert(errMsg || 'Failed to create memory. Please try again.');
       }
     } catch (error) {
       console.error('Failed to create memory:', error);
