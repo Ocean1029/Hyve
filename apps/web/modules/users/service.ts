@@ -1,111 +1,63 @@
-// modules/users/service.ts
-import { getUserWithPosts } from './repository';
-import { Memory } from '@hyve/types';
-import prisma from '@/lib/prisma';
-import { getUserMemories } from '@/modules/memories/repository';
+import type { UpdateUserProfileRequest } from '@hyve/types';
+import {
+  updateUserById,
+  getUserByUserId,
+  getUserStats,
+  getUserById,
+} from './repository';
+import { getUserMemoriesForProfile } from '../memories/repository';
 
-export const getMyProfileService = async (userId: string) => {
-  const user = await getUserWithPosts(userId);
-  
-  if (!user) return null;
+/**
+ * Update user profile with validation
+ */
+export async function updateUserProfileService(
+  userId: string,
+  data: UpdateUserProfileRequest,
+  validateUserId: (id: string) => { isValid: boolean; error?: string }
+) {
+  if (data.userId !== undefined) {
+    const validation = validateUserId(data.userId);
+    if (!validation.isValid) {
+      return { success: false, error: validation.error };
+    }
 
-  // Get today's date range
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+    const existingUser = await getUserByUserId(data.userId);
+    if (existingUser && existingUser.id !== userId) {
+      return { success: false, error: 'This userId is already taken' };
+    }
+  }
 
-  // Get statistics
-  const [totalFriends, totalSessions, totalMinutes, todayMinutes, totalFocusHours, topFriend] = await Promise.all([
-    // Count friends for the current user
-    // Note: With bidirectional friend relationships, each friendship has two records:
-    // - userId: friendId, sourceUserId: currentUserId (current user can see friend)
-    // - userId: currentUserId, sourceUserId: friendId (friend can see current user)
-    // We only count records where sourceUserId = currentUserId to get the current user's friend list
-    prisma.friend.count({
-      where: { sourceUserId: userId },
-    }),
-    prisma.focusSession.count({
-      where: {
-        users: {
-          some: {
-            userId: userId,
-          },
-        },
-      },
-    }),
-    prisma.focusSession.aggregate({
-      where: {
-        users: {
-          some: {
-            userId: userId,
-          },
-        },
-      },
-      _sum: { minutes: true },
-    }),
-    prisma.focusSession.aggregate({
-      where: {
-        users: {
-          some: {
-            userId: userId,
-          },
-        },
-        startTime: {
-          gte: today,
-          lt: tomorrow,
-        },
-      },
-      _sum: { minutes: true },
-    }),
-    // Calculate total focus hours by summing all friends' totalHours
-    prisma.friend.aggregate({
-      where: { sourceUserId: userId },
-      _sum: { totalHours: true },
-    }),
-    // Find best buddy based on totalHours from Friend model
-    prisma.friend.findFirst({
-      where: { sourceUserId: userId },
-      orderBy: { totalHours: 'desc' },
-      include: {
-        user: {
-          select: {
-            name: true,
-          },
-        },
-      },
-    }).then((friend: { user: { name: string | null } } | null) => {
-      // Return the friend's name from the related user
-      return friend?.user?.name || null;
-    }),
+  const user = await updateUserById(userId, data);
+  return { success: true, user };
+}
+
+/**
+ * Get user stats (sessions, memories, total minutes)
+ */
+export async function getUserStatsService(userId: string) {
+  const stats = await getUserStats(userId);
+  return { success: true, stats };
+}
+
+/**
+ * Get current user profile with stats and memories
+ */
+export async function getMyProfileService(userId: string) {
+  const [user, stats, memories] = await Promise.all([
+    getUserById(userId),
+    getUserStats(userId),
+    getUserMemoriesForProfile(userId, 20),
   ]);
 
-  // Get user's memories for vault display
-  const memories = await getUserMemories(userId, 50);
-  
-  // Transform memories to format suitable for vault display
-  // Each memory uses its first photo as the display image
-  const vaultMemories: Memory[] = memories.map((m: any) => ({
-    id: m.id,
-    type: m.type,
-    content: m.content || '',
-    timestamp: m.timestamp,
-    focusSessionId: m.focusSessionId,
-    photos: m.photos || [],
-    location: m.location,
-    happyIndex: m.happyIndex,
-  }));
+  if (!user) return null;
 
   return {
     ...user,
-    memories: vaultMemories,
     stats: {
-      totalFriends,
-      totalHours: Math.floor(totalFocusHours._sum.totalHours || 0),
-      totalMinutes: totalMinutes._sum.minutes || 0,
-      todayMinutes: todayMinutes._sum.minutes || 0,
-      topBuddy: topFriend,
+      totalSessions: stats.totalSessions,
+      totalMemories: stats.totalMemories,
+      totalMinutes: stats.totalMinutes,
     },
+    memories,
   };
-};
-
+}
