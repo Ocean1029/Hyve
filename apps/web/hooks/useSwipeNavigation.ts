@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSwipePreview } from '@/components/common/SwipePreviewProvider';
+import { SWIPE } from '@/lib/swipeConstants';
+import { isInHorizontalScrollArea, shouldIgnoreTouchTarget } from '@/lib/swipeUtils';
 
 interface SwipeNavigationConfig {
   currentPath: string;
@@ -9,7 +11,7 @@ interface SwipeNavigationConfig {
 
 export const useSwipeNavigation = ({ currentPath, enabled = true }: SwipeNavigationConfig) => {
   const router = useRouter();
-  const { startSwipe, updateProgress, endSwipe, completeSwipe } = useSwipePreview();
+  const { startSwipe, updateProgress, endSwipe, completeSwipe, getNextRoute } = useSwipePreview();
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
   const touchEndX = useRef<number>(0);
@@ -21,38 +23,13 @@ export const useSwipeNavigation = ({ currentPath, enabled = true }: SwipeNavigat
   useEffect(() => {
     if (!enabled) return;
 
-    const minSwipeDistance = 50; // Minimum distance for swipe
-    const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 414;
+    const minSwipeDistance = SWIPE.MIN_SWIPE_DISTANCE;
+    const screenWidth = typeof window !== 'undefined' ? window.innerWidth : SWIPE.DEFAULT_SCREEN_WIDTH;
 
     const handleTouchStart = (e: TouchEvent) => {
-      // Ignore touch events on input, textarea, button, and select elements
       const target = e.target as HTMLElement;
-      if (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.tagName === 'BUTTON' ||
-        target.tagName === 'SELECT' ||
-        target.closest('input') ||
-        target.closest('textarea') ||
-        target.closest('button') ||
-        target.closest('select') ||
-        target.closest('img') || // Ignore touch on images (avatars)
-        target.closest('a') // Ignore touch on links
-      ) {
-        return;
-      }
-
-      // Check if touch is within a horizontal scroll container (photo gallery)
-      // Disable page swipe navigation when touching photo scroll areas
-      const horizontalScrollContainer = target.closest('[class*="overflow-x-auto"]');
-      if (horizontalScrollContainer) {
-        // Check if the container actually has horizontal scroll capability
-        const container = horizontalScrollContainer as HTMLElement;
-        const hasHorizontalScroll = container.scrollWidth > container.clientWidth;
-        if (hasHorizontalScroll) {
-          return; // Disable page swipe, let photo scrolling handle it
-        }
-      }
+      if (shouldIgnoreTouchTarget(target)) return;
+      if (isInHorizontalScrollArea(target)) return;
 
       touchStartX.current = e.touches[0].clientX;
       touchStartY.current = e.touches[0].clientY;
@@ -64,19 +41,12 @@ export const useSwipeNavigation = ({ currentPath, enabled = true }: SwipeNavigat
 
     const handleTouchMove = (e: TouchEvent) => {
       if (!isSwiping.current) return;
-      
-      // Check if touch is within a horizontal scroll container (photo gallery)
+
       const target = e.target as HTMLElement;
-      const horizontalScrollContainer = target.closest('[class*="overflow-x-auto"]');
-      if (horizontalScrollContainer) {
-        const container = horizontalScrollContainer as HTMLElement;
-        const hasHorizontalScroll = container.scrollWidth > container.clientWidth;
-        if (hasHorizontalScroll) {
-          // Cancel page swipe if user is in photo scroll area
-          isSwiping.current = false;
-          endSwipe();
-          return;
-        }
+      if (isInHorizontalScrollArea(target)) {
+        isSwiping.current = false;
+        endSwipe();
+        return;
       }
       
       touchEndX.current = e.touches[0].clientX;
@@ -87,11 +57,13 @@ export const useSwipeNavigation = ({ currentPath, enabled = true }: SwipeNavigat
       const direction = swipeDistance > 0 ? 'left' : 'right';
       
       // Prevent default scrolling during horizontal swipe
+      // Only call preventDefault when event is cancelable - Chrome marks touchmove as
+      // non-cancelable once it has started scroll optimization, and calling it anyway
+      // triggers "[Intervention] Ignored attempt to cancel a touchmove event" warning
       const deltaX = Math.abs(swipeDistance);
       const deltaY = Math.abs(touchStartY.current - e.touches[0].clientY);
-      
-      // Only proceed if horizontal movement is greater than vertical
-      if (deltaX > deltaY && deltaX > 10) {
+
+      if (deltaX > deltaY && deltaX > 10 && e.cancelable) {
         e.preventDefault();
         e.stopPropagation();
       }
@@ -108,8 +80,7 @@ export const useSwipeNavigation = ({ currentPath, enabled = true }: SwipeNavigat
         
         // Calculate progress (0-100)
         // Allow user to swipe up to 100% of screen width for full preview
-        // Use a threshold (e.g., 80% of screen width) to reach 100% progress
-        const progressThreshold = screenWidth * 0.8; // 80% of screen width = 100% progress
+        const progressThreshold = screenWidth * SWIPE.PROGRESS_THRESHOLD;
         const progress = Math.min(100, (moveDistance / progressThreshold) * 100);
         
         // Cancel previous animation frame if exists
@@ -168,45 +139,17 @@ export const useSwipeNavigation = ({ currentPath, enabled = true }: SwipeNavigat
       if (isLeftSwipe || isRightSwipe) {
         // Trigger completion animation to 100%
         completeSwipe();
-        
-        // Determine target route
-        let targetRoute: string | null = null;
-        if (isLeftSwipe) {
-          // Swipe left: go to next page
-          // Order: friends -> search -> home -> today -> profile
-          if (currentPath === '/friends') {
-            targetRoute = '/search';
-          } else if (currentPath === '/search') {
-            targetRoute = '/';
-          } else if (currentPath === '/') {
-            targetRoute = '/today';
-          } else if (currentPath === '/today') {
-            targetRoute = '/profile';
-          }
-        } else if (isRightSwipe) {
-          // Swipe right: go to previous page
-          // Handle dynamic routes: friends/[id] -> friends
-          // Order: profile -> today -> home -> search -> friends
-          if (currentPath.startsWith('/friends/')) {
-            targetRoute = '/friends';
-          } else if (currentPath === '/profile') {
-            targetRoute = '/today';
-          } else if (currentPath === '/today') {
-            targetRoute = '/';
-          } else if (currentPath === '/') {
-            targetRoute = '/search';
-          } else if (currentPath === '/search') {
-            targetRoute = '/friends';
-          }
-        }
-        
+
+        // Use single source of truth for route calculation from context
+        const direction = isLeftSwipe ? 'left' : 'right';
+        const targetRoute = getNextRoute(currentPath, direction);
+
         // Navigate after animation completes (300ms for smooth transition)
         // Don't call endSwipe here - let the pathname change effect handle it
         if (targetRoute) {
           setTimeout(() => {
-            router.push(targetRoute!);
-            // Don't call endSwipe immediately - let pathname change handle cleanup
-          }, 300); // Match the transition duration
+            router.push(targetRoute);
+          }, SWIPE.ANIMATION_DURATION_MS);
         }
       } else {
         // Swipe was too small, end preview and reset
@@ -238,6 +181,6 @@ export const useSwipeNavigation = ({ currentPath, enabled = true }: SwipeNavigat
       // End swipe preview on cleanup
       endSwipe();
     };
-  }, [currentPath, enabled, router, startSwipe, updateProgress, endSwipe, completeSwipe]);
+  }, [currentPath, enabled, router, startSwipe, updateProgress, endSwipe, completeSwipe, getNextRoute]);
 };
 

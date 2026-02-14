@@ -2,11 +2,25 @@
 
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { SWIPE } from '@/lib/swipeConstants';
 
 /**
  * Swipe direction type
  */
 type SwipeDirection = 'left' | 'right' | null;
+
+/**
+ * Initial/reset state for swipe preview
+ * Used when ending swipe or when pathname changes
+ */
+const INITIAL_SWIPE_STATE = {
+  progress: 0,
+  direction: null as SwipeDirection,
+  nextRoute: null as string | null,
+  prevRoute: null as string | null,
+  isActive: false,
+  shouldComplete: false,
+};
 
 /**
  * Swipe preview state interface
@@ -67,14 +81,7 @@ export const useSwipePreview = () => {
 export default function SwipePreviewProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [state, setState] = useState<SwipePreviewState>({
-    progress: 0,
-    direction: null,
-    nextRoute: null,
-    prevRoute: null,
-    isActive: false,
-    shouldComplete: false,
-  });
+  const [state, setState] = useState<SwipePreviewState>(INITIAL_SWIPE_STATE);
 
   // Track prefetched routes to avoid duplicate prefetching
   const prefetchedRoutesRef = useRef<Set<string>>(new Set());
@@ -201,14 +208,7 @@ export default function SwipePreviewProvider({ children }: { children: React.Rea
    * End swipe gesture
    */
   const endSwipe = useCallback(() => {
-    setState({
-      progress: 0,
-      direction: null,
-      nextRoute: null,
-      prevRoute: null,
-      isActive: false,
-      shouldComplete: false,
-    });
+    setState(INITIAL_SWIPE_STATE);
   }, []);
 
   /**
@@ -238,15 +238,8 @@ export default function SwipePreviewProvider({ children }: { children: React.Rea
     // Reset swipe state when pathname changes (after navigation completes)
     // Use a delay to ensure the new page has rendered and animation is complete
     const resetTimer = setTimeout(() => {
-      setState({
-        progress: 0,
-        direction: null,
-        nextRoute: null,
-        prevRoute: null,
-        isActive: false,
-        shouldComplete: false,
-      });
-    }, 350); // Slightly longer than animation duration to ensure smooth transition
+      setState(INITIAL_SWIPE_STATE);
+    }, SWIPE.RESET_DELAY_MS);
 
     return () => clearTimeout(resetTimer);
   }, [pathname, getNextRoute, prefetchRoute]);

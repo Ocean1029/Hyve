@@ -2,8 +2,8 @@
 
 import React, { useEffect, useRef } from 'react';
 import { useSwipePreview } from '@/components/common/SwipePreviewProvider';
-import { useRouter } from 'next/navigation';
 import PagePreview from '@/components/common/PagePreview';
+import { SWIPE } from '@/lib/swipeConstants';
 
 interface SwipePreviewWrapperProps {
   children: React.ReactNode;
@@ -17,7 +17,6 @@ interface SwipePreviewWrapperProps {
  */
 export default function SwipePreviewWrapper({ children, currentPath }: SwipePreviewWrapperProps) {
   const { state } = useSwipePreview();
-  const router = useRouter();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
@@ -44,13 +43,14 @@ export default function SwipePreviewWrapper({ children, currentPath }: SwipePrev
       if (!wrapperRef.current || !previewRef.current) return;
 
       const progress = state.progress / 100;
-      const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 414;
+      const screenWidth = typeof window !== 'undefined' ? window.innerWidth : SWIPE.DEFAULT_SCREEN_WIDTH;
+      const transitionStyle = `transform ${SWIPE.ANIMATION_DURATION_MS}ms ${SWIPE.TRANSITION_EASING}, opacity ${SWIPE.ANIMATION_DURATION_MS}ms ease-out`;
 
       // If shouldComplete is true, use smooth transition to complete the animation
       if (state.shouldComplete) {
         // Enable smooth transition for completion
-        wrapperRef.current.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-out';
-        previewRef.current.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-out';
+        wrapperRef.current.style.transition = transitionStyle;
+        previewRef.current.style.transition = transitionStyle;
         
         // Animate to 100% - use double requestAnimationFrame to ensure current transform is applied first
         // This ensures the browser has applied the current transform before we change it
@@ -59,27 +59,15 @@ export default function SwipePreviewWrapper({ children, currentPath }: SwipePrev
             if (!wrapperRef.current || !previewRef.current) return;
             
             const finalProgress = 1;
-            if (state.direction === 'left') {
-              const translateX = -finalProgress * screenWidth;
-              const scale = 1 - finalProgress * 0.1;
-              const opacity = Math.max(0.3, 1 - finalProgress * 0.7);
-              wrapperRef.current.style.transform = `translateX(${translateX}px) scale(${scale})`;
-              wrapperRef.current.style.opacity = `${opacity}`;
-
-              const previewTranslateX = screenWidth * (1 - finalProgress);
-              previewRef.current.style.transform = `translateX(${previewTranslateX}px)`;
-              previewRef.current.style.opacity = `${Math.min(1, 0.3 + finalProgress * 0.7)}`;
-            } else if (state.direction === 'right') {
-              const translateX = finalProgress * screenWidth;
-              const scale = 1 - finalProgress * 0.1;
-              const opacity = Math.max(0.3, 1 - finalProgress * 0.7);
-              wrapperRef.current.style.transform = `translateX(${translateX}px) scale(${scale})`;
-              wrapperRef.current.style.opacity = `${opacity}`;
-
-              const previewTranslateX = -screenWidth * (1 - finalProgress);
-              previewRef.current.style.transform = `translateX(${previewTranslateX}px)`;
-              previewRef.current.style.opacity = `${Math.min(1, 0.3 + finalProgress * 0.7)}`;
-            }
+            const dir = state.direction === 'left' ? -1 : 1;
+            const translateX = dir * finalProgress * screenWidth;
+            const scale = 1 - finalProgress * SWIPE.SCALE_FACTOR;
+            const opacity = Math.max(1 - SWIPE.OPACITY_FACTOR, 1 - finalProgress * SWIPE.OPACITY_FACTOR);
+            const previewOpacity = Math.min(1, 1 - SWIPE.OPACITY_FACTOR + finalProgress * SWIPE.OPACITY_FACTOR);
+            wrapperRef.current.style.transform = `translateX(${translateX}px) scale(${scale})`;
+            wrapperRef.current.style.opacity = `${opacity}`;
+            previewRef.current.style.transform = `translateX(${-dir * screenWidth * (1 - finalProgress)}px)`;
+            previewRef.current.style.opacity = `${previewOpacity}`;
           });
         });
         return;
@@ -89,39 +77,18 @@ export default function SwipePreviewWrapper({ children, currentPath }: SwipePrev
       wrapperRef.current.style.transition = 'none';
       previewRef.current.style.transition = 'none';
 
-      if (state.direction === 'left') {
-        // Swipe left: current page moves left, next page comes from right
-        // At 100% progress, current page should move 100% of screen width
-        const translateX = -progress * screenWidth;
-        const scale = 1 - progress * 0.1; // Scale down up to 10% max
-        const opacity = Math.max(0.3, 1 - progress * 0.7); // Fade out but keep some visibility
+      // Use direction multiplier: left = -1, right = +1 for symmetric transform calculation
+      const dir = state.direction === 'left' ? -1 : 1;
+      const translateX = dir * progress * screenWidth;
+      const scale = 1 - progress * SWIPE.SCALE_FACTOR;
+      const opacity = Math.max(1 - SWIPE.OPACITY_FACTOR, 1 - progress * SWIPE.OPACITY_FACTOR);
+      const previewTranslateX = -dir * screenWidth * (1 - progress);
+      const previewOpacity = Math.min(1, 1 - SWIPE.OPACITY_FACTOR + progress * SWIPE.OPACITY_FACTOR);
 
-        wrapperRef.current.style.transform = `translateX(${translateX}px) scale(${scale})`;
-        wrapperRef.current.style.opacity = `${opacity}`;
-
-        // Next page preview comes from right
-        // At 0% progress: preview is at screenWidth (completely off-screen right)
-        // At 100% progress: preview is at 0 (fully visible)
-        const previewTranslateX = screenWidth * (1 - progress);
-        previewRef.current.style.transform = `translateX(${previewTranslateX}px)`;
-        previewRef.current.style.opacity = `${Math.min(1, 0.3 + progress * 0.7)}`; // Fade in from 30% to 100%
-      } else if (state.direction === 'right') {
-        // Swipe right: current page moves right, previous page comes from left
-        // At 100% progress, current page should move 100% of screen width
-        const translateX = progress * screenWidth;
-        const scale = 1 - progress * 0.1;
-        const opacity = Math.max(0.3, 1 - progress * 0.7);
-
-        wrapperRef.current.style.transform = `translateX(${translateX}px) scale(${scale})`;
-        wrapperRef.current.style.opacity = `${opacity}`;
-
-        // Previous page preview comes from left
-        // At 0% progress: preview is at -screenWidth (completely off-screen left)
-        // At 100% progress: preview is at 0 (fully visible)
-        const previewTranslateX = -screenWidth * (1 - progress);
-        previewRef.current.style.transform = `translateX(${previewTranslateX}px)`;
-        previewRef.current.style.opacity = `${Math.min(1, 0.3 + progress * 0.7)}`;
-      }
+      wrapperRef.current.style.transform = `translateX(${translateX}px) scale(${scale})`;
+      wrapperRef.current.style.opacity = `${opacity}`;
+      previewRef.current.style.transform = `translateX(${previewTranslateX}px)`;
+      previewRef.current.style.opacity = `${previewOpacity}`;
 
       if (!state.shouldComplete) {
         animationFrameRef.current = requestAnimationFrame(updateTransforms);
@@ -147,7 +114,7 @@ export default function SwipePreviewWrapper({ children, currentPath }: SwipePrev
         ref={wrapperRef}
         className="w-full h-full will-change-transform transition-transform duration-0"
         style={{
-          transition: state.isActive ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-out',
+          transition: state.isActive ? 'none' : `transform ${SWIPE.ANIMATION_DURATION_MS}ms ${SWIPE.TRANSITION_EASING}, opacity ${SWIPE.ANIMATION_DURATION_MS}ms ease-out`,
         }}
       >
         {children}
