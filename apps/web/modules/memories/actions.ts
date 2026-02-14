@@ -4,6 +4,10 @@ import { revalidatePath } from 'next/cache';
 import { createMemory } from './repository';
 import prisma from '@/lib/prisma';
 import { auth } from '@/auth';
+import {
+  getWeeklyHappyIndexDataService,
+  getPeakHappinessMemoriesService,
+} from './service';
 
 /**
  * Create a new memory associated with a focus session
@@ -207,5 +211,29 @@ export async function updateMemoryWithPhoto(
     console.error('Failed to update memory with photo:', error);
     return { success: false, error: 'Failed to update memory with photo' };
   }
+}
+
+/**
+ * Get weekly happy index data for the current user.
+ * Used by server components (e.g. happy-index page) for initial data fetch.
+ */
+export async function getWeeklyHappyIndexData() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return [];
+  }
+  return getWeeklyHappyIndexDataService(session.user.id);
+}
+
+/**
+ * Get peak happiness memories for the current user.
+ * Used by server components (e.g. happy-index page) for initial data fetch.
+ */
+export async function getPeakHappinessMemories(limit: number = 5) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return [];
+  }
+  return getPeakHappinessMemoriesService(session.user.id, limit);
 }
 

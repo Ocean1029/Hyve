@@ -61,3 +61,48 @@ export const MemoryActionResultSchema = z.object({
 });
 
 export type MemoryActionResult = z.infer<typeof MemoryActionResultSchema>;
+
+/**
+ * Weekly happy index data point for chart display
+ */
+export const WeeklyHappyIndexDataPointSchema = z.object({
+  day: z.string(),
+  score: z.number(),
+});
+
+export type WeeklyHappyIndexDataPoint = z.infer<typeof WeeklyHappyIndexDataPointSchema>;
+
+/**
+ * Peak happiness memory with full relations (focus session, friends, photos)
+ */
+export const PeakHappinessMemorySchema = z.object({
+  id: z.string(),
+  content: z.string().nullable(),
+  location: z.string().nullable(),
+  timestamp: z.date(),
+  happyIndex: z.number().nullable(),
+  photos: z.array(
+    z.object({
+      id: z.string(),
+      photoUrl: z.string(),
+    })
+  ),
+  focusSession: z.object({
+    id: z.string(),
+    startTime: z.date(),
+    endTime: z.date(),
+    friends: z.array(
+      z.object({
+        friend: z.object({
+          id: z.string(),
+          user: z.object({
+            name: z.string().nullable(),
+            image: z.string().nullable(),
+          }),
+        }),
+      })
+    ),
+  }),
+});
+
+export type PeakHappinessMemory = z.infer<typeof PeakHappinessMemorySchema>;

@@ -3,10 +3,10 @@
 import React from 'react';
 import HappyIndex from '@/components/features/HappyIndex';
 import BottomNav from '@/components/common/BottomNav';
-import {
+import type {
   WeeklyHappyIndexDataPoint,
   PeakHappinessMemory,
-} from '@/modules/memories/service';
+} from '@hyve/types';
 
 interface HappyIndexClientProps {
   userId: string;

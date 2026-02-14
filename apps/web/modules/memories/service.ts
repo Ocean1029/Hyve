@@ -1,37 +1,7 @@
 // modules/memories/service.ts
 import prisma from '@/lib/prisma';
 import { createMemory } from './repository';
-
-export interface WeeklyHappyIndexDataPoint {
-  day: string;
-  score: number;
-}
-
-export interface PeakHappinessMemory {
-  id: string;
-  content: string | null;
-  location: string | null;
-  timestamp: Date;
-  happyIndex: number | null;
-  photos: Array<{
-    id: string;
-    photoUrl: string;
-  }>;
-  focusSession: {
-    id: string;
-    startTime: Date;
-    endTime: Date;
-    friends: Array<{
-      friend: {
-        id: string;
-        user: {
-          name: string | null;
-          image: string | null;
-        };
-      };
-    }>; // Keep same structure for compatibility
-  };
-}
+import type { WeeklyHappyIndexDataPoint, PeakHappinessMemory } from '@hyve/types';
 
 /**
  * Get weekly happy index data for the last 7 days

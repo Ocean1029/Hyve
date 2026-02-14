@@ -4,10 +4,10 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, TrendingUp, Calendar, Smile, MapPin, Camera } from 'lucide-react';
 import { LineChart, Line, XAxis, ResponsiveContainer, CartesianGrid } from 'recharts';
-import {
+import type {
   WeeklyHappyIndexDataPoint,
   PeakHappinessMemory,
-} from '@/modules/memories/service';
+} from '@hyve/types';
 import ChartPeakDot from '@/components/common/ChartPeakDot';
 
 interface HappyIndexProps {
