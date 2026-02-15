@@ -2,10 +2,7 @@
   "name": "hyve-monorepo",
   "version": "0.1.0",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "dev": "npm run dev --workspace=apps/web",
     "dev:web": "npm run dev --workspace=apps/web",
@@ -25,13 +22,7 @@
     "db:migrate": "npm run db:migrate --workspace=apps/web",
     "db:reset": "npm run db:reset --workspace=apps/web"
   },
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
   "devDependencies": {
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
     "typescript": "~5.8.2"
   },
   "engines": {

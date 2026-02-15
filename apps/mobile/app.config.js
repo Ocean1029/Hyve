@@ -34,5 +34,9 @@ export default {
     extra: {
       apiUrl: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000',
     },
+    plugins: [
+      'expo-secure-store',
+      'expo-web-browser',
+    ],
   },
 };
