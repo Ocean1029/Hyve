@@ -30,5 +30,9 @@ config.resolver.extraNodeModules['@hyve/types'] = path.resolve(monorepoRoot, 'pa
 config.resolver.extraNodeModules['@hyve/utils'] = path.resolve(monorepoRoot, 'packages/utils/src');
 config.resolver.extraNodeModules['@hyve/shared'] = path.resolve(monorepoRoot, 'packages/shared/src');
 config.resolver.extraNodeModules['@hyve/hooks'] = path.resolve(monorepoRoot, 'packages/hooks/src');
+config.resolver.extraNodeModules['@react-native/virtualized-lists'] = path.resolve(
+  monorepoRoot,
+  'node_modules/@react-native/virtualized-lists'
+);
 
 module.exports = config;

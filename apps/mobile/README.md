@@ -44,6 +44,8 @@ npx expo start
 
 Press `i` for iOS Simulator or `a` for Android.
 
+**Note on FormData / Hermes**: iOS is configured to use JSC (`jsEngine: 'jsc'`) to avoid FormData errors. This applies to development builds. If using Expo Go, run `npx expo prebuild` then `npx expo run:ios` to create a dev build with JSC.
+
 ## Features
 
 - **Auth**: Google Sign-In (idToken) or dev login
