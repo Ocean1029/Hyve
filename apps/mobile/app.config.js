@@ -19,8 +19,7 @@ export default {
     assetBundlePatterns: ['**/*'],
     ios: {
       supportsTablet: true,
-      bundleIdentifier: 'com.hyve.mobile',
-      jsEngine: 'jsc',
+      bundleIdentifier: 'com.hyve.mobile'
     },
     android: {
       adaptiveIcon: {
