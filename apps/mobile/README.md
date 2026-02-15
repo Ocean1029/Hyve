@@ -44,7 +44,20 @@ npx expo start
 
 Press `i` for iOS Simulator or `a` for Android.
 
-**Note on FormData / Hermes**: iOS is configured to use JSC (`jsEngine: 'jsc'`) to avoid FormData errors. This applies to development builds. If using Expo Go, run `npx expo prebuild` then `npx expo run:ios` to create a dev build with JSC.
+### 4. JSC vs Expo Go
+
+Expo Go uses Hermes as the JavaScript engine. The Hyve mobile app configures `jsEngine: 'jsc'` (JavaScriptCore) to avoid FormData-related issues (e.g. image upload). JSC only applies when you run a **development build**, not when using Expo Go.
+
+- **Expo Go**: Uses Hermes. Some features (e.g. FormData upload) may fail.
+- **Development build**: Uses JSC. Run `npx expo prebuild` then `npx expo run:ios` to create a dev build with JSC.
+
+For image upload and other FormData-dependent features, use a development build:
+
+```bash
+# From apps/mobile
+npx expo prebuild
+npx expo run:ios
+```
 
 ## Features
 

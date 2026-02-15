@@ -9,12 +9,24 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
 import { API_PATHS } from '@hyve/shared';
 import type { Friend, ChartDataPoint } from '@hyve/types';
 
+type RootStackParamList = {
+  Main: undefined;
+  FindFriends: undefined;
+  HappyIndex: undefined;
+  FocusSession: undefined;
+  SpringBloom: undefined;
+};
+
 export default function DashboardScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Main'>>();
   const { apiClient, user } = useAuth();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
@@ -63,6 +75,32 @@ export default function DashboardScreen() {
         <Text style={styles.weekSummary}>
           This week: {totalMinutes} min focus
         </Text>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            style={styles.findFriendsButton}
+            onPress={() => navigation.navigate('FindFriends')}
+          >
+            <Text style={styles.findFriendsText}>Find Friends</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => navigation.navigate('HappyIndex')}
+          >
+            <Text style={styles.secondaryButtonText}>Happy Index</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => navigation.navigate('SpringBloom')}
+          >
+            <Text style={styles.secondaryButtonText}>Spring Bloom</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.focusButton}
+            onPress={() => navigation.navigate('FocusSession')}
+          >
+            <Text style={styles.focusButtonText}>Start Focus</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <Text style={styles.sectionTitle}>Friends</Text>
@@ -116,6 +154,44 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#888',
     marginTop: 4,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  findFriendsButton: {
+    backgroundColor: '#4285f4',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  findFriendsText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  secondaryButton: {
+    backgroundColor: '#333',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  secondaryButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  focusButton: {
+    backgroundColor: '#22c55e',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  focusButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
   },
   sectionTitle: {
     fontSize: 18,

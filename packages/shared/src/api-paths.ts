@@ -42,6 +42,8 @@ export const API_PATHS = {
 
   // Memories
   MEMORIES: '/api/memories',
+  MEMORIES_HAPPY_INDEX_WEEKLY: '/api/memories/happy-index-weekly',
+  MEMORIES_PEAK_HAPPINESS: '/api/memories/peak-happiness',
   MEMORY_WITH_PHOTO: '/api/memories/with-photo',
   MEMORY_UPDATE_WITH_PHOTO: (id: string) => `/api/memories/${id}/with-photo`,
   MEMORY_PHOTOS: (id: string) => `/api/memories/${id}/photos`,

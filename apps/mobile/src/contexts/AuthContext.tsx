@@ -23,6 +23,7 @@ interface AuthContextValue {
   isLoading: boolean;
   isAuthenticated: boolean;
   apiClient: ReturnType<typeof createApiClient>;
+  getToken: () => Promise<string | null>;
   login: (sessionToken: string, user: AuthUser) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -126,6 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoading,
     isAuthenticated: !!token,
     apiClient,
+    getToken,
     login,
     logout,
     refreshUser,

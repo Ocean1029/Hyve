@@ -1,11 +1,19 @@
 /**
- * Profile screen. Shows user info and logout.
+ * Profile screen. Shows user info, settings, and logout.
  */
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
 
+type RootStackParamList = {
+  Main: undefined;
+  Settings: undefined;
+};
+
 export default function ProfileScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Main'>>();
   const { user, logout } = useAuth();
 
   return (
@@ -14,6 +22,13 @@ export default function ProfileScreen() {
         <Text style={styles.name}>{user?.name ?? 'User'}</Text>
         <Text style={styles.email}>{user?.email ?? ''}</Text>
       </View>
+
+      <TouchableOpacity
+        style={styles.settingsButton}
+        onPress={() => navigation.navigate('Settings')}
+      >
+        <Text style={styles.settingsText}>Settings</Text>
+      </TouchableOpacity>
 
       <TouchableOpacity style={styles.logoutButton} onPress={logout}>
         <Text style={styles.logoutText}>Log out</Text>
@@ -40,6 +55,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#888',
     marginTop: 4,
+  },
+  settingsButton: {
+    backgroundColor: '#333',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+  },
+  settingsText: {
+    color: '#fff',
+    fontSize: 16,
   },
   logoutButton: {
     backgroundColor: '#333',
