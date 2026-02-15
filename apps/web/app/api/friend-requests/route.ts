@@ -1,6 +1,6 @@
 // app/api/friend-requests/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getSessionForApi } from '@/lib/auth-mobile';
 import { sendFriendRequestService } from '@/modules/friend-requests/service';
 import { SendFriendRequestSchema } from '@hyve/types';
 import { validateRequest } from '@/lib/validation';
@@ -56,7 +56,7 @@ import { validateRequest } from '@/lib/validation';
  */
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getSessionForApi(request);
     if (!session?.user?.id) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },

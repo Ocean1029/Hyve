@@ -1,6 +1,6 @@
 // app/api/sessions/[sessionId]/status/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getSessionForApi } from '@/lib/auth-mobile';
 import { getSessionStatusService } from '@/modules/sessions/service';
 
 /**
@@ -69,7 +69,7 @@ export async function GET(
   { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getSessionForApi(request);
     if (!session?.user?.id) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },

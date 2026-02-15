@@ -1,6 +1,6 @@
 // app/api/friends/[friendId]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getSessionForApi } from '@/lib/auth-mobile';
 import { deleteFriendService } from '@/modules/friends/service';
 
 /**
@@ -61,7 +61,7 @@ export async function DELETE(
   { params }: { params: Promise<{ friendId: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getSessionForApi(request);
     if (!session?.user?.id) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },

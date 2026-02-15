@@ -1,6 +1,6 @@
 // app/api/upload/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getSessionForApi } from '@/lib/auth-mobile';
 import { v2 as cloudinary } from 'cloudinary';
 
 // Configure Cloudinary
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Authenticate user
-    const session = await auth();
+    const session = await getSessionForApi(request);
     if (!session?.user?.id) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },

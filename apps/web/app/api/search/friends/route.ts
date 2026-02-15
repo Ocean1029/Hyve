@@ -1,6 +1,6 @@
 // app/api/search/friends/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getSessionForApi } from '@/lib/auth-mobile';
 import { searchFriendsService } from '@/modules/search/service';
 
 /**
@@ -36,7 +36,7 @@ import { searchFriendsService } from '@/modules/search/service';
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getSessionForApi(request);
     if (!session?.user?.id) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized', friends: [] },

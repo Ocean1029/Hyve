@@ -1,6 +1,6 @@
 // app/api/friend-requests/status/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getSessionForApi } from '@/lib/auth-mobile';
 import { checkFriendRequestStatusService } from '@/modules/friend-requests/service';
 
 /**
@@ -42,7 +42,7 @@ import { checkFriendRequestStatusService } from '@/modules/friend-requests/servi
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getSessionForApi(request);
     if (!session?.user?.id) {
       return NextResponse.json({ status: 'none' });
     }

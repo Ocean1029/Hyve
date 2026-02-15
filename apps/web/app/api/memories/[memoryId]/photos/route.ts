@@ -1,6 +1,6 @@
 // app/api/memories/[memoryId]/photos/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getSessionForApi } from '@/lib/auth-mobile';
 import { addPhotoToMemoryService } from '@/modules/memories/service';
 import { AddPhotoToMemoryRequestSchema } from '@hyve/types';
 import { validateRequest } from '@/lib/validation';
@@ -64,7 +64,7 @@ export async function POST(
   { params }: { params: Promise<{ memoryId: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getSessionForApi(request);
     if (!session?.user?.id) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },

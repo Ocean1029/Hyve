@@ -1,6 +1,7 @@
 // app/api/users/logout/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { signOut } from '@/auth';
+import prisma from '@/lib/prisma';
 
 /**
  * @swagger
@@ -32,10 +33,15 @@ import { signOut } from '@/auth';
  */
 export async function POST(request: NextRequest) {
   try {
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.slice(7).trim();
+      await prisma.session.deleteMany({ where: { sessionToken: token } });
+      return NextResponse.json({ success: true });
+    }
     await signOut({ redirect: false });
     return NextResponse.json({ success: true });
   } catch (error) {
-    // NextAuth may throw NEXT_REDIRECT; treat as success
     return NextResponse.json({ success: true });
   }
 }

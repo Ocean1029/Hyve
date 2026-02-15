@@ -1,6 +1,6 @@
 // app/api/presence/stream/route.ts
 import { NextRequest } from 'next/server';
-import { auth } from '@/auth';
+import { getSessionForApi } from '@/lib/auth-mobile';
 import { getFriendsStatusService } from '@/modules/presence/service';
 
 /**
@@ -40,7 +40,7 @@ import { getFriendsStatusService } from '@/modules/presence/service';
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getSessionForApi(request);
     if (!session?.user?.id) {
       return new Response('Unauthorized', { status: 401 });
     }

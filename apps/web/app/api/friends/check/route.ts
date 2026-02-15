@@ -1,6 +1,6 @@
 // app/api/friends/check/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getSessionForApi } from '@/lib/auth-mobile';
 import prisma from '@/lib/prisma';
 
 /**
@@ -42,7 +42,7 @@ import prisma from '@/lib/prisma';
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getSessionForApi(request);
     if (!session?.user?.id) {
       return NextResponse.json({ success: false, isFriend: false });
     }

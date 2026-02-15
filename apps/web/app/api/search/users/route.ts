@@ -1,6 +1,6 @@
 // app/api/search/users/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getSessionForApi } from '@/lib/auth-mobile';
 import { searchUsersService } from '@/modules/search/service';
 
 /**
@@ -42,7 +42,7 @@ import { searchUsersService } from '@/modules/search/service';
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getSessionForApi(request);
     const currentUserId = session?.user?.id;
 
     const { searchParams } = new URL(request.url);

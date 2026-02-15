@@ -1,0 +1,23 @@
+{
+  "name": "@hyve/hooks",
+  "version": "0.1.0",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "private": true,
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hyve/shared": "*",
+    "@hyve/types": "*",
+    "@hyve/utils": "*",
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "typescript": "~5.8.2"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0"
+  }
+}

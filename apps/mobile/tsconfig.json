@@ -4,16 +4,11 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@hyve/types": [
-        "../../packages/types/src"
-      ],
-      "@hyve/utils": [
-        "../../packages/utils/src"
-      ]
+      "@hyve/hooks": ["../../packages/hooks/src"],
+      "@hyve/shared": ["../../packages/shared/src"],
+      "@hyve/types": ["../../packages/types/src"],
+      "@hyve/utils": ["../../packages/utils/src"]
     }
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx"
-  ]
+  "include": ["**/*.ts", "**/*.tsx"]
 }

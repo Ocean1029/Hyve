@@ -1,6 +1,6 @@
 // app/api/messages/[friendId]/sessions/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getSessionForApi } from '@/lib/auth-mobile';
 import { getFocusSessionsByFriendId } from '@/modules/messages/repository';
 import prisma from '@/lib/prisma';
 
@@ -52,7 +52,7 @@ export async function GET(
   { params }: { params: Promise<{ friendId: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getSessionForApi(request);
     if (!session?.user?.id) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized', sessions: [] },

@@ -1,6 +1,6 @@
 // app/api/presence/me/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getSessionForApi } from '@/lib/auth-mobile';
 import { getUserOnlineStatusService } from '@/modules/presence/service';
 
 /**
@@ -35,7 +35,7 @@ import { getUserOnlineStatusService } from '@/modules/presence/service';
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getSessionForApi(request);
     if (!session?.user?.id) {
       return NextResponse.json({ isOnline: false, lastSeenAt: null });
     }

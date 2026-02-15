@@ -1,6 +1,6 @@
 // app/api/sessions/[sessionId]/pause/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getSessionForApi } from '@/lib/auth-mobile';
 import { updatePauseStatusService } from '@/modules/sessions/service';
 import { PauseSessionRequestSchema } from '@hyve/types';
 import { validateRequest } from '@/lib/validation';
@@ -96,7 +96,7 @@ export async function POST(
   { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getSessionForApi(request);
     if (!session?.user?.id) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },

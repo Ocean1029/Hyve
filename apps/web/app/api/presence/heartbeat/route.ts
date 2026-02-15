@@ -1,6 +1,6 @@
 // app/api/presence/heartbeat/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getSessionForApi } from '@/lib/auth-mobile';
 import { updateUserHeartbeatService } from '@/modules/presence/service';
 
 /**
@@ -55,7 +55,7 @@ import { updateUserHeartbeatService } from '@/modules/presence/service';
  */
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getSessionForApi(request);
     if (!session?.user?.id) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },

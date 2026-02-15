@@ -1,7 +1,7 @@
 {
   "name": "@hyve/mobile",
   "version": "1.0.0",
-  "main": "index.ts",
+  "main": "index.js",
   "scripts": {
     "start": "expo start",
     "dev": "expo start",
@@ -12,11 +12,26 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@hyve/hooks": "*",
+    "@hyve/shared": "*",
     "@hyve/types": "*",
     "@hyve/utils": "*",
+    "@react-navigation/bottom-tabs": "^7.0.0",
+    "@react-navigation/native": "^7.0.0",
+    "@react-navigation/native-stack": "^7.0.0",
     "expo": "~54.0.0",
+    "expo-application": "^7.0.8",
+    "expo-auth-session": "~6.0.0",
+    "expo-crypto": "~14.0.0",
+    "expo-image-picker": "^17.0.10",
+    "expo-location": "^19.0.8",
+    "expo-secure-store": "~14.0.0",
+    "expo-status-bar": "^3.0.9",
+    "expo-web-browser": "~14.0.0",
     "react": "18.3.1",
-    "react-native": "0.76.0"
+    "react-native": "0.76.0",
+    "react-native-safe-area-context": "4.12.0",
+    "react-native-screens": "~4.4.0"
   },
   "devDependencies": {
     "@types/react": "~18.2.0",

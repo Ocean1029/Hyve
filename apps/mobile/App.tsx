@@ -1,20 +1,23 @@
+/**
+ * Hyve mobile app entry. AuthProvider wraps the navigator.
+ */
+import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AuthProvider } from './src/contexts/AuthContext';
+import AppNavigator from './src/navigation/AppNavigator';
+import PresenceHeartbeat from './src/components/PresenceHeartbeat';
+import LocationTracker from './src/components/LocationTracker';
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Hyve Mobile App</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <PresenceHeartbeat />
+        <LocationTracker />
+        <AppNavigator />
+        <StatusBar style="light" />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

@@ -28,5 +28,7 @@ if (!config.resolver.extraNodeModules) {
 // Add workspace packages
 config.resolver.extraNodeModules['@hyve/types'] = path.resolve(monorepoRoot, 'packages/types/src');
 config.resolver.extraNodeModules['@hyve/utils'] = path.resolve(monorepoRoot, 'packages/utils/src');
+config.resolver.extraNodeModules['@hyve/shared'] = path.resolve(monorepoRoot, 'packages/shared/src');
+config.resolver.extraNodeModules['@hyve/hooks'] = path.resolve(monorepoRoot, 'packages/hooks/src');
 
 module.exports = config;

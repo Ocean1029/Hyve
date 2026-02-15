@@ -1,6 +1,6 @@
 // app/api/friend-requests/[requestId]/reject/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getSessionForApi } from '@/lib/auth-mobile';
 import { rejectFriendRequestService } from '@/modules/friend-requests/service';
 
 /**
@@ -55,7 +55,7 @@ export async function POST(
   { params }: { params: Promise<{ requestId: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getSessionForApi(request);
     if (!session?.user?.id) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },

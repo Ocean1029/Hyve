@@ -1,6 +1,6 @@
 // app/api/messages/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
+import { getSessionForApi } from '@/lib/auth-mobile';
 import { createMessage, getMessages } from '@/modules/messages/repository';
 import prisma from '@/lib/prisma';
 import { SendMessageRequestSchema } from '@hyve/types';
@@ -105,7 +105,7 @@ import { validateRequest } from '@/lib/validation';
  *               $ref: '#/components/schemas/Error'
  */
 export async function POST(request: NextRequest) {
-  const session = await auth();
+  const session = await getSessionForApi(request);
   if (!session?.user?.id) {
     return NextResponse.json(
       { success: false, error: 'Unauthorized' },
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const session = await auth();
+  const session = await getSessionForApi(request);
   if (!session?.user?.id) {
     return NextResponse.json(
       { success: false, error: 'Unauthorized', messages: [] },
