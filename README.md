@@ -117,8 +117,10 @@ AUTH_SECRET="your-auth-secret-here" # Generate with: openssl rand -base64 32
 AUTH_URL="http://localhost:3000"
 
 # Google OAuth (for authentication)
-AUTH_GOOGLE_ID="your-google-client-id"
+AUTH_GOOGLE_ID="your-google-web-client-id"
 AUTH_GOOGLE_SECRET="your-google-client-secret"
+AUTH_GOOGLE_IOS_CLIENT_ID="your-google-ios-client-id"      # For mobile login
+AUTH_GOOGLE_ANDROID_CLIENT_ID="your-google-android-client-id"  # For mobile login
 
 # AI Integration
 GEMINI_API_KEY="your-gemini-api-key"
@@ -133,11 +135,16 @@ NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="your-nextauth-secret-here" # Generate with: openssl rand -base64 32
 ```
 
-For mobile app, create `apps/mobile/.env` or configure in `app.json`:
+For mobile app, create `apps/mobile/.env`:
 
 ```bash
-EXPO_PUBLIC_API_URL="http://localhost:3000"
+EXPO_PUBLIC_API_URL="http://192.168.1.100:3000"  # Use LAN IP for device/simulator
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID="your-google-web-client-id"
+EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID="your-google-ios-client-id"      # For iOS
+EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID="your-google-android-client-id"  # For Android
 ```
+
+For mobile Google Sign-In to work, add the same iOS/Android client IDs to `apps/web/.env` as `AUTH_GOOGLE_IOS_CLIENT_ID` and `AUTH_GOOGLE_ANDROID_CLIENT_ID`. See [apps/mobile/README.md](apps/mobile/README.md) for details.
 
 ### 4. Set Up Database
 

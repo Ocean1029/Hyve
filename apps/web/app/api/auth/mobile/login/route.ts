@@ -32,9 +32,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const clientId = process.env.AUTH_GOOGLE_ID;
-    if (!clientId) {
-      console.error('AUTH_GOOGLE_ID not configured');
+    // Accept Web + iOS + Android client IDs; mobile may use platform-specific client.
+    const allowedClientIds = [
+      process.env.AUTH_GOOGLE_ID,
+      process.env.AUTH_GOOGLE_IOS_CLIENT_ID,
+      process.env.AUTH_GOOGLE_ANDROID_CLIENT_ID,
+    ].filter((id): id is string => !!id);
+
+    if (allowedClientIds.length === 0) {
+      console.error('No AUTH_GOOGLE_ID or platform client IDs configured');
       return NextResponse.json(
         { success: false, error: 'Server configuration error' },
         { status: 500 }
@@ -53,7 +59,11 @@ export async function POST(request: NextRequest) {
 
     const payload = (await res.json()) as GoogleTokenPayload;
 
-    if (payload.aud !== clientId) {
+    // aud can be string or string[] when multiple audiences
+    const audList = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+    const isValidAudience = audList.some((aud) => allowedClientIds.includes(aud));
+    if (!isValidAudience) {
+      console.error('Token audience mismatch', { aud: payload.aud, allowed: allowedClientIds });
       return NextResponse.json(
         { success: false, error: 'Token audience mismatch' },
         { status: 401 }

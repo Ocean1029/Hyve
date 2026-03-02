@@ -1,10 +1,12 @@
 /**
  * Auth context for mobile app. Manages session token and user state.
  * Token is stored in SecureStore; API client uses it for Bearer auth.
+ * Uses createMobileApiClient to trigger logout on 401 (expired session).
  */
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { createApiClient, API_PATHS, ApiError } from '@hyve/shared';
+import { createMobileApiClient } from '../utils/apiClient';
 const TOKEN_KEY = 'hyve_session_token';
 const USER_KEY = 'hyve_user';
 
@@ -22,7 +24,7 @@ interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  apiClient: ReturnType<typeof createApiClient>;
+  apiClient: ReturnType<typeof createMobileApiClient>;
   getToken: () => Promise<string | null>;
   login: (sessionToken: string, user: AuthUser) => Promise<void>;
   logout: () => Promise<void>;
@@ -41,10 +43,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return t;
   }, []);
 
-  const apiClient = React.useMemo(
-    () => createApiClient(apiUrl, getToken),
-    [getToken]
-  );
+  const logoutRef = useRef<() => Promise<void> | null>(null);
+  const logout = useCallback(async () => {
+    try {
+      const t = await getToken();
+      if (t) {
+        await fetch(`${apiUrl}${API_PATHS.AUTH_LOGOUT}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${t}`,
+          },
+        });
+      }
+    } catch {
+      // Ignore logout API errors
+    }
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    await SecureStore.deleteItemAsync(USER_KEY);
+    setToken(null);
+    setUser(null);
+  }, [getToken]);
+  logoutRef.current = logout;
 
   const login = useCallback(async (sessionToken: string, userData: AuthUser) => {
     await SecureStore.setItemAsync(TOKEN_KEY, sessionToken);
@@ -53,17 +73,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(userData);
   }, []);
 
-  const logout = useCallback(async () => {
-    try {
-      await apiClient.post(API_PATHS.AUTH_LOGOUT);
-    } catch {
-      // Ignore logout API errors
-    }
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
-    await SecureStore.deleteItemAsync(USER_KEY);
-    setToken(null);
-    setUser(null);
-  }, [apiClient]);
+  const apiClient = React.useMemo(
+    () =>
+      createMobileApiClient(apiUrl, getToken, () => {
+        logoutRef.current?.();
+      }),
+    [getToken]
+  );
 
   const refreshUser = useCallback(async () => {
     const t = await getToken();

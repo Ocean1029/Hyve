@@ -38,9 +38,14 @@ DATABASE_URL="postgresql://myuser:mypassword@localhost:5433/hyve_db"
 AUTH_SECRET="your-auth-secret-here" # Generate with: openssl rand -base64 32
 AUTH_URL="http://localhost:3000"
 
-# Google OAuth
-AUTH_GOOGLE_ID="your-google-client-id"
+# Google OAuth (web)
+AUTH_GOOGLE_ID="your-google-web-client-id"
 AUTH_GOOGLE_SECRET="your-google-client-secret"
+
+# Mobile login: required when mobile app uses iOS/Android OAuth client IDs.
+# The id_token aud must match one of these; add the same IDs as in apps/mobile/.env.
+AUTH_GOOGLE_IOS_CLIENT_ID="your-google-ios-client-id"
+AUTH_GOOGLE_ANDROID_CLIENT_ID="your-google-android-client-id"
 
 # AI Integration
 GEMINI_API_KEY="your-gemini-api-key"
@@ -268,8 +273,10 @@ Ensure all environment variables from `.env` are configured in your deployment p
 - `DATABASE_URL` - Production database connection string
 - `AUTH_SECRET` - Authentication secret
 - `AUTH_URL` - Production application URL
-- `AUTH_GOOGLE_ID` - Google OAuth client ID
+- `AUTH_GOOGLE_ID` - Google OAuth Web client ID
 - `AUTH_GOOGLE_SECRET` - Google OAuth client secret
+- `AUTH_GOOGLE_IOS_CLIENT_ID` - Google OAuth iOS client ID (for mobile login)
+- `AUTH_GOOGLE_ANDROID_CLIENT_ID` - Google OAuth Android client ID (for mobile login)
 - `GEMINI_API_KEY` - Gemini API key
 - `CLOUDINARY_CLOUD_NAME` - Cloudinary cloud name
 - `CLOUDINARY_API_KEY` - Cloudinary API key
@@ -292,6 +299,15 @@ If port 3000 is already in use, Next.js will automatically use the next availabl
 ### Prisma Client Not Generated
 
 Run `npm run db:generate` after schema changes or migrations.
+
+### Mobile Login 401: Token audience mismatch
+
+If `POST /api/auth/mobile/login` returns 401 with "Token audience mismatch", the id_token's `aud` does not match any allowed client ID. Add the mobile app's OAuth client ID to `apps/web/.env`:
+
+- iOS: `AUTH_GOOGLE_IOS_CLIENT_ID` (same value as `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` in mobile)
+- Android: `AUTH_GOOGLE_ANDROID_CLIENT_ID` (same value as `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` in mobile)
+
+Restart the web server after updating `.env`.
 
 ## Support
 

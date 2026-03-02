@@ -16,19 +16,34 @@ import { useAuth } from '../contexts/AuthContext';
 
 WebBrowser.maybeCompleteAuthSession();
 
+function isNetworkError(e: unknown): boolean {
+  if (e instanceof TypeError) return true;
+  if (e instanceof Error) {
+    const msg = e.message.toLowerCase();
+    return msg.includes('fetch') || msg.includes('network') || msg.includes('failed to fetch');
+  }
+  return false;
+}
+
 export default function LoginScreen() {
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    responseType: 'id_token',
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    iosClientId:
-      process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ||
-      process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-  });
+  // Use default responseType (Code on native) to avoid unsupported_response_type.
+  // Code flow auto-exchanges for id_token; explicit id_token implicit flow can fail
+  // with Web client ID (e.g. exp:// or hyve:// redirects).
+  const [request, response, promptAsync] = Google.useAuthRequest(
+    {
+      clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+      androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    },
+    {
+      scheme: 'hyve',
+      path: 'redirect',
+    },
+  );
 
   React.useEffect(() => {
     if (response?.type === 'success' && response.params?.id_token) {
@@ -36,6 +51,8 @@ export default function LoginScreen() {
     } else if (response?.type === 'error') {
       setLoading(false);
       Alert.alert('Sign in failed', response.error?.message ?? 'Unknown error');
+    } else if (response?.type === 'cancel' || response?.type === 'dismiss') {
+      setLoading(false);
     }
   }, [response]);
 
@@ -55,7 +72,10 @@ export default function LoginScreen() {
       await login(data.sessionToken, data.user);
     } catch (e) {
       setLoading(false);
-      Alert.alert('Login failed', e instanceof Error ? e.message : 'Unknown error');
+      const message = isNetworkError(e)
+        ? 'Check your internet connection'
+        : (e instanceof Error ? e.message : 'Login failed');
+      Alert.alert('Login failed', message);
     }
   }
 
@@ -70,7 +90,10 @@ export default function LoginScreen() {
       }
       await login(data.sessionToken, data.user);
     } catch (e) {
-      Alert.alert('Dev login failed', e instanceof Error ? e.message : 'Unknown error');
+      const message = isNetworkError(e)
+        ? 'Check your internet connection'
+        : (e instanceof Error ? e.message : 'Dev login failed');
+      Alert.alert('Dev login failed', message);
     } finally {
       setTestLoading(false);
     }

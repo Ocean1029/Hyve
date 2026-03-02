@@ -24,11 +24,25 @@ For local development, use your machine's LAN IP instead of `localhost` so the d
 
 ### 2. Google Sign-In (optional)
 
-To use Google Sign-In, configure:
+Create OAuth 2.0 Client IDs in [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials:
 
-- `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` – same as `AUTH_GOOGLE_ID` in web
-- `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` – iOS OAuth client ID (for native build)
-- `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` – Android OAuth client ID (for native build)
+| Variable | Description |
+|----------|-------------|
+| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | Web application client ID. Same as `AUTH_GOOGLE_ID` in `apps/web/.env`. |
+| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | iOS OAuth client ID. Used on iOS simulator and device. |
+| `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` | Android OAuth client ID. Used on Android. |
+
+**Backend must accept the same client IDs.** Add to `apps/web/.env`:
+
+- `AUTH_GOOGLE_IOS_CLIENT_ID` = same value as `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`
+- `AUTH_GOOGLE_ANDROID_CLIENT_ID` = same value as `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID`
+
+Without these, the backend returns 401 "Token audience mismatch" because the id_token's `aud` will not match the allowed list.
+
+**Redirect URIs** (Google Cloud Console → Credentials → your OAuth client → Authorized redirect URIs):
+
+- Expo Go: `exp://<YOUR_IP>:8081` (e.g. `exp://192.168.1.100:8081`)
+- Development build: `hyve://redirect`
 
 In development, use **Dev: Sign in as Alex** (calls `/api/auth/mobile/dev-login`) when the web backend is running.
 
