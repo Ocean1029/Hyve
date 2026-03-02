@@ -34,4 +34,6 @@ export {
   Trophy,
   Heart,
   Sparkles,
+  Hash,
+  LayoutGrid as Grid,
 } from 'lucide-react-native';

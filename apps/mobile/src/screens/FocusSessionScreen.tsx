@@ -1,5 +1,6 @@
 /**
  * Focus Session screen. Start focus with friends, pause, and end.
+ * Includes AI icebreaker for sparking conversation topics.
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -10,12 +11,14 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
 import { API_PATHS } from '@hyve/shared';
 import type { Friend } from '@hyve/types';
+import { Sparkles } from '../components/icons';
 
 import type { RootStackParamList } from '../navigation/types';
 
@@ -38,6 +41,8 @@ export default function FocusSessionScreen() {
   const [starting, setStarting] = useState(false);
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [pausing, setPausing] = useState(false);
+  const [iceBreaker, setIceBreaker] = useState<string | null>(null);
+  const [loadingIceBreaker, setLoadingIceBreaker] = useState(false);
 
   const loadFriends = useCallback(async () => {
     try {
@@ -130,6 +135,22 @@ export default function FocusSessionScreen() {
     }
   };
 
+  const handleSparkConversation = async () => {
+    if (loadingIceBreaker) return;
+    setLoadingIceBreaker(true);
+    try {
+      const res = await apiClient.post<{ question: string }>(
+        API_PATHS.GENERATE_ICEBREAKER,
+        { context: 'college students hanging out' }
+      );
+      setIceBreaker(res?.question ?? "What's the best meal you've had this week?");
+    } catch {
+      setIceBreaker("If you could travel anywhere right now, where would you go?");
+    } finally {
+      setLoadingIceBreaker(false);
+    }
+  };
+
   const handleEnd = async () => {
     const sessionId = activeSession?.sessionId ?? activeSession?.id;
     if (!sessionId) return;
@@ -180,7 +201,7 @@ export default function FocusSessionScreen() {
 
   if (activeSession) {
     return (
-      <View style={styles.container}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.activeContainer}>
         <Text style={styles.title}>Focus Session</Text>
         <View style={styles.activeCard}>
           <Text style={styles.activeStatus}>
@@ -205,7 +226,42 @@ export default function FocusSessionScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+
+        {/* Icebreaker section */}
+        <View style={styles.iceBreakerCard}>
+          {iceBreaker ? (
+            <>
+              <Text style={styles.iceBreakerLabel}>Conversation starter</Text>
+              <Text style={styles.iceBreakerText}>"{iceBreaker}"</Text>
+              <TouchableOpacity
+                style={styles.sparkButton}
+                onPress={handleSparkConversation}
+                disabled={loadingIceBreaker}
+              >
+                <Sparkles color="#fff" size={18} />
+                <Text style={styles.sparkButtonText}>
+                  {loadingIceBreaker ? 'Thinking...' : 'Get another topic'}
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity
+              style={styles.sparkButton}
+              onPress={handleSparkConversation}
+              disabled={loadingIceBreaker}
+            >
+              {loadingIceBreaker ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Sparkles color="#fff" size={18} />
+              )}
+              <Text style={styles.sparkButtonText}>
+                {loadingIceBreaker ? 'Thinking...' : 'Awkward silence? Spark a topic'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </ScrollView>
     );
   }
 
@@ -347,12 +403,50 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  activeContainer: {
+    paddingBottom: 40,
+  },
   activeCard: {
     backgroundColor: '#1a1a1a',
     borderRadius: 12,
     padding: 24,
     borderWidth: 1,
     borderColor: '#222',
+    marginBottom: 16,
+  },
+  iceBreakerCard: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#333',
+    alignItems: 'center',
+  },
+  iceBreakerLabel: {
+    fontSize: 12,
+    color: '#888',
+    marginBottom: 8,
+  },
+  iceBreakerText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  sparkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#f43f5e',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  sparkButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   activeStatus: {
     fontSize: 18,

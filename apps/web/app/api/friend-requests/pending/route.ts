@@ -51,12 +51,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const requests = (result.requests ?? []).map((r: { id: string; senderId: string; receiverId: string; status: string; createdAt?: Date }) => ({
+    const requests = (result.requests ?? []).map((r: {
+      id: string;
+      senderId: string;
+      receiverId: string;
+      status: string;
+      createdAt?: Date;
+      sender?: { id: string; userId: string | null; name: string | null; image: string | null };
+    }) => ({
       id: r.id,
       senderId: r.senderId,
       receiverId: r.receiverId,
       status: r.status,
       createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt,
+      sender: r.sender ? {
+        id: r.sender.id,
+        userId: r.sender.userId,
+        name: r.sender.name,
+        image: r.sender.image,
+      } : undefined,
     }));
     return NextResponse.json({ success: true, requests });
   } catch (error) {

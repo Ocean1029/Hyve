@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
         email: user.email,
         image: user.image,
         userId: user.userId,
+        privacy: user.privacy,
       },
     });
   } catch (error) {

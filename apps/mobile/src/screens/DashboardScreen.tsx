@@ -20,6 +20,7 @@ import type { Friend, ChartDataPoint } from '@hyve/types';
 type RootStackParamList = {
   Main: undefined;
   FindFriends: undefined;
+  FriendProfile: { friend: Friend };
   HappyIndex: undefined;
   FocusSession: undefined;
   SpringBloom: undefined;
@@ -115,12 +116,16 @@ export default function DashboardScreen() {
           />
         }
         renderItem={({ item }) => (
-          <View style={styles.friendRow}>
+          <TouchableOpacity
+            style={styles.friendRow}
+            onPress={() => navigation.navigate('FriendProfile', { friend: item })}
+            activeOpacity={0.7}
+          >
             <Text style={styles.friendName}>{item.name ?? 'Unknown'}</Text>
             <Text style={styles.friendMeta}>
               {item.totalHours ?? 0}h together · streak {item.streak ?? 0}
             </Text>
-          </View>
+          </TouchableOpacity>
         )}
         ListEmptyComponent={
           <Text style={styles.empty}>No friends yet. Add some!</Text>

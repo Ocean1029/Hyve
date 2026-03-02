@@ -19,6 +19,7 @@ import FocusSessionScreen from '../screens/FocusSessionScreen';
 import PostMemoryScreen from '../screens/PostMemoryScreen';
 import SpringBloomScreen from '../screens/SpringBloomScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import FriendProfileScreen from '../screens/FriendProfileScreen';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { Home, MessageCircle, User, Calendar } from '../components/icons';
 
@@ -130,6 +131,16 @@ export default function AppNavigator() {
               options={{
                 headerShown: true,
                 headerTitle: 'Find Friends',
+                headerStyle: { backgroundColor: '#000' },
+                headerTintColor: '#fff',
+              }}
+            />
+            <Stack.Screen
+              name="FriendProfile"
+              component={FriendProfileScreen}
+              options={{
+                headerShown: true,
+                headerTitle: '',
                 headerStyle: { backgroundColor: '#000' },
                 headerTintColor: '#fff',
               }}

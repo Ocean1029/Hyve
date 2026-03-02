@@ -6,6 +6,7 @@ export type RootStackParamList = {
   Main: undefined;
   Login: undefined;
   FindFriends: undefined;
+  FriendProfile: { friend: import('@hyve/types').Friend };
   HappyIndex: undefined;
   Settings: undefined;
   FocusSession: undefined;

@@ -1,6 +1,7 @@
 /**
  * Chat screen. Displays conversation with a friend and allows sending messages.
  * Uses GET/POST /api/messages for message history and sending.
+ * Also fetches focus sessions and displays "Session Complete" system messages.
  */
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -13,6 +14,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  ScrollView,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -20,6 +23,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_PATHS } from '@hyve/shared';
 import { formatMessageTime } from '@hyve/utils';
 import type { Friend } from '@hyve/types';
+import { Clock, MapPin } from '../components/icons';
 
 type MessagesStackParamList = {
   MessagesList: undefined;
@@ -36,12 +40,32 @@ interface ApiMessage {
   createdAt?: string;
 }
 
+interface FocusSession {
+  id: string;
+  startTime?: string;
+  endTime?: string | null;
+  minutes?: number;
+  createdAt?: string;
+  memories?: Array<{
+    id: string;
+    type?: string | null;
+    content?: string | null;
+    timestamp?: string;
+    location?: string | null;
+    photos?: string[];
+  }>;
+}
+
+type ChatItem =
+  | { type: 'text'; data: ApiMessage }
+  | { type: 'system'; data: { id: string; session: FocusSession; timestamp: string } };
+
 export default function ChatScreen() {
   const route = useRoute<ChatScreenRouteProp>();
   const navigation = useNavigation();
   const { friend } = route.params;
   const { apiClient, user } = useAuth();
-  const [messages, setMessages] = useState<ApiMessage[]>([]);
+  const [chatItems, setChatItems] = useState<ChatItem[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -60,12 +84,48 @@ export default function ChatScreen() {
   const loadMessages = async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get<{ messages: ApiMessage[] }>(
-        `${API_PATHS.MESSAGES}?friendId=${encodeURIComponent(friend.id)}&limit=50`
-      );
-      setMessages(res?.messages ?? []);
+      const [messagesRes, sessionsRes] = await Promise.all([
+        apiClient.get<{ messages: ApiMessage[] }>(
+          `${API_PATHS.MESSAGES}?friendId=${encodeURIComponent(friend.id)}&limit=50`
+        ),
+        apiClient.get<{ success: boolean; sessions?: FocusSession[] }>(
+          API_PATHS.MESSAGES_SESSIONS(friend.id)
+        ),
+      ]);
+
+      const textMessages = (messagesRes?.messages ?? []) as ApiMessage[];
+      const sessions = (sessionsRes?.sessions ?? []) as FocusSession[];
+
+      const items: ChatItem[] = [];
+
+      textMessages.forEach((msg) => {
+        items.push({ type: 'text', data: msg });
+      });
+
+      sessions.forEach((session) => {
+        const endTime = session.endTime ?? session.createdAt ?? '';
+        const ts = endTime ? new Date(endTime).toISOString() : new Date().toISOString();
+        items.push({
+          type: 'system',
+          data: { id: `session-${session.id}`, session, timestamp: ts },
+        });
+      });
+
+      items.sort((a, b) => {
+        const timeA =
+          a.type === 'text'
+            ? a.data.createdAt ?? ''
+            : a.data.timestamp;
+        const timeB =
+          b.type === 'text'
+            ? b.data.createdAt ?? ''
+            : b.data.timestamp;
+        return new Date(timeA).getTime() - new Date(timeB).getTime();
+      });
+
+      setChatItems(items);
     } catch {
-      setMessages([]);
+      setChatItems([]);
     } finally {
       setLoading(false);
     }
@@ -90,7 +150,7 @@ export default function ChatScreen() {
       content,
       createdAt: new Date().toISOString(),
     };
-    setMessages((prev) => [...prev, optimisticMsg]);
+    setChatItems((prev) => [...prev, { type: 'text', data: optimisticMsg }]);
 
     try {
       const res = await apiClient.post<{ message: ApiMessage }>(API_PATHS.MESSAGES, {
@@ -98,24 +158,91 @@ export default function ChatScreen() {
         content,
       });
       if (res?.message) {
-        setMessages((prev) =>
-          prev.map((m) => (m.id === tempId ? res.message : m))
+        setChatItems((prev) =>
+          prev.map((it) =>
+            it.type === 'text' && it.data.id === tempId
+              ? { type: 'text' as const, data: res!.message! }
+              : it
+          )
         );
       }
     } catch {
-      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      setChatItems((prev) =>
+        prev.filter((it) => !(it.type === 'text' && it.data.id === tempId))
+      );
     } finally {
       setSending(false);
     }
   };
 
-  const renderMessage = ({ item }: { item: ApiMessage }) => {
-    const isMe = item.senderId === user?.id;
+  const renderSystemMessage = (session: FocusSession) => {
+    const firstMemory = session.memories?.[0];
+    const allPhotoUrls: string[] = [];
+    session.memories?.forEach((mem) => {
+      if (mem.photos?.length) {
+        allPhotoUrls.push(...mem.photos);
+      }
+    });
+    const photoUrls =
+      allPhotoUrls.length > 0
+        ? allPhotoUrls
+        : ['https://picsum.photos/200/200?random=201'];
+    const durationMinutes = session.minutes ?? 0;
+    const formattedDuration =
+      durationMinutes > 0
+        ? durationMinutes >= 60
+          ? `${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m`
+          : `${durationMinutes}m`
+        : 'N/A';
+    const location = firstMemory?.location ?? 'Unknown Location';
+
+    return (
+      <View style={styles.systemCard}>
+        <Text style={styles.systemCardTitle}>Session Complete</Text>
+        <View style={styles.systemCardRow}>
+          <Clock color="#888" size={14} />
+          <Text style={styles.systemCardText}>{formattedDuration}</Text>
+        </View>
+        <View style={styles.systemCardRow}>
+          <MapPin color="#888" size={14} />
+          <Text style={styles.systemCardText}>{location}</Text>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.systemCardPhotos}
+        >
+          {photoUrls.map((uri, idx) => (
+            <Image
+              key={idx}
+              source={{ uri }}
+              style={styles.systemCardPhoto}
+              resizeMode="cover"
+            />
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  const renderItem = ({ item }: { item: ChatItem }) => {
+    if (item.type === 'system') {
+      return (
+        <View style={styles.systemMessageRow}>
+          {renderSystemMessage(item.data.session)}
+          <Text style={styles.systemTimestamp}>
+            {formatMessageTime(item.data.timestamp)}
+          </Text>
+        </View>
+      );
+    }
+    const msg = item.data;
+    const isMe = msg.senderId === user?.id;
     return (
       <View style={[styles.messageRow, isMe ? styles.messageRowMe : styles.messageRowThem]}>
         <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleThem]}>
-          <Text style={styles.bubbleText}>{item.content}</Text>
-          <Text style={styles.timestamp}>{formatMessageTime(item.createdAt)}</Text>
+          <Text style={styles.bubbleText}>{msg.content}</Text>
+          <Text style={styles.timestamp}>{formatMessageTime(msg.createdAt)}</Text>
         </View>
       </View>
     );
@@ -137,9 +264,11 @@ export default function ChatScreen() {
     >
       <FlatList
         ref={flatListRef}
-        data={messages}
-        keyExtractor={(item) => item.id}
-        renderItem={renderMessage}
+        data={chatItems}
+        keyExtractor={(item) =>
+          item.type === 'text' ? item.data.id : item.data.id
+        }
+        renderItem={renderItem}
         contentContainerStyle={styles.listContent}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
         ListEmptyComponent={
@@ -259,5 +388,47 @@ const styles = StyleSheet.create({
   sendText: {
     color: '#fff',
     fontWeight: '600',
+  },
+  systemMessageRow: {
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  systemCard: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    padding: 16,
+    maxWidth: '85%',
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  systemCardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  systemCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  systemCardText: {
+    fontSize: 13,
+    color: '#888',
+  },
+  systemCardPhotos: {
+    marginTop: 12,
+  },
+  systemCardPhoto: {
+    width: 64,
+    height: 64,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  systemTimestamp: {
+    fontSize: 11,
+    color: '#666',
+    marginTop: 4,
   },
 });
