@@ -18,6 +18,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
 import { API_PATHS } from '@hyve/shared';
+import { formatMessageTime } from '@hyve/utils';
 import type { Friend } from '@hyve/types';
 
 type MessagesStackParamList = {
@@ -33,22 +34,6 @@ interface ApiMessage {
   senderId: string;
   content: string;
   createdAt?: string;
-}
-
-function formatMessageTime(isoStr: string | undefined): string {
-  if (!isoStr) return '';
-  const d = new Date(isoStr);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays}d`;
-  return d.toLocaleDateString();
 }
 
 export default function ChatScreen() {
