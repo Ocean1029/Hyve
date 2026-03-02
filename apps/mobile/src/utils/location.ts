@@ -3,8 +3,7 @@
  */
 import * as Location from 'expo-location';
 import { API_PATHS } from '@hyve/shared';
-
-const apiUrl = (process.env.EXPO_PUBLIC_API_URL as string) || 'http://localhost:3000';
+import { getApiBaseUrl } from './config';
 
 export interface LocationResult {
   success: boolean;
@@ -25,7 +24,7 @@ export async function updateLocation(token: string): Promise<LocationResult> {
       accuracy: Location.Accuracy.Balanced,
     });
 
-    const res = await fetch(`${apiUrl}${API_PATHS.LOCATIONS}`, {
+    const res = await fetch(`${getApiBaseUrl()}${API_PATHS.LOCATIONS}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

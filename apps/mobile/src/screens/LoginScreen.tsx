@@ -13,6 +13,7 @@ import {
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { useAuth } from '../contexts/AuthContext';
+import { getApiBaseUrl } from '../utils/config';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -59,7 +60,7 @@ export default function LoginScreen() {
   async function handleGoogleIdToken(idToken: string) {
     setLoading(true);
     try {
-      const apiUrl = (process.env.EXPO_PUBLIC_API_URL as string) || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       const res = await fetch(`${apiUrl}/api/auth/mobile/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -82,7 +83,7 @@ export default function LoginScreen() {
   async function handleDevLogin() {
     setTestLoading(true);
     try {
-      const apiUrl = (process.env.EXPO_PUBLIC_API_URL as string) || 'http://localhost:3000';
+      const apiUrl = getApiBaseUrl();
       const res = await fetch(`${apiUrl}/api/auth/mobile/dev-login`, { method: 'POST' });
       const data = await res.json();
       if (!data.success) {
@@ -131,7 +132,7 @@ export default function LoginScreen() {
       )}
 
       <Text style={styles.hint}>
-        Set EXPO_PUBLIC_API_URL to your backend (e.g. http://192.168.1.100:3000)
+        Set EXPO_PUBLIC_API_URL in .env to the web backend
       </Text>
     </View>
   );

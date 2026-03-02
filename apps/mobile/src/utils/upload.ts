@@ -2,8 +2,7 @@
  * Image upload utility for mobile. Uses FormData and Bearer token.
  */
 import { API_PATHS } from '@hyve/shared';
-
-const apiUrl = (process.env.EXPO_PUBLIC_API_URL as string) || 'http://localhost:3000';
+import { getApiBaseUrl } from './config';
 
 export interface UploadResult {
   success: boolean;
@@ -25,7 +24,7 @@ export async function uploadImage(
     type: 'image/jpeg',
   } as unknown as Blob);
 
-  const res = await fetch(`${apiUrl}${API_PATHS.UPLOAD}`, {
+  const res = await fetch(`${getApiBaseUrl()}${API_PATHS.UPLOAD}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,

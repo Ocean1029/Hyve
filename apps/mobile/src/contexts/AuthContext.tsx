@@ -7,10 +7,10 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import * as SecureStore from 'expo-secure-store';
 import { createApiClient, API_PATHS, ApiError } from '@hyve/shared';
 import { createMobileApiClient } from '../utils/apiClient';
+import { getApiBaseUrl } from '../utils/config';
+
 const TOKEN_KEY = 'hyve_session_token';
 const USER_KEY = 'hyve_user';
-
-const apiUrl = (process.env.EXPO_PUBLIC_API_URL as string) || 'http://localhost:3000';
 
 export interface AuthUser {
   id: string;
@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const t = await getToken();
       if (t) {
-        await fetch(`${apiUrl}${API_PATHS.AUTH_LOGOUT}`, {
+        await fetch(`${getApiBaseUrl()}${API_PATHS.AUTH_LOGOUT}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const apiClient = React.useMemo(
     () =>
-      createMobileApiClient(apiUrl, getToken, () => {
+      createMobileApiClient(getApiBaseUrl(), getToken, () => {
         logoutRef.current?.();
       }),
     [getToken]
@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         // Optionally validate token and refresh user
         try {
-          const res = await createApiClient(apiUrl, () => Promise.resolve(t)).get<{ user: AuthUser }>(
+          const res = await createApiClient(getApiBaseUrl(), () => Promise.resolve(t)).get<{ user: AuthUser }>(
             API_PATHS.USERS_ME
           );
           if (res?.user && !cancelled) {

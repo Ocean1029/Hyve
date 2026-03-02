@@ -16,11 +16,11 @@ React Native (Expo) mobile app for Hyve. Calls the web backend APIs with Bearer 
 Create `apps/mobile/.env`:
 
 ```
-EXPO_PUBLIC_API_URL=http://192.168.1.100:3000
+EXPO_PUBLIC_API_URL=http://YOUR_LAN_IP:3000
 EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=your-google-web-client-id
 ```
 
-For local development, use your machine's LAN IP instead of `localhost` so the device/simulator can reach the API.
+Use your machine's LAN IP (e.g. `10.131.227.76`) and port **3000** (web backend). Do not use `exp://` or port 8081 (Expo Metro). Restart `npx expo start` after changing `.env`.
 
 ### 2. Google Sign-In (optional)
 
@@ -86,6 +86,17 @@ npx expo run:ios
 ## API Client
 
 Uses `@hyve/shared` `createApiClient` with `EXPO_PUBLIC_API_URL` and token from SecureStore. All requests include `Authorization: Bearer <token>`.
+
+## Icons
+
+Uses [Lucide React Native](https://lucide.dev/guide/packages/lucide-react-native) (same family as web's lucide-react). Import from `src/components/icons` or directly from `lucide-react-native`:
+
+```tsx
+import { Home, MessageCircle } from '../components/icons';
+<Home color="#fff" size={24} />
+```
+
+Browse icons: https://lucide.dev/icons/
 
 ## Project Structure
 

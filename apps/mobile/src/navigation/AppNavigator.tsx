@@ -20,6 +20,7 @@ import PostMemoryScreen from '../screens/PostMemoryScreen';
 import SpringBloomScreen from '../screens/SpringBloomScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { Home, MessageCircle, User, Calendar } from '../components/icons';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
@@ -62,22 +63,39 @@ function MainTabs() {
       <Tab.Screen
         name="Dashboard"
         component={DashboardScreen}
-        options={{ title: 'Dashboard', tabBarLabel: 'Dashboard' }}
+        options={{
+          title: 'Dashboard',
+          tabBarLabel: 'Dashboard',
+          tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
+        }}
       />
       <Tab.Screen
         name="Today"
         component={TodayScreen}
-        options={{ title: 'Today', tabBarLabel: 'Today' }}
+        options={{
+          title: 'Today',
+          tabBarLabel: 'Today',
+          tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} />,
+        }}
       />
       <Tab.Screen
         name="Messages"
         component={MessagesStack}
-        options={{ title: 'Messages', tabBarLabel: 'Messages', headerShown: false }}
+        options={{
+          title: 'Messages',
+          tabBarLabel: 'Messages',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => <MessageCircle color={color} size={size} />,
+        }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ title: 'Profile', tabBarLabel: 'Profile' }}
+        options={{
+          title: 'Profile',
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
+        }}
       />
     </Tab.Navigator>
   );
