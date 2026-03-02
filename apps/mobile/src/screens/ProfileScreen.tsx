@@ -122,7 +122,7 @@ export default function ProfileScreen() {
 
       <TouchableOpacity
         style={styles.todayCard}
-        onPress={() => navigation.getParent()?.navigate?.('Today' as never)}
+        onPress={() => (navigation as { navigate: (name: string) => void }).navigate('Today')}
       >
         <View style={styles.todayCardContent}>
           <View style={styles.todayIcon}>

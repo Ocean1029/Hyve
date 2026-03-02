@@ -93,7 +93,9 @@ export default function ChatScreen() {
         ),
       ]);
 
-      const textMessages = (messagesRes?.messages ?? []) as ApiMessage[];
+      const textMessages = (messagesRes && 'messages' in messagesRes && Array.isArray(messagesRes.messages)
+        ? messagesRes.messages
+        : []) as ApiMessage[];
       const sessions = (sessionsRes?.sessions ?? []) as FocusSession[];
 
       const items: ChatItem[] = [];
