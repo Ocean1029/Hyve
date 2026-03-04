@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { API_PATHS } from '@hyve/shared';
+import { LogOut } from '../components/icons';
 
 export default function SettingsScreen() {
   const { user, logout, apiClient, refreshUser } = useAuth();
@@ -159,7 +160,7 @@ export default function SettingsScreen() {
               style={styles.valueTouchable}
             >
               <Text style={styles.value}>{userIdValue || '—'}</Text>
-              <Text style={styles.editHint}>Tap to edit</Text>
+              
             </TouchableOpacity>
           )}
         </View>
@@ -205,7 +206,7 @@ export default function SettingsScreen() {
               style={styles.valueTouchable}
             >
               <Text style={styles.value}>{user?.name ?? '—'}</Text>
-              <Text style={styles.editHint}>Tap to edit</Text>
+              
             </TouchableOpacity>
           )}
         </View>
@@ -261,7 +262,8 @@ export default function SettingsScreen() {
         <Text style={styles.placeholder}>Hyve v1.0.0</Text>
       </View>
 
-      <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+      <TouchableOpacity style={styles.logoutButton} onPress={logout} activeOpacity={0.8}>
+        <LogOut color="#ef4444" size={18} />
         <Text style={styles.logoutText}>Log out</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -379,15 +381,21 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   logoutButton: {
-    marginTop: 24,
-    backgroundColor: '#333',
-    paddingVertical: 14,
+    marginTop: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
+    borderRadius: 12,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.35)',
   },
   logoutText: {
-    color: '#fff',
+    color: '#ef4444',
     fontSize: 16,
+    fontWeight: '600',
   },
 });

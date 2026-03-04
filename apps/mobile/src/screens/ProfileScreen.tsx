@@ -1,5 +1,5 @@
 /**
- * Profile screen. Shows user info, stats, memories, settings, and logout.
+ * Profile screen. Shows user info, stats, memories. Settings via header icon.
  * Aligns with web MyProfile component.
  */
 import React, { useEffect, useState } from 'react';
@@ -17,7 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
 import { API_PATHS } from '@hyve/shared';
-import { Users, Clock, Trophy, Grid, Calendar } from '../components/icons';
+import { Users, Clock, Trophy, Grid, Calendar, Settings } from '../components/icons';
 
 type RootStackParamList = {
   Main: undefined;
@@ -40,7 +40,7 @@ interface Memory {
 
 export default function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Main'>>();
-  const { user, logout, apiClient } = useAuth();
+  const { user, apiClient } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
   const [memories, setMemories] = useState<Memory[]>([]);
   const [todayMinutes, setTodayMinutes] = useState(0);
@@ -79,6 +79,19 @@ export default function ProfileScreen() {
   useEffect(() => {
     loadProfile();
   }, [user?.id, apiClient]);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Settings')}
+          style={styles.headerSettingsButton}
+        >
+          <Settings color="#fff" size={22} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -181,17 +194,6 @@ export default function ProfileScreen() {
           </View>
         )}
       </View>
-
-      <TouchableOpacity
-        style={styles.settingsButton}
-        onPress={() => navigation.navigate('Settings')}
-      >
-        <Text style={styles.settingsText}>Settings</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-        <Text style={styles.logoutText}>Log out</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -221,28 +223,9 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: 4,
   },
-  settingsButton: {
-    backgroundColor: '#333',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-    marginBottom: 12,
-  },
-  settingsText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  logoutButton: {
-    backgroundColor: '#333',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-  },
-  logoutText: {
-    color: '#fff',
-    fontSize: 16,
+  headerSettingsButton: {
+    marginRight: 12,
+    padding: 8,
   },
   content: {
     paddingBottom: 40,
