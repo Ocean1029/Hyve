@@ -130,10 +130,6 @@ export default function LoginScreen() {
           )}
         </TouchableOpacity>
       )}
-
-      <Text style={styles.hint}>
-        Set EXPO_PUBLIC_API_URL in .env to the web backend
-      </Text>
     </View>
   );
 }

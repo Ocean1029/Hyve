@@ -64,6 +64,10 @@ export default function HappyIndexScreen() {
   };
 
   const maxScore = Math.max(...weeklyData.map((d) => d.score), 1);
+  const weeklyAverage =
+    weeklyData.length > 0
+      ? weeklyData.reduce((sum, d) => sum + d.score, 0) / weeklyData.length
+      : 0;
 
   if (loading) {
     return (
@@ -84,6 +88,14 @@ export default function HappyIndexScreen() {
       <Text style={styles.title}>Happy Index</Text>
       <Text style={styles.subtitle}>Weekly average by day</Text>
 
+      {/* Overall score (aligns with web "Vibe Score") */}
+      <View style={styles.scoreCard}>
+        <Text style={styles.scoreValue}>
+          {weeklyAverage > 0 ? weeklyAverage.toFixed(1) : '0.0'}
+        </Text>
+        <Text style={styles.scoreLabel}>Weekly Average</Text>
+      </View>
+
       {weeklyData.length > 0 ? (
         <View style={styles.chartContainer}>
           {weeklyData.map((d, i) => (
@@ -102,7 +114,9 @@ export default function HappyIndexScreen() {
           ))}
         </View>
       ) : (
-        <Text style={styles.empty}>No happy index data yet</Text>
+        <Text style={styles.empty}>
+          No happy index data yet. Add memories with a happy index score (0–10) to see your weekly chart.
+        </Text>
       )}
 
       <Text style={styles.sectionTitle}>Peak Memories</Text>
@@ -158,7 +172,27 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: '#888',
+    marginBottom: 16,
+  },
+  scoreCard: {
+    alignItems: 'center',
     marginBottom: 24,
+    paddingVertical: 20,
+    paddingHorizontal: 32,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  scoreValue: {
+    fontSize: 48,
+    fontWeight: '800',
+    color: '#f59e0b',
+  },
+  scoreLabel: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 4,
   },
   chartContainer: {
     marginBottom: 32,
