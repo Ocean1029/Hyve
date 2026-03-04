@@ -78,7 +78,8 @@ export default function ChatScreen() {
       headerTitle: friend.name ?? 'Chat',
       headerStyle: { backgroundColor: '#000' },
       headerTintColor: '#fff',
-      headerBackTitle: 'Back',
+      headerBackTitleVisible: false,
+      headerBackButtonDisplayMode: 'minimal',
     });
   }, [friend.name, navigation]);
 
