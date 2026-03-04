@@ -70,6 +70,7 @@ export default function ChatScreen() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+  const shouldScrollToBottom = useRef(false);
 
   useEffect(() => {
     navigation.setOptions({
@@ -126,6 +127,7 @@ export default function ChatScreen() {
       });
 
       setChatItems(items);
+      shouldScrollToBottom.current = true;
     } catch {
       setChatItems([]);
     } finally {
@@ -153,6 +155,7 @@ export default function ChatScreen() {
       createdAt: new Date().toISOString(),
     };
     setChatItems((prev) => [...prev, { type: 'text', data: optimisticMsg }]);
+    shouldScrollToBottom.current = true;
 
     try {
       const res = await apiClient.post<{ message: ApiMessage }>(API_PATHS.MESSAGES, {
@@ -187,7 +190,7 @@ export default function ChatScreen() {
     });
     const photoUrls =
       allPhotoUrls.length > 0
-        ? allPhotoUrls
+        ? allPhotoUrls.slice(0, 12)
         : ['https://picsum.photos/200/200?random=201'];
     const durationMinutes = session.minutes ?? 0;
     const formattedDuration =
@@ -207,12 +210,19 @@ export default function ChatScreen() {
         </View>
         <View style={styles.systemCardRow}>
           <MapPin color="#888" size={14} />
-          <Text style={styles.systemCardText}>{location}</Text>
+          <Text
+            style={styles.systemCardText}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
+            {location}
+          </Text>
         </View>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.systemCardPhotos}
+          nestedScrollEnabled
         >
           {photoUrls.map((uri, idx) => (
             <Image
@@ -266,13 +276,21 @@ export default function ChatScreen() {
     >
       <FlatList
         ref={flatListRef}
-        data={chatItems}
+        data={[...chatItems].reverse()}
+        inverted
         keyExtractor={(item) =>
           item.type === 'text' ? item.data.id : item.data.id
         }
         renderItem={renderItem}
+        style={styles.list}
         contentContainerStyle={styles.listContent}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+        onContentSizeChange={() => {
+          if (shouldScrollToBottom.current) {
+            shouldScrollToBottom.current = false;
+            flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+          }
+        }}
+        keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
           <Text style={styles.empty}>No messages yet. Say hi!</Text>
         }
@@ -314,6 +332,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#000',
+  },
+  list: {
+    flex: 1,
   },
   listContent: {
     padding: 16,
@@ -400,6 +421,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 16,
     maxWidth: '85%',
+    maxHeight: 280,
     borderWidth: 1,
     borderColor: '#333',
   },
@@ -421,6 +443,7 @@ const styles = StyleSheet.create({
   },
   systemCardPhotos: {
     marginTop: 12,
+    height: 64,
   },
   systemCardPhoto: {
     width: 64,
