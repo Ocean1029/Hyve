@@ -9,8 +9,9 @@ export type RootStackParamList = {
   FriendProfile: { friend: import('@hyve/types').Friend };
   HappyIndex: undefined;
   Settings: undefined;
-  FocusSession: undefined;
-  PostMemory: { focusSessionId: string };
+  FocusSession: { sessionId?: string; autoEntered?: boolean; startTime?: string } | undefined;
+  SessionSummary: { elapsedSeconds: number; sessionId: string };
+  PostMemory: { focusSessionId: string; durationSeconds?: number; sessionEndTime?: string };
   SpringBloom: undefined;
 };
 

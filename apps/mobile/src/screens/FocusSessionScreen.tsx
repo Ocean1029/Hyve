@@ -1,63 +1,64 @@
 /**
- * Focus Session screen. Start focus with friends, pause, and end.
- * Includes AI icebreaker for sparking conversation topics.
+ * Focus Session screen. Stopwatch-style focus with Hyve campfire.
+ * Auto-enters when session detected via polling or started from Dashboard.
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  ScrollView,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRoute, useNavigation } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
 import { API_PATHS } from '@hyve/shared';
-import type { Friend } from '@hyve/types';
+import { FocusStatus } from '@hyve/types';
 import { Sparkles } from '../components/icons';
+import Hyve from '../components/Hyve';
+import { useDeviceOrientation } from '../hooks/useDeviceOrientation';
 
 import type { RootStackParamList } from '../navigation/types';
-
-const DURATIONS = [25, 45, 60];
 
 interface ActiveSession {
   id?: string;
   sessionId: string;
   status?: string;
   isPaused?: boolean;
+  startTime?: string;
+}
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 export default function FocusSessionScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'FocusSession'>>();
+  const route = useRoute<NativeStackScreenProps<RootStackParamList, 'FocusSession'>['route']>();
+  const navigation = useNavigation<NativeStackScreenProps<RootStackParamList, 'FocusSession'>['navigation']>();
+  const insets = useSafeAreaInsets();
   const { apiClient, user } = useAuth();
-  const [friends, setFriends] = useState<Friend[]>([]);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [duration, setDuration] = useState(25);
-  const [loading, setLoading] = useState(true);
-  const [starting, setStarting] = useState(false);
+  const params = route.params;
+
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
-  const [pausing, setPausing] = useState(false);
   const [iceBreaker, setIceBreaker] = useState<string | null>(null);
   const [loadingIceBreaker, setLoadingIceBreaker] = useState(false);
+  const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
+  const [totalPausedSeconds, setTotalPausedSeconds] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const pauseStartTimeRef = useRef<Date | null>(null);
 
-  const loadFriends = useCallback(async () => {
-    try {
-      const res = await apiClient.get<{ friends: Friend[] }>(API_PATHS.FRIENDS_LIST);
-      setFriends(res?.friends ?? []);
-    } catch {
-      setFriends([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [apiClient]);
+  const { isFaceDown, permissionStatus, sensorAvailable, requestPermission } = useDeviceOrientation();
+  const [simulateFaceDown, setSimulateFaceDown] = useState<boolean | null>(null);
+  const effectiveFaceDown = simulateFaceDown !== null ? simulateFaceDown : (isFaceDown ?? false);
 
-  useEffect(() => {
-    loadFriends();
-  }, [loadFriends]);
+  const isSessionPausedByOthers = activeSession?.isPaused ?? false;
+  const focusStatus =
+    effectiveFaceDown && !isSessionPausedByOthers ? FocusStatus.ACTIVE : FocusStatus.PAUSED;
 
   const pollActiveSession = useCallback(async () => {
     if (!user?.id) return;
@@ -65,22 +66,43 @@ export default function FocusSessionScreen() {
       const res = await apiClient.get<{ sessions: ActiveSession[] }>(
         `${API_PATHS.SESSIONS_ACTIVE}?userId=${encodeURIComponent(user.id)}`
       );
-      const sessions = res?.sessions ?? [];
+      const sessions = (res as { sessions?: ActiveSession[] })?.sessions ?? [];
       if (sessions.length > 0) {
         const s = sessions[0];
+        const sessionId = s.sessionId ?? (s as { id?: string }).id ?? '';
         setActiveSession({
-          id: s.sessionId ?? (s as { id?: string }).id,
-          sessionId: s.sessionId ?? (s as { id?: string }).id ?? '',
+          id: sessionId,
+          sessionId,
           status: s.status,
           isPaused: s.isPaused,
+          startTime: (s as { startTime?: string }).startTime,
         });
+        if (!sessionStartTime && (s as { startTime?: string }).startTime) {
+          setSessionStartTime(new Date((s as { startTime?: string }).startTime!));
+        }
       } else {
         setActiveSession(null);
+        setSessionStartTime(null);
       }
     } catch {
       setActiveSession(null);
     }
-  }, [apiClient, user?.id]);
+  }, [apiClient, user?.id, sessionStartTime]);
+
+  // Auto-enter from polling or Dashboard direct start
+  useEffect(() => {
+    if (params?.sessionId && params?.autoEntered) {
+      setActiveSession({
+        sessionId: params.sessionId,
+        status: 'active',
+        isPaused: false,
+        startTime: params.startTime,
+      });
+      if (params.startTime) {
+        setSessionStartTime(new Date(params.startTime));
+      }
+    }
+  }, [params?.sessionId, params?.autoEntered, params?.startTime]);
 
   useEffect(() => {
     if (!activeSession) return;
@@ -88,52 +110,31 @@ export default function FocusSessionScreen() {
     return () => clearInterval(interval);
   }, [activeSession, pollActiveSession]);
 
-  const toggleFriend = (friendId: string, friendUserId?: string) => {
-    const id = friendUserId ?? friendId;
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const handleStart = async () => {
-    if (!user?.id || selectedIds.size === 0 || starting) return;
-    setStarting(true);
-    try {
+  // Elapsed time ticker
+  useEffect(() => {
+    if (!activeSession || !sessionStartTime) return;
+    const tick = () => {
       const now = new Date();
-      const endTime = new Date(now.getTime() + duration * 60 * 1000);
-      const userIds = [user.id, ...Array.from(selectedIds)];
-      await apiClient.post(API_PATHS.SESSIONS, {
-        userIds,
-        durationSeconds: duration * 60,
-        startTime: now.toISOString(),
-        endTime: endTime.toISOString(),
-      });
-      await pollActiveSession();
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to start session');
-    } finally {
-      setStarting(false);
-    }
-  };
+      const totalMs = now.getTime() - sessionStartTime.getTime();
+      const totalSec = Math.floor(totalMs / 1000);
+      const activeSec = Math.max(0, totalSec - totalPausedSeconds);
+      setElapsedSeconds(activeSec);
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [activeSession, sessionStartTime, totalPausedSeconds]);
 
-  const handlePause = async () => {
-    const sessionId = activeSession?.sessionId ?? activeSession?.id;
-    if (!sessionId || !activeSession || pausing) return;
-    setPausing(true);
-    try {
-      await apiClient.post(API_PATHS.SESSION_PAUSE(sessionId), {
-        isPaused: !activeSession.isPaused,
-      });
-      await pollActiveSession();
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to update');
-    } finally {
-      setPausing(false);
+  // Track paused time from face-up orientation
+  useEffect(() => {
+    if (focusStatus === FocusStatus.PAUSED && pauseStartTimeRef.current === null) {
+      pauseStartTimeRef.current = new Date();
+    } else if (focusStatus === FocusStatus.ACTIVE && pauseStartTimeRef.current) {
+      const paused = Math.floor((Date.now() - pauseStartTimeRef.current.getTime()) / 1000);
+      setTotalPausedSeconds((prev) => prev + paused);
+      pauseStartTimeRef.current = null;
     }
-  };
+  }, [focusStatus]);
 
   const handleSparkConversation = async () => {
     if (loadingIceBreaker) return;
@@ -165,23 +166,14 @@ export default function FocusSessionScreen() {
           onPress: async () => {
             try {
               const now = new Date();
+              const minutes = Math.floor(elapsedSeconds / 60);
               await apiClient.post(API_PATHS.SESSION_END(sessionId), {
                 endTime: now.toISOString(),
-                minutes: duration,
+                minutes: minutes > 0 ? minutes : 1,
               });
               setActiveSession(null);
-              Alert.alert(
-                'Session ended',
-                'Would you like to add a memory for this session?',
-                [
-                  { text: 'Later', style: 'cancel' },
-                  {
-                    text: 'Add memory',
-                    onPress: () =>
-                      navigation.navigate('PostMemory', { focusSessionId: sessionId }),
-                  },
-                ]
-              );
+              setSessionStartTime(null);
+              navigation.replace('SessionSummary', { elapsedSeconds, sessionId });
             } catch (e) {
               Alert.alert('Error', e instanceof Error ? e.message : 'Failed to end');
             }
@@ -191,241 +183,236 @@ export default function FocusSessionScreen() {
     );
   };
 
-  if (loading) {
+  if (!activeSession) {
     return (
-      <View style={styles.centered}>
+      <View style={[styles.centered, { paddingTop: insets.top }]}>
         <ActivityIndicator size="large" color="#fff" />
       </View>
     );
   }
 
-  if (activeSession) {
-    return (
-      <ScrollView style={styles.container} contentContainerStyle={styles.activeContainer}>
-        <Text style={styles.title}>Focus Session</Text>
-        <View style={styles.activeCard}>
-          <Text style={styles.activeStatus}>
-            {activeSession.isPaused ? 'Paused' : 'In progress'}
-          </Text>
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={styles.pauseButton}
-              onPress={handlePause}
-              disabled={pausing}
-            >
-              {pausing ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>
-                  {activeSession.isPaused ? 'Resume' : 'Pause'}
-                </Text>
-              )}
+  const intensity = Math.min((elapsedSeconds / 60) * 10, 100);
+
+  return (
+    <View style={styles.focusModeContainer}>
+      <View style={styles.focusOverlay} />
+      <View style={[styles.focusContent, { paddingTop: insets.top }]}>
+        <View style={styles.sensorBadge}>
+          {permissionStatus === 'prompt' && (
+            <TouchableOpacity style={styles.enableSensorBtn} onPress={requestPermission}>
+              <Text style={styles.enableSensorText}>Enable Sensor</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.endButton} onPress={handleEnd}>
-              <Text style={styles.buttonText}>End</Text>
-            </TouchableOpacity>
+          )}
+          {sensorAvailable && permissionStatus === 'granted' && (
+            <View style={styles.sensorActive}>
+              <Text style={styles.sensorActiveText}>Sensor Active</Text>
+            </View>
+          )}
+          {permissionStatus === 'unavailable' && (
+            <View style={styles.sensorNa}>
+              <Text style={styles.sensorNaText}>Sensor N/A</Text>
+            </View>
+          )}
+          {permissionStatus === 'denied' && (
+            <View style={styles.sensorDenied}>
+              <Text style={styles.sensorDeniedText}>Sensor Denied</Text>
+            </View>
+          )}
+        </View>
+
+        <TouchableOpacity
+          style={styles.simulateBtn}
+          onPress={() => setSimulateFaceDown((v) => (v === null ? false : !v))}
+        >
+          <View style={[styles.simulateDot, effectiveFaceDown && styles.simulateDotDown]} />
+        </TouchableOpacity>
+
+        <View style={styles.hyveSection}>
+          <Hyve status={focusStatus} intensity={intensity} />
+          <View style={styles.timerSection}>
+            {focusStatus === FocusStatus.ACTIVE ? (
+              <>
+                <Text style={styles.focusActiveLabel}>Focus Mode Active</Text>
+                <Text style={styles.elapsedTime}>{formatTime(elapsedSeconds)}</Text>
+              </>
+            ) : (
+              <Text style={styles.putDownText}>Put your phone down...</Text>
+            )}
           </View>
         </View>
 
-        {/* Icebreaker section */}
-        <View style={styles.iceBreakerCard}>
-          {iceBreaker ? (
-            <>
-              <Text style={styles.iceBreakerLabel}>Conversation starter</Text>
-              <Text style={styles.iceBreakerText}>"{iceBreaker}"</Text>
+        {focusStatus === FocusStatus.PAUSED && (
+          <View style={styles.iceBreakerSection}>
+            {iceBreaker ? (
+              <>
+                <Text style={styles.iceBreakerText}>"{iceBreaker}"</Text>
+                <TouchableOpacity
+                  style={styles.sparkButton}
+                  onPress={handleSparkConversation}
+                  disabled={loadingIceBreaker}
+                >
+                  <Sparkles color="#a1a1aa" size={16} />
+                  <Text style={styles.sparkButtonText}>
+                    {loadingIceBreaker ? 'Thinking...' : 'Get another topic'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
               <TouchableOpacity
                 style={styles.sparkButton}
                 onPress={handleSparkConversation}
                 disabled={loadingIceBreaker}
               >
-                <Sparkles color="#fff" size={18} />
+                {loadingIceBreaker ? (
+                  <ActivityIndicator size="small" color="#a1a1aa" />
+                ) : (
+                  <Sparkles color="#a1a1aa" size={16} />
+                )}
                 <Text style={styles.sparkButtonText}>
-                  {loadingIceBreaker ? 'Thinking...' : 'Get another topic'}
+                  {loadingIceBreaker ? 'Thinking...' : 'Awkward silence? Spark a topic'}
                 </Text>
               </TouchableOpacity>
-            </>
-          ) : (
-            <TouchableOpacity
-              style={styles.sparkButton}
-              onPress={handleSparkConversation}
-              disabled={loadingIceBreaker}
-            >
-              {loadingIceBreaker ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Sparkles color="#fff" size={18} />
-              )}
-              <Text style={styles.sparkButtonText}>
-                {loadingIceBreaker ? 'Thinking...' : 'Awkward silence? Spark a topic'}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </ScrollView>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Start Focus</Text>
-      <Text style={styles.sectionLabel}>Select friends</Text>
-      <FlatList
-        data={friends}
-        keyExtractor={(item) => item.id}
-        style={styles.friendList}
-        renderItem={({ item }) => {
-          const friendUserId = item.userId ?? item.id;
-          const isSelected = selectedIds.has(friendUserId);
-          return (
-            <TouchableOpacity
-              style={[styles.friendRow, isSelected && styles.friendRowSelected]}
-              onPress={() => toggleFriend(item.id, friendUserId)}
-            >
-              <Text style={styles.friendName}>{item.name ?? 'Unknown'}</Text>
-              {isSelected && <Text style={styles.check}>✓</Text>}
-            </TouchableOpacity>
-          );
-        }}
-        ListEmptyComponent={<Text style={styles.empty}>No friends yet</Text>}
-      />
-      <Text style={styles.sectionLabel}>Duration (min)</Text>
-      <View style={styles.durationRow}>
-        {DURATIONS.map((d) => (
-          <TouchableOpacity
-            key={d}
-            style={[styles.durationBtn, duration === d && styles.durationBtnSelected]}
-            onPress={() => setDuration(d)}
-          >
-            <Text style={styles.durationText}>{d}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      <TouchableOpacity
-        style={[
-          styles.startButton,
-          (selectedIds.size === 0 || starting) && styles.startButtonDisabled,
-        ]}
-        onPress={handleStart}
-        disabled={selectedIds.size === 0 || starting}
-      >
-        {starting ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <Text style={styles.startButtonText}>Start Focus</Text>
+            )}
+          </View>
         )}
-      </TouchableOpacity>
+
+        <View style={[styles.focusActions, { paddingBottom: insets.bottom }]}>
+          <TouchableOpacity style={styles.endButton} onPress={handleEnd}>
+            <Text style={styles.endButtonText}>End Session</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
-    padding: 16,
-  },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#000',
   },
-  title: {
+  focusModeContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  focusOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  focusContent: {
+    flex: 1,
+    padding: 16,
+  },
+  sensorBadge: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    zIndex: 50,
+  },
+  enableSensorBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(251, 191, 36, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.3)',
+  },
+  enableSensorText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#fcd34d',
+    letterSpacing: 1,
+  },
+  sensorActive: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.3)',
+  },
+  sensorActiveText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#86efac',
+  },
+  sensorNa: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(107, 114, 128, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(107, 114, 128, 0.3)',
+  },
+  sensorNaText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#9ca3af',
+  },
+  sensorDenied: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  sensorDeniedText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#fca5a5',
+  },
+  simulateBtn: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 50,
+    padding: 4,
+  },
+  simulateDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#9ca3af',
+  },
+  simulateDotDown: {
+    backgroundColor: '#6b7280',
+  },
+  hyveSection: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timerSection: {
+    marginTop: 64,
+    alignItems: 'center',
+  },
+  focusActiveLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#71717a',
+    letterSpacing: 1.2,
+    marginBottom: 16,
+  },
+  elapsedTime: {
+    fontSize: 60,
+    fontWeight: '300',
+    color: '#fffbeb',
+    fontVariant: ['tabular-nums'],
+  },
+  putDownText: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 16,
+    fontWeight: '700',
+    color: '#d6d3d1',
   },
-  sectionLabel: {
-    fontSize: 14,
-    color: '#888',
-    marginBottom: 8,
-  },
-  friendList: {
-    maxHeight: 200,
-    marginBottom: 24,
-  },
-  friendRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  iceBreakerSection: {
+    position: 'absolute',
+    bottom: 140,
+    left: 24,
+    right: 24,
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  friendRowSelected: {
-    borderWidth: 2,
-    borderColor: '#4285f4',
-  },
-  friendName: {
-    fontSize: 16,
-    color: '#fff',
-  },
-  check: {
-    color: '#4285f4',
-    fontSize: 16,
-  },
-  empty: {
-    color: '#666',
-    paddingVertical: 16,
-  },
-  durationRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  durationBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 8,
-  },
-  durationBtnSelected: {
-    backgroundColor: '#4285f4',
-  },
-  durationText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  startButton: {
-    backgroundColor: '#4285f4',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  startButtonDisabled: {
-    opacity: 0.5,
-  },
-  startButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  activeContainer: {
-    paddingBottom: 40,
-  },
-  activeCard: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: '#222',
-    marginBottom: 16,
-  },
-  iceBreakerCard: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#333',
-    alignItems: 'center',
-  },
-  iceBreakerLabel: {
-    fontSize: 12,
-    color: '#888',
-    marginBottom: 8,
   },
   iceBreakerText: {
     fontSize: 18,
@@ -438,41 +425,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#f43f5e',
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(161, 161, 170, 0.3)',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 999,
   },
   sparkButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+    color: '#a1a1aa',
+    fontSize: 13,
+    fontWeight: '500',
   },
-  activeStatus: {
-    fontSize: 18,
-    color: '#fff',
-    marginBottom: 16,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  pauseButton: {
-    flex: 1,
-    backgroundColor: '#333',
-    paddingVertical: 12,
-    borderRadius: 8,
+  focusActions: {
+    position: 'absolute',
+    bottom: 60,
+    left: 24,
+    right: 24,
     alignItems: 'center',
   },
   endButton: {
-    flex: 1,
-    backgroundColor: '#dc2626',
-    paddingVertical: 12,
-    borderRadius: 8,
+    width: '100%',
+    backgroundColor: 'rgba(39, 39, 42, 0.8)',
+    borderWidth: 1,
+    borderColor: '#52525b',
+    paddingVertical: 16,
+    borderRadius: 24,
     alignItems: 'center',
   },
-  buttonText: {
-    color: '#fff',
+  endButtonText: {
+    color: '#fafaf9',
     fontSize: 16,
+    fontWeight: '600',
   },
 });

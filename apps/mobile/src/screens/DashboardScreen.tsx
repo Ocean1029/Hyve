@@ -1,7 +1,7 @@
 /**
  * Dashboard screen. Shows friends list and weekly focus chart.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,19 +10,22 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
+  Platform,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
 import { API_PATHS } from '@hyve/shared';
 import type { Friend, ChartDataPoint } from '@hyve/types';
+import { Flame } from '../components/icons';
 
 type RootStackParamList = {
   Main: undefined;
   FindFriends: undefined;
   FriendProfile: { friend: Friend };
   HappyIndex: undefined;
-  FocusSession: undefined;
+  FocusSession: { sessionId?: string; autoEntered?: boolean; startTime?: string } | undefined;
   SpringBloom: undefined;
 };
 
@@ -33,6 +36,32 @@ export default function DashboardScreen() {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [startingSession, setStartingSession] = useState(false);
+
+  const handleStartSoloSession = useCallback(async () => {
+    if (!user?.id || startingSession) return;
+    setStartingSession(true);
+    try {
+      const now = new Date();
+      // API requires durationSeconds/endTime; use a large default, actual end is set on End
+      const placeholderEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const res = await apiClient.post<{ sessionId: string }>(API_PATHS.SESSIONS, {
+        userIds: [user.id],
+        startTime: now.toISOString(),
+        durationSeconds: 24 * 60 * 60,
+        endTime: placeholderEnd.toISOString(),
+      });
+      navigation.navigate('FocusSession', {
+        sessionId: res?.sessionId,
+        autoEntered: true,
+        startTime: now.toISOString(),
+      });
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to start session');
+    } finally {
+      setStartingSession(false);
+    }
+  }, [apiClient, user?.id, navigation, startingSession]);
 
   const load = async () => {
     try {
@@ -95,12 +124,6 @@ export default function DashboardScreen() {
           >
             <Text style={styles.secondaryButtonText}>Spring Bloom</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.focusButton}
-            onPress={() => navigation.navigate('FocusSession')}
-          >
-            <Text style={styles.focusButtonText}>Start Focus</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -131,6 +154,18 @@ export default function DashboardScreen() {
           <Text style={styles.empty}>No friends yet. Add some!</Text>
         }
       />
+      <TouchableOpacity
+        style={[styles.floatingButton, startingSession && styles.floatingButtonDisabled]}
+        onPress={handleStartSoloSession}
+        disabled={startingSession}
+        activeOpacity={0.9}
+      >
+        {startingSession ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <Flame color="#fff" size={28} fill="#fff" />
+        )}
+      </TouchableOpacity>
     </View>
   );
 }
@@ -187,16 +222,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
-  focusButton: {
-    backgroundColor: '#22c55e',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
+  floatingButton: {
+    position: 'absolute',
+    bottom: 88,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#f43f5e',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#fb7185',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
-  focusButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
+  floatingButtonDisabled: {
+    opacity: 0.6,
   },
   sectionTitle: {
     fontSize: 18,

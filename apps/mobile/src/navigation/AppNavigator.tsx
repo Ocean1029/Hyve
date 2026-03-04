@@ -3,10 +3,12 @@
  */
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import type { NavigationContainerRefWithCurrent } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../contexts/AuthContext';
 import type { RootStackParamList, MessagesStackParamList } from './types';
+import SessionPolling from '../components/SessionPolling';
 import LoginScreen from '../screens/LoginScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import MessagesListScreen from '../screens/MessagesListScreen';
@@ -16,6 +18,7 @@ import TodayScreen from '../screens/TodayScreen';
 import HappyIndexScreen from '../screens/HappyIndexScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import FocusSessionScreen from '../screens/FocusSessionScreen';
+import SessionSummaryScreen from '../screens/SessionSummaryScreen';
 import PostMemoryScreen from '../screens/PostMemoryScreen';
 import SpringBloomScreen from '../screens/SpringBloomScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -34,6 +37,7 @@ function MessagesStack() {
       screenOptions={{
         headerStyle: { backgroundColor: '#000' },
         headerTintColor: '#fff',
+        headerBackButtonDisplayMode: 'minimal',
       }}
     >
       <MessagesStackNavigator.Screen
@@ -102,6 +106,8 @@ function MainTabs() {
   );
 }
 
+export const navigationRef = React.createRef<NavigationContainerRefWithCurrent<RootStackParamList>>();
+
 export default function AppNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -114,8 +120,10 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator
+    <>
+      {isAuthenticated && <SessionPolling navigationRef={navigationRef} />}
+      <NavigationContainer ref={navigationRef}>
+        <Stack.Navigator
         screenOptions={{
           headerShown: false,
         }}
@@ -133,6 +141,7 @@ export default function AppNavigator() {
                 headerTitle: 'Find Friends',
                 headerStyle: { backgroundColor: '#000' },
                 headerTintColor: '#fff',
+                headerBackButtonDisplayMode: 'minimal',
               }}
             />
             <Stack.Screen
@@ -143,6 +152,7 @@ export default function AppNavigator() {
                 headerTitle: '',
                 headerStyle: { backgroundColor: '#000' },
                 headerTintColor: '#fff',
+                headerBackButtonDisplayMode: 'minimal',
               }}
             />
             <Stack.Screen
@@ -153,6 +163,7 @@ export default function AppNavigator() {
                 headerTitle: 'Happy Index',
                 headerStyle: { backgroundColor: '#000' },
                 headerTintColor: '#fff',
+                headerBackButtonDisplayMode: 'minimal',
               }}
             />
             <Stack.Screen
@@ -163,16 +174,21 @@ export default function AppNavigator() {
                 headerTitle: 'Settings',
                 headerStyle: { backgroundColor: '#000' },
                 headerTintColor: '#fff',
+                headerBackButtonDisplayMode: 'minimal',
               }}
             />
             <Stack.Screen
               name="FocusSession"
               component={FocusSessionScreen}
               options={{
-                headerShown: true,
-                headerTitle: 'Focus Session',
-                headerStyle: { backgroundColor: '#000' },
-                headerTintColor: '#fff',
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="SessionSummary"
+              component={SessionSummaryScreen}
+              options={{
+                headerShown: false,
               }}
             />
             <Stack.Screen
@@ -183,6 +199,7 @@ export default function AppNavigator() {
                 headerTitle: 'Add Memory',
                 headerStyle: { backgroundColor: '#000' },
                 headerTintColor: '#fff',
+                headerBackButtonDisplayMode: 'minimal',
               }}
             />
             <Stack.Screen
@@ -193,12 +210,14 @@ export default function AppNavigator() {
                 headerTitle: 'Spring Bloom',
                 headerStyle: { backgroundColor: '#000' },
                 headerTintColor: '#fff',
+                headerBackButtonDisplayMode: 'minimal',
               }}
             />
           </>
         )}
       </Stack.Navigator>
     </NavigationContainer>
+    </>
   );
 }
 

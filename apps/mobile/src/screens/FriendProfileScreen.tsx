@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ChevronLeft, Clock, Hash, Flame, Sparkles } from '../components/icons';
+import { Clock, Hash, Flame, Sparkles } from '../components/icons';
 import type { Friend } from '@hyve/types';
 import { useAuth } from '../contexts/AuthContext';
 import { API_PATHS } from '@hyve/shared';
@@ -42,14 +42,6 @@ export default function FriendProfileScreen() {
       headerTitle: friend.name ?? 'Friend',
       headerStyle: { backgroundColor: '#000' },
       headerTintColor: '#fff',
-      headerLeft: () => (
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={{ marginLeft: 8, padding: 8 }}
-        >
-          <ChevronLeft color="#fff" size={24} />
-        </TouchableOpacity>
-      ),
     });
   }, [friend.name, navigation]);
 
