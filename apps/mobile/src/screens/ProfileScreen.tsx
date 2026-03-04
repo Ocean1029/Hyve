@@ -110,11 +110,6 @@ export default function ProfileScreen() {
               </Text>
             </View>
           )}
-          {totalHours > 0 && (
-            <View style={styles.totalHoursBadge}>
-              <Text style={styles.totalHoursText}>{totalHours}h</Text>
-            </View>
-          )}
         </View>
         <Text style={styles.name}>{user?.name ?? 'User'}</Text>
         <Text style={styles.userId}>{user?.userId ?? user?.id ?? 'No user ID'}</Text>
@@ -209,11 +204,17 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 32,
+    alignItems: 'center',
+  },
+  avatarContainer: {
+    position: 'relative',
+    marginBottom: 12,
   },
   name: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
+    textAlign: 'center',
   },
   email: {
     fontSize: 14,
@@ -246,14 +247,10 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: 40,
   },
-  avatarContainer: {
-    position: 'relative',
-    marginBottom: 12,
-  },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     backgroundColor: '#333',
   },
   avatarPlaceholder: {
@@ -262,29 +259,14 @@ const styles = StyleSheet.create({
   },
   avatarLetter: {
     color: '#fff',
-    fontSize: 32,
+    fontSize: 48,
     fontWeight: 'bold',
-  },
-  totalHoursBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#18181b',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#27272a',
-  },
-  totalHoursText: {
-    color: '#f59e0b',
-    fontSize: 10,
-    fontWeight: '700',
   },
   userId: {
     fontSize: 12,
     color: '#666',
     marginTop: 4,
+    textAlign: 'center',
   },
   todayCard: {
     backgroundColor: '#18181b',
