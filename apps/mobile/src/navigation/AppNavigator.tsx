@@ -44,7 +44,7 @@ function MessagesStack() {
       <MessagesStackNavigator.Screen
         name="MessagesList"
         component={MessagesListScreen}
-        options={{ title: 'Messages', headerShown: true }}
+        options={{ title: 'Messages', headerShown: false }}
       />
       <MessagesStackNavigator.Screen
         name="Chat"
@@ -59,8 +59,7 @@ function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: Colors.bg1 },
-        headerTintColor: Colors.ivory,
+        headerShown: false,
         tabBarStyle: {
           backgroundColor: 'rgba(12, 13, 16, 0.97)',
           borderTopColor: Colors.glassBorder,

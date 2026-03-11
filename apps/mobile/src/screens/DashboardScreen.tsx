@@ -14,8 +14,8 @@ import {
   Alert,
   Animated,
   Easing,
+  SafeAreaView,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
@@ -44,7 +44,6 @@ function getDayLabel(): string {
 
 export default function DashboardScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Main'>>();
-  const insets = useSafeAreaInsets();
   const { apiClient, user } = useAuth();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
@@ -73,28 +72,32 @@ export default function DashboardScreen() {
     ).start();
   }, [pulseAnim]);
 
-  const handleStartSoloSession = useCallback(async () => {
+  const handleStartSoloSession = useCallback(() => {
     if (!user?.id || startingSession) return;
     setStartingSession(true);
-    try {
-      const now = new Date();
-      const placeholderEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-      const res = await apiClient.post<{ sessionId: string }>(API_PATHS.SESSIONS, {
+    const now = new Date();
+
+    // Navigate immediately — FocusSessionScreen will receive the sessionId later
+    navigation.navigate('FocusSession', {
+      autoEntered: true,
+      startTime: now.toISOString(),
+    });
+
+    // Create session in background
+    const placeholderEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    apiClient
+      .post<{ sessionId: string }>(API_PATHS.SESSIONS, {
         userIds: [user.id],
         startTime: now.toISOString(),
         durationSeconds: 24 * 60 * 60,
         endTime: placeholderEnd.toISOString(),
+      })
+      .catch((e) => {
+        Alert.alert('Error', e instanceof Error ? e.message : 'Failed to start session');
+      })
+      .finally(() => {
+        setStartingSession(false);
       });
-      navigation.navigate('FocusSession', {
-        sessionId: res?.sessionId,
-        autoEntered: true,
-        startTime: now.toISOString(),
-      });
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to start session');
-    } finally {
-      setStartingSession(false);
-    }
   }, [apiClient, user?.id, navigation, startingSession]);
 
   const load = async () => {
@@ -138,7 +141,7 @@ export default function DashboardScreen() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <SafeAreaView style={styles.container}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -258,7 +261,7 @@ export default function DashboardScreen() {
       <Animated.View
         style={[
           styles.floatingButtonWrap,
-          { bottom: insets.bottom + 80 },
+          { bottom: 80 },
           { transform: [{ scale: startingSession ? 1 : pulseAnim }] },
         ]}
       >
@@ -275,7 +278,7 @@ export default function DashboardScreen() {
           )}
         </TouchableOpacity>
       </Animated.View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -300,8 +303,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: Space.lg,
-    paddingBottom: Space.xl,
+    paddingTop: 0,
+    paddingBottom: Space.md,
   },
   dateLabel: {
     fontSize: 10,
