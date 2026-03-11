@@ -1,6 +1,9 @@
 /**
- * Post Memory screen — ver2 aesthetic with glass cards.
- * Event name, happy index, vibe check, photos, caption.
+ * Post Memory screen — v1 three-step wizard.
+ *
+ * Step 1 "Subject"  — event name, time details, hangout type
+ * Step 2 "Content"  — photos, experience text
+ * Step 3 "Location" — category star ratings, review, post button
  */
 import React, { useState, useMemo } from 'react';
 import {
@@ -16,46 +19,94 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../contexts/AuthContext';
 import { uploadImage } from '../utils/upload';
 import { API_PATHS } from '@hyve/shared';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { Calendar, MapPin, ImageIcon, Loader2 } from '../components/icons';
+import {
+  Calendar, MapPin, ImageIcon, Loader2, Star, Camera, ChevronRight,
+} from '../components/icons';
 import GlassCard from '../components/ui/GlassCard';
 import { Colors, Radius, Space, Shadows } from '../theme';
 
-const CATEGORIES = ['📚 Study', '🍔 Eat', '🏋️ Gym', '🚗 Drive', '☕ Chill', '🎮 Game', '🎨 Create'];
+// ── Constants ──────────────────────────────────────────────────────────
+const STEPS = ['Subject', 'Content', 'Location'] as const;
+const HANGOUT_TYPES = ['Study', 'Gym', 'Hike', 'Chat', 'Vibe', 'Eat', 'Create'];
+const RATING_CATEGORIES = [
+  { key: 'service', label: 'Service' },
+  { key: 'vibe', label: 'Vibe' },
+  { key: 'food', label: 'Food / Drink' },
+  { key: 'location', label: 'Location' },
+  { key: 'wifi', label: 'WiFi' },
+];
+const MAX_CAPTION_LENGTH = 150;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PostMemory'>;
 
 export default function PostMemoryScreen({ route, navigation }: Props) {
   const { focusSessionId, durationSeconds, sessionEndTime } = route.params;
   const { apiClient, getToken } = useAuth();
+  const insets = useSafeAreaInsets();
+
+  // Step state
+  const [step, setStep] = useState(0);
+
+  // Step 1 — Subject
   const [eventName, setEventName] = useState('');
-  const [rating, setRating] = useState(5);
-  const [selectedCategory, setSelectedCategory] = useState(CATEGORIES[0]);
+  const [selectedType, setSelectedType] = useState('Study');
+
+  // Step 2 — Content
   const [caption, setCaption] = useState('');
   const [photoUris, setPhotoUris] = useState<string[]>([]);
   const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [uploadError, setUploadError] = useState('');
 
+  // Step 3 — Location
+  const [ratings, setRatings] = useState<Record<string, number>>({
+    service: 0, vibe: 0, food: 0, location: 0, wifi: 0,
+  });
+  const [review, setReview] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  // ── Derived ────────────────────────────────────────────────────────
   const timeDetails = useMemo(() => {
     if (durationSeconds == null || !sessionEndTime) return null;
     const end = new Date(sessionEndTime);
     const start = new Date(end.getTime() - durationSeconds * 1000);
     const dateStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const formatT = (d: Date) =>
+    const fmt = (d: Date) =>
       d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
-    const timeRange = `${formatT(start)}–${formatT(end)}`;
     const h = Math.floor(durationSeconds / 3600);
     const m = Math.floor((durationSeconds % 3600) / 60);
-    const durationStr = h > 0 ? `${h}hr ${m}min` : `${m}min`;
-    return { dateStr, timeRange, durationStr };
+    return {
+      dateStr,
+      timeRange: `${fmt(start)}–${fmt(end)}`,
+      durationStr: h > 0 ? `${h}hr ${m}min` : `${m}min`,
+    };
   }, [durationSeconds, sessionEndTime]);
+
+  const averageRating = useMemo(() => {
+    const vals = Object.values(ratings).filter((v) => v > 0);
+    if (vals.length === 0) return 0;
+    return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 2);
+  }, [ratings]);
+
+  // ── Handlers ───────────────────────────────────────────────────────
+  const goNext = () => {
+    if (step === 0 && !eventName.trim()) {
+      Alert.alert('Event name required', 'Please enter what happened in this moment.');
+      return;
+    }
+    setStep((s) => Math.min(s + 1, 2));
+  };
+  const goBack = () => setStep((s) => Math.max(s - 1, 0));
+
+  const setStarRating = (key: string, value: number) =>
+    setRatings((prev) => ({ ...prev, [key]: value }));
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -109,32 +160,24 @@ export default function PostMemoryScreen({ route, navigation }: Props) {
   };
 
   const handleSubmit = async () => {
-    const trimmed = eventName.trim();
-    if (!trimmed) {
-      Alert.alert('Event name required', 'Please enter what happened in this moment.');
-      return;
-    }
     setSubmitting(true);
     try {
       const token = await getToken();
-      if (!token) {
-        Alert.alert('Error', 'Please sign in again.');
-        return;
-      }
+      if (!token) { Alert.alert('Error', 'Please sign in again.'); return; }
+      const trimmed = eventName.trim();
       const content = caption.trim() ? `${trimmed}\n\n${caption.trim()}` : trimmed;
       const photoUrl =
         uploadedUrls.length > 0
-          ? uploadedUrls.length === 1
-            ? uploadedUrls[0]
-            : uploadedUrls
+          ? uploadedUrls.length === 1 ? uploadedUrls[0] : uploadedUrls
           : undefined;
 
       await apiClient.post(API_PATHS.MEMORY_WITH_PHOTO, {
         focusSessionId,
         photoUrl,
         content,
-        happyIndex: rating,
-        mood: selectedCategory,
+        happyIndex: averageRating,
+        mood: selectedType,
+        review: review.trim() || undefined,
       });
       navigation.navigate('Main');
     } catch (e) {
@@ -144,6 +187,199 @@ export default function PostMemoryScreen({ route, navigation }: Props) {
     }
   };
 
+  // ── Step renderers ─────────────────────────────────────────────────
+
+  const renderStep1 = () => (
+    <>
+      {/* Time details */}
+      {timeDetails && (
+        <GlassCard style={styles.timeCard} radius={Radius.xl}>
+          <View style={styles.timeRow}>
+            <Calendar color={Colors.goldDim} size={14} />
+            <Text style={styles.timeText}>{timeDetails.dateStr}</Text>
+            <Text style={styles.timeDivider}>·</Text>
+            <Text style={styles.timeText}>{timeDetails.timeRange}</Text>
+            <Text style={styles.timeDivider}>·</Text>
+            <Text style={styles.timeText}>{timeDetails.durationStr}</Text>
+          </View>
+          <View style={styles.locationRow}>
+            <MapPin color={Colors.success} size={14} />
+            <Text style={styles.locationText}>Location automatically tagged</Text>
+          </View>
+        </GlassCard>
+      )}
+
+      {/* Event name */}
+      <TextInput
+        style={styles.eventInput}
+        value={eventName}
+        onChangeText={setEventName}
+        placeholder="What happened in this moment?"
+        placeholderTextColor={Colors.muted}
+      />
+
+      {/* Type of Hangout */}
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>TYPE OF HANGOUT</Text>
+        <View style={styles.chipsRow}>
+          {HANGOUT_TYPES.map((type) => (
+            <TouchableOpacity
+              key={type}
+              onPress={() => setSelectedType(type)}
+              style={[styles.chip, selectedType === type && styles.chipActive]}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.chipText, selectedType === type && styles.chipTextActive]}>
+                {type}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    </>
+  );
+
+  const renderStep2 = () => (
+    <>
+      {/* Moments (Photos) */}
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>MOMENTS</Text>
+        {photoUris.length > 0 ? (
+          <View style={styles.photoGrid}>
+            {photoUris.map((uri, i) => (
+              <View key={i} style={styles.photoCell}>
+                <Image source={{ uri }} style={styles.photoPreview} />
+                <TouchableOpacity
+                  style={styles.removePhoto}
+                  onPress={() => removePhoto(i)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.removePhotoText}>×</Text>
+                </TouchableOpacity>
+                {uploadedUrls[i] && (
+                  <View style={styles.uploadedBadge}>
+                    <Text style={styles.uploadedText}>✓</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={[styles.photoPlaceholder, uploading && { opacity: 0.5 }]}
+            onPress={pickImage}
+            disabled={uploading}
+            activeOpacity={0.8}
+          >
+            {uploading ? (
+              <Loader2 color={Colors.muted} size={22} />
+            ) : (
+              <Camera color={Colors.text3} size={22} />
+            )}
+            <Text style={styles.photoPlaceholderText}>
+              {uploading ? 'Uploading…' : 'Post Photos / Videos'}
+            </Text>
+          </TouchableOpacity>
+        )}
+        {photoUris.length > 0 && (
+          <TouchableOpacity
+            style={[styles.addMoreBtn, uploading && { opacity: 0.5 }]}
+            onPress={pickImage}
+            disabled={uploading}
+            activeOpacity={0.8}
+          >
+            {uploading ? (
+              <Loader2 color={Colors.muted} size={14} />
+            ) : (
+              <ImageIcon color={Colors.text3} size={14} />
+            )}
+            <Text style={styles.addMoreText}>
+              {uploading ? 'Uploading…' : 'Add more'}
+            </Text>
+          </TouchableOpacity>
+        )}
+        {uploadError ? <Text style={styles.errorText}>{uploadError}</Text> : null}
+      </View>
+
+      {/* Experience */}
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>EXPERIENCE</Text>
+        <TextInput
+          style={styles.captionInput}
+          value={caption}
+          onChangeText={(t) => setCaption(t.slice(0, MAX_CAPTION_LENGTH))}
+          placeholder="How was the session?"
+          placeholderTextColor={Colors.muted}
+          multiline
+          maxLength={MAX_CAPTION_LENGTH}
+        />
+        <Text style={styles.charCount}>{caption.length}/{MAX_CAPTION_LENGTH}</Text>
+      </View>
+    </>
+  );
+
+  const renderStep3 = () => (
+    <>
+      {/* Category Ratings */}
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>RATE EXPERIENCE</Text>
+        <View style={styles.ratingsContainer}>
+          {RATING_CATEGORIES.map((cat) => (
+            <View key={cat.key} style={styles.ratingRow}>
+              <Text style={styles.ratingCategoryLabel}>{cat.label}</Text>
+              <View style={styles.starsRow}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <TouchableOpacity
+                    key={star}
+                    onPress={() => setStarRating(cat.key, star)}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                  >
+                    <Star
+                      size={16}
+                      color={star <= (ratings[cat.key] ?? 0) ? Colors.gold : Colors.glassBorder}
+                      fill={star <= (ratings[cat.key] ?? 0) ? Colors.gold : 'transparent'}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* Review */}
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>REVIEW</Text>
+        <TextInput
+          style={styles.captionInput}
+          value={review}
+          onChangeText={(t) => setReview(t.slice(0, MAX_CAPTION_LENGTH))}
+          placeholder="Write a short review..."
+          placeholderTextColor={Colors.muted}
+          multiline
+          maxLength={MAX_CAPTION_LENGTH}
+        />
+        <Text style={styles.charCount}>{review.length}/{MAX_CAPTION_LENGTH}</Text>
+      </View>
+
+      {/* Post button */}
+      <TouchableOpacity
+        style={[styles.postButton, submitting && styles.postButtonDisabled]}
+        onPress={handleSubmit}
+        disabled={submitting}
+        activeOpacity={0.88}
+      >
+        {submitting ? (
+          <ActivityIndicator size="small" color="#000" />
+        ) : (
+          <Text style={styles.postButtonText}>Post</Text>
+        )}
+      </TouchableOpacity>
+    </>
+  );
+
+  // ── Main render ────────────────────────────────────────────────────
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -151,171 +387,67 @@ export default function PostMemoryScreen({ route, navigation }: Props) {
     >
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Event name */}
-        <TextInput
-          style={styles.eventInput}
-          value={eventName}
-          onChangeText={setEventName}
-          placeholder="What happened in this moment?"
-          placeholderTextColor={Colors.muted}
-        />
+        {/* Step title */}
+        <Text style={styles.stepTitle}>{STEPS[step]}</Text>
 
-        {/* Time details */}
-        {timeDetails && (
-          <GlassCard style={styles.timeCard} radius={Radius.xl}>
-            <View style={styles.timeRow}>
-              <Calendar color={Colors.goldDim} size={14} />
-              <Text style={styles.timeText}>{timeDetails.dateStr}</Text>
-              <Text style={styles.timeDivider}>·</Text>
-              <Text style={styles.timeText}>{timeDetails.timeRange}</Text>
-              <Text style={styles.timeDivider}>·</Text>
-              <Text style={styles.timeText}>{timeDetails.durationStr}</Text>
-            </View>
-            <View style={styles.locationRow}>
-              <MapPin color={Colors.success} size={14} />
-              <Text style={styles.locationText}>Location automatically tagged</Text>
-            </View>
-          </GlassCard>
-        )}
-
-        {/* Happy index */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionLabel}>RATE EXPERIENCE</Text>
-            <Text style={styles.ratingDisplay}>
-              {rating}<Text style={styles.ratingMax}>/10</Text>
-            </Text>
-          </View>
-          <View style={styles.starsRow}>
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((val) => (
-              <TouchableOpacity
-                key={val}
-                onPress={() => setRating(val)}
-                style={styles.starBtn}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.starDot, val <= rating && styles.starDotActive]}>
-                  {val <= rating ? '★' : '·'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={styles.ratingLabels}>
-            <Text style={styles.ratingLabel}>Meh</Text>
-            <Text style={styles.ratingLabel}>Life Changing</Text>
-          </View>
+        {/* Step dots */}
+        <View style={styles.dots}>
+          {STEPS.map((_, i) => (
+            <View key={i} style={[styles.dot, i === step && styles.dotActive]} />
+          ))}
         </View>
 
-        {/* Vibe check */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>VIBE CHECK</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipsRow}
-            style={{ marginTop: Space.md }}
-          >
-            {CATEGORIES.map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                onPress={() => setSelectedCategory(cat)}
-                style={[styles.chip, selectedCategory === cat && styles.chipActive]}
-                activeOpacity={0.75}
-              >
-                <Text style={[styles.chipText, selectedCategory === cat && styles.chipTextActive]}>
-                  {cat}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+        {/* Step content */}
+        {step === 0 && renderStep1()}
+        {step === 1 && renderStep2()}
+        {step === 2 && renderStep3()}
+      </ScrollView>
 
-        {/* Photos */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>PHOTOS</Text>
-          <View style={styles.photoArea}>
-            {photoUris.length > 0 ? (
-              <View style={styles.photoGrid}>
-                {photoUris.map((uri, i) => (
-                  <View key={i} style={styles.photoCell}>
-                    <Image source={{ uri }} style={styles.photoPreview} />
-                    <TouchableOpacity
-                      style={styles.removePhoto}
-                      onPress={() => removePhoto(i)}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.removePhotoText}>×</Text>
-                    </TouchableOpacity>
-                    {uploadedUrls[i] && (
-                      <View style={styles.uploadedBadge}>
-                        <Text style={styles.uploadedText}>✓</Text>
-                      </View>
-                    )}
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <View style={styles.photoPlaceholder}>
-                <Text style={styles.photoPlaceholderText}>Your photos will appear here</Text>
-              </View>
-            )}
-          </View>
+      {/* Bottom navigation */}
+      {step < 2 && (
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
+          {step > 0 ? (
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={goBack}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.backButtonText}>Back</Text>
+            </TouchableOpacity>
+          ) : (
+            <View />
+          )}
           <TouchableOpacity
-            style={[styles.addPhotoBtn, uploading && styles.addPhotoDisabled]}
-            onPress={pickImage}
-            disabled={uploading}
+            style={styles.nextButton}
+            onPress={goNext}
+            activeOpacity={0.85}
+          >
+            <ChevronRight color={Colors.text2} size={22} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {step === 2 && step > 0 && (
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={goBack}
             activeOpacity={0.8}
           >
-            {uploading ? (
-              <Loader2 color={Colors.muted} size={18} />
-            ) : (
-              <ImageIcon color={Colors.text3} size={18} />
-            )}
-            <Text style={styles.addPhotoText}>
-              {uploading ? 'Uploading…' : 'Add photo'}
-            </Text>
+            <Text style={styles.backButtonText}>Back</Text>
           </TouchableOpacity>
-          {uploadError ? <Text style={styles.errorText}>{uploadError}</Text> : null}
+          <View />
         </View>
-
-        {/* Caption */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>CAPTION</Text>
-          <TextInput
-            style={styles.captionInput}
-            value={caption}
-            onChangeText={setCaption}
-            placeholder="Write a caption…"
-            placeholderTextColor={Colors.muted}
-            multiline
-          />
-        </View>
-
-        {/* Submit */}
-        <TouchableOpacity
-          style={[
-            styles.submitButton,
-            (submitting || !eventName.trim()) && styles.submitDisabled,
-          ]}
-          onPress={handleSubmit}
-          disabled={submitting || !eventName.trim()}
-          activeOpacity={0.88}
-        >
-          {submitting ? (
-            <ActivityIndicator size="small" color="#000" />
-          ) : (
-            <Text style={styles.submitText}>Lock this Moment</Text>
-          )}
-        </TouchableOpacity>
-      </ScrollView>
+      )}
     </KeyboardAvoidingView>
   );
 }
 
+// ── Styles ────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -325,8 +457,36 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: Space.xxl,
-    paddingBottom: 56,
+    paddingHorizontal: Space.xl,
+    paddingTop: Space.lg,
+  },
+
+  // Step header
+  stepTitle: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: Colors.text3,
+    letterSpacing: 3,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+    marginBottom: Space.md,
+  },
+  dots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+    marginBottom: Space.xxl,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.glassBorder,
+  },
+  dotActive: {
+    backgroundColor: Colors.gold,
+    width: 20,
+    borderRadius: 3,
   },
 
   // Event name
@@ -376,100 +536,89 @@ const styles = StyleSheet.create({
 
   // Section
   section: {
-    marginBottom: Space.xxxl,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Space.md,
+    marginBottom: Space.xxl,
   },
   sectionLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: Colors.muted,
-    letterSpacing: 1.8,
-    marginBottom: Space.sm,
+    fontSize: 8,
+    fontWeight: '800',
+    color: Colors.text3,
+    letterSpacing: 2,
+    marginBottom: Space.md,
   },
 
-  // Rating
-  ratingDisplay: {
-    fontSize: 20,
-    fontWeight: '300',
-    color: Colors.gold,
-  },
-  ratingMax: {
-    fontSize: 14,
-    color: Colors.goldDim,
-  },
-  starsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Space.xs,
-    marginBottom: Space.sm,
-  },
-  starBtn: {
-    padding: 4,
-  },
-  starDot: {
-    fontSize: 22,
-    color: Colors.muted,
-  },
-  starDotActive: {
-    color: Colors.gold,
-  },
-  ratingLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  ratingLabel: {
-    fontSize: 9,
-    color: Colors.muted,
-    letterSpacing: 0.8,
-  },
-
-  // Vibes
+  // Hangout type chips
   chipsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Space.sm,
   },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: Radius.xl,
-    backgroundColor: Colors.surface1,
     borderWidth: 1,
     borderColor: Colors.glassBorder,
+    backgroundColor: 'transparent',
   },
   chipActive: {
-    backgroundColor: Colors.goldFaint,
-    borderColor: Colors.goldDim,
+    backgroundColor: 'rgba(201,168,106,0.15)',
+    borderColor: Colors.gold,
   },
   chipText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
     color: Colors.text3,
   },
   chipTextActive: {
     color: Colors.gold,
   },
 
+  // Category ratings
+  ratingsContainer: {
+    gap: Space.lg,
+    paddingHorizontal: Space.xs,
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  ratingCategoryLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: Colors.text3,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  starsRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+
   // Photos
-  photoArea: {
-    minHeight: 160,
-    borderRadius: Radius.xxl,
+  photoPlaceholder: {
+    aspectRatio: 16 / 9,
+    borderRadius: Radius.xxxl,
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: Colors.glassBorder,
     backgroundColor: Colors.glassBg,
-    padding: Space.md,
-    marginBottom: Space.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Space.sm,
+  },
+  photoPlaceholderText: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: Colors.text3,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
   photoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Space.sm,
+    marginBottom: Space.md,
   },
   photoCell: {
     width: '47%',
@@ -518,35 +667,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
-  photoPlaceholder: {
-    flex: 1,
-    minHeight: 120,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  photoPlaceholderText: {
-    color: Colors.muted,
-    fontSize: 13,
-  },
-  addPhotoBtn: {
+  addMoreBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Space.sm,
-    paddingVertical: 12,
-    paddingHorizontal: Space.lg,
-    backgroundColor: Colors.surface1,
+    gap: Space.xs,
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: Radius.lg,
     borderWidth: 1,
     borderColor: Colors.glassBorder,
-    alignSelf: 'flex-start',
+    backgroundColor: 'transparent',
   },
-  addPhotoDisabled: {
-    opacity: 0.5,
-  },
-  addPhotoText: {
+  addMoreText: {
     color: Colors.text3,
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
   },
   errorText: {
     marginTop: Space.sm,
@@ -555,36 +691,77 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // Caption
+  // Text inputs
   captionInput: {
-    backgroundColor: Colors.surface1,
-    borderRadius: Radius.xl,
-    padding: Space.md,
+    backgroundColor: Colors.glassBg,
+    borderRadius: Radius.xxl,
+    padding: Space.lg,
     color: Colors.ivory,
-    fontSize: 14,
+    fontSize: 11,
     minHeight: 88,
     borderWidth: 1,
     borderColor: Colors.glassBorder,
     textAlignVertical: 'top',
-    marginTop: Space.md,
+  },
+  charCount: {
+    textAlign: 'right',
+    fontSize: 8,
+    fontWeight: '700',
+    color: Colors.text3,
+    marginTop: Space.xs,
+    paddingHorizontal: Space.xs,
   },
 
-  // Submit
-  submitButton: {
+  // Post button (step 3 only)
+  postButton: {
     backgroundColor: Colors.gold,
-    paddingVertical: Space.xl,
+    paddingVertical: Space.lg,
     borderRadius: Radius.xxl,
     alignItems: 'center',
-    marginTop: Space.lg,
     ...Shadows.gold,
   },
-  submitDisabled: {
+  postButtonDisabled: {
     opacity: 0.45,
   },
-  submitText: {
+  postButtonText: {
     color: '#000',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+
+  // Bottom navigation bar
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Space.xl,
+    paddingTop: Space.md,
+  },
+  nextButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.glassBg,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Shadows.soft,
+  },
+  backButton: {
+    paddingHorizontal: Space.lg,
+    paddingVertical: Space.md,
+  },
+  backButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.text3,
+    letterSpacing: 0.5,
   },
 });

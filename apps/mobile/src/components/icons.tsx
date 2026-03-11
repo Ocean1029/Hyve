@@ -30,6 +30,7 @@ export {
   AlertCircle,
   Check,
   X,
+  UserPlus,
   Users,
   Trophy,
   Heart,
