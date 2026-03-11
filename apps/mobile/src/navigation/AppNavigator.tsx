@@ -23,8 +23,9 @@ import PostMemoryScreen from '../screens/PostMemoryScreen';
 import SpringBloomScreen from '../screens/SpringBloomScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import FriendProfileScreen from '../screens/FriendProfileScreen';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
 import { Home, MessageCircle, User, Calendar } from '../components/icons';
+import { Colors, Shadows } from '../theme';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
@@ -35,8 +36,8 @@ function MessagesStack() {
   return (
     <MessagesStackNavigator.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: '#000' },
-        headerTintColor: '#fff',
+        headerStyle: { backgroundColor: Colors.bg1 },
+        headerTintColor: Colors.ivory,
         headerBackButtonDisplayMode: 'minimal',
       }}
     >
@@ -58,11 +59,24 @@ function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: '#000' },
-        headerTintColor: '#fff',
-        tabBarStyle: { backgroundColor: '#000', borderTopColor: '#222' },
-        tabBarActiveTintColor: '#fff',
-        tabBarInactiveTintColor: '#666',
+        headerStyle: { backgroundColor: Colors.bg1 },
+        headerTintColor: Colors.ivory,
+        tabBarStyle: {
+          backgroundColor: 'rgba(12, 13, 16, 0.97)',
+          borderTopColor: Colors.glassBorder,
+          borderTopWidth: 1,
+          ...Platform.select({
+            ios: {
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: -4 },
+              shadowOpacity: 0.4,
+              shadowRadius: 16,
+            },
+            android: { elevation: 16 },
+          }),
+        },
+        tabBarActiveTintColor: Colors.gold,
+        tabBarInactiveTintColor: Colors.text3,
       }}
     >
       <Tab.Screen
@@ -139,8 +153,8 @@ export default function AppNavigator() {
               options={{
                 headerShown: true,
                 headerTitle: 'Find Friends',
-                headerStyle: { backgroundColor: '#000' },
-                headerTintColor: '#fff',
+                headerStyle: { backgroundColor: Colors.bg1 },
+                headerTintColor: Colors.ivory,
                 headerBackButtonDisplayMode: 'minimal',
               }}
             />
@@ -150,8 +164,8 @@ export default function AppNavigator() {
               options={{
                 headerShown: true,
                 headerTitle: '',
-                headerStyle: { backgroundColor: '#000' },
-                headerTintColor: '#fff',
+                headerStyle: { backgroundColor: Colors.bg1 },
+                headerTintColor: Colors.ivory,
                 headerBackButtonDisplayMode: 'minimal',
               }}
             />
@@ -161,8 +175,8 @@ export default function AppNavigator() {
               options={{
                 headerShown: true,
                 headerTitle: 'Happy Index',
-                headerStyle: { backgroundColor: '#000' },
-                headerTintColor: '#fff',
+                headerStyle: { backgroundColor: Colors.bg1 },
+                headerTintColor: Colors.ivory,
                 headerBackButtonDisplayMode: 'minimal',
               }}
             />
@@ -172,8 +186,8 @@ export default function AppNavigator() {
               options={{
                 headerShown: true,
                 headerTitle: 'Settings',
-                headerStyle: { backgroundColor: '#000' },
-                headerTintColor: '#fff',
+                headerStyle: { backgroundColor: Colors.bg1 },
+                headerTintColor: Colors.ivory,
                 headerBackButtonDisplayMode: 'minimal',
               }}
             />
@@ -197,8 +211,8 @@ export default function AppNavigator() {
               options={{
                 headerShown: true,
                 headerTitle: 'Add Memory',
-                headerStyle: { backgroundColor: '#000' },
-                headerTintColor: '#fff',
+                headerStyle: { backgroundColor: Colors.bg1 },
+                headerTintColor: Colors.ivory,
                 headerBackButtonDisplayMode: 'minimal',
               }}
             />
@@ -208,8 +222,8 @@ export default function AppNavigator() {
               options={{
                 headerShown: true,
                 headerTitle: 'Spring Bloom',
-                headerStyle: { backgroundColor: '#000' },
-                headerTintColor: '#fff',
+                headerStyle: { backgroundColor: Colors.bg1 },
+                headerTintColor: Colors.ivory,
                 headerBackButtonDisplayMode: 'minimal',
               }}
             />
@@ -226,6 +240,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000',
+    backgroundColor: Colors.bg1,
   },
 });

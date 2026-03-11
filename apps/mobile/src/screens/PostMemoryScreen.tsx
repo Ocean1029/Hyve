@@ -1,6 +1,6 @@
 /**
- * Post Memory screen. Matches web PostMemory layout:
- * Event name (required), Happy index (1-10), Vibe check, Photos, Caption, Time details.
+ * Post Memory screen — ver2 aesthetic with glass cards.
+ * Event name, happy index, vibe check, photos, caption.
  */
 import React, { useState, useMemo } from 'react';
 import {
@@ -22,7 +22,9 @@ import { uploadImage } from '../utils/upload';
 import { API_PATHS } from '@hyve/shared';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
-import { Star, Calendar, MapPin, ImageIcon, Loader2 } from '../components/icons';
+import { Calendar, MapPin, ImageIcon, Loader2 } from '../components/icons';
+import GlassCard from '../components/ui/GlassCard';
+import { Colors, Radius, Space, Shadows } from '../theme';
 
 const CATEGORIES = ['📚 Study', '🍔 Eat', '🏋️ Gym', '🚗 Drive', '☕ Chill', '🎮 Game', '🎨 Create'];
 
@@ -46,14 +48,12 @@ export default function PostMemoryScreen({ route, navigation }: Props) {
     const end = new Date(sessionEndTime);
     const start = new Date(end.getTime() - durationSeconds * 1000);
     const dateStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const formatTime = (d: Date) =>
+    const formatT = (d: Date) =>
       d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
-    const timeRange = `${formatTime(start)}-${formatTime(end)}`;
+    const timeRange = `${formatT(start)}–${formatT(end)}`;
     const h = Math.floor(durationSeconds / 3600);
     const m = Math.floor((durationSeconds % 3600) / 60);
-    let durationStr = '';
-    if (h > 0) durationStr += `${h}hr `;
-    if (m > 0 || h === 0) durationStr += `${m}min`;
+    const durationStr = h > 0 ? `${h}hr ${m}min` : `${m}min`;
     return { dateStr, timeRange, durationStr };
   }, [durationSeconds, sessionEndTime]);
 
@@ -82,13 +82,11 @@ export default function PostMemoryScreen({ route, navigation }: Props) {
         setPhotoUris((prev) => prev.filter((u) => !newUris.includes(u)));
         return;
       }
-      const uploads = await Promise.all(
-        newUris.map((uri) => uploadImage(uri, token))
-      );
+      const uploads = await Promise.all(newUris.map((uri) => uploadImage(uri, token)));
       const urls: string[] = [];
       for (let i = 0; i < uploads.length; i++) {
         if (uploads[i].success && uploads[i].url) {
-          urls.push(uploads[i].url);
+          urls.push(uploads[i].url!);
         } else {
           setUploadError(uploads[i].error ?? 'Upload failed');
           setPhotoUris((prev) => prev.filter((u) => !newUris.includes(u)));
@@ -123,9 +121,7 @@ export default function PostMemoryScreen({ route, navigation }: Props) {
         Alert.alert('Error', 'Please sign in again.');
         return;
       }
-      const content = caption.trim()
-        ? `${trimmed}\n\n${caption.trim()}`
-        : trimmed;
+      const content = caption.trim() ? `${trimmed}\n\n${caption.trim()}` : trimmed;
       const photoUrl =
         uploadedUrls.length > 0
           ? uploadedUrls.length === 1
@@ -152,41 +148,44 @@ export default function PostMemoryScreen({ route, navigation }: Props) {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={0}
     >
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        {/* Event name - required, prominent */}
+        {/* Event name */}
         <TextInput
           style={styles.eventInput}
           value={eventName}
           onChangeText={setEventName}
           placeholder="What happened in this moment?"
-          placeholderTextColor="#71717a"
+          placeholderTextColor={Colors.muted}
         />
 
-        {/* Time details (when from SessionSummary) */}
+        {/* Time details */}
         {timeDetails && (
-          <View style={styles.timeSection}>
+          <GlassCard style={styles.timeCard} radius={Radius.xl}>
             <View style={styles.timeRow}>
-              <Calendar color="#fda4af" size={16} />
+              <Calendar color={Colors.goldDim} size={14} />
               <Text style={styles.timeText}>{timeDetails.dateStr}</Text>
+              <Text style={styles.timeDivider}>·</Text>
               <Text style={styles.timeText}>{timeDetails.timeRange}</Text>
+              <Text style={styles.timeDivider}>·</Text>
+              <Text style={styles.timeText}>{timeDetails.durationStr}</Text>
             </View>
             <View style={styles.locationRow}>
-              <MapPin color="#10b981" size={16} />
+              <MapPin color={Colors.success} size={14} />
               <Text style={styles.locationText}>Location automatically tagged</Text>
             </View>
-          </View>
+          </GlassCard>
         )}
 
-        {/* Happy index 1-10 */}
+        {/* Happy index */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.label}>Rate Experience</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionLabel}>RATE EXPERIENCE</Text>
             <Text style={styles.ratingDisplay}>
               {rating}<Text style={styles.ratingMax}>/10</Text>
             </Text>
@@ -196,13 +195,12 @@ export default function PostMemoryScreen({ route, navigation }: Props) {
               <TouchableOpacity
                 key={val}
                 onPress={() => setRating(val)}
-                style={[styles.starBtn, val <= rating && styles.starActive]}
+                style={styles.starBtn}
+                activeOpacity={0.7}
               >
-                <Star
-                  color={val <= rating ? '#fbbf24' : '#52525b'}
-                  size={24}
-                  fill={val <= rating ? '#fbbf24' : 'transparent'}
-                />
+                <Text style={[styles.starDot, val <= rating && styles.starDotActive]}>
+                  {val <= rating ? '★' : '·'}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -214,27 +212,21 @@ export default function PostMemoryScreen({ route, navigation }: Props) {
 
         {/* Vibe check */}
         <View style={styles.section}>
-          <Text style={styles.label}>Vibe Check</Text>
+          <Text style={styles.sectionLabel}>VIBE CHECK</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.chipsRow}
+            style={{ marginTop: Space.md }}
           >
             {CATEGORIES.map((cat) => (
               <TouchableOpacity
                 key={cat}
                 onPress={() => setSelectedCategory(cat)}
-                style={[
-                  styles.chip,
-                  selectedCategory === cat && styles.chipActive,
-                ]}
+                style={[styles.chip, selectedCategory === cat && styles.chipActive]}
+                activeOpacity={0.75}
               >
-                <Text
-                  style={[
-                    styles.chipText,
-                    selectedCategory === cat && styles.chipTextActive,
-                  ]}
-                >
+                <Text style={[styles.chipText, selectedCategory === cat && styles.chipTextActive]}>
                   {cat}
                 </Text>
               </TouchableOpacity>
@@ -244,6 +236,7 @@ export default function PostMemoryScreen({ route, navigation }: Props) {
 
         {/* Photos */}
         <View style={styles.section}>
+          <Text style={styles.sectionLabel}>PHOTOS</Text>
           <View style={styles.photoArea}>
             {photoUris.length > 0 ? (
               <View style={styles.photoGrid}>
@@ -253,12 +246,13 @@ export default function PostMemoryScreen({ route, navigation }: Props) {
                     <TouchableOpacity
                       style={styles.removePhoto}
                       onPress={() => removePhoto(i)}
+                      activeOpacity={0.8}
                     >
                       <Text style={styles.removePhotoText}>×</Text>
                     </TouchableOpacity>
                     {uploadedUrls[i] && (
                       <View style={styles.uploadedBadge}>
-                        <Text style={styles.uploadedText}>Uploaded</Text>
+                        <Text style={styles.uploadedText}>✓</Text>
                       </View>
                     )}
                   </View>
@@ -266,9 +260,7 @@ export default function PostMemoryScreen({ route, navigation }: Props) {
               </View>
             ) : (
               <View style={styles.photoPlaceholder}>
-                <Text style={styles.photoPlaceholderText}>
-                  Your photos will appear here
-                </Text>
+                <Text style={styles.photoPlaceholderText}>Your photos will appear here</Text>
               </View>
             )}
           </View>
@@ -276,37 +268,42 @@ export default function PostMemoryScreen({ route, navigation }: Props) {
             style={[styles.addPhotoBtn, uploading && styles.addPhotoDisabled]}
             onPress={pickImage}
             disabled={uploading}
+            activeOpacity={0.8}
           >
             {uploading ? (
-              <Loader2 color="#a1a1aa" size={24} />
+              <Loader2 color={Colors.muted} size={18} />
             ) : (
-              <>
-                <ImageIcon color="#d4d4d8" size={24} />
-                <Text style={styles.addPhotoText}>Add photo</Text>
-              </>
+              <ImageIcon color={Colors.text3} size={18} />
             )}
+            <Text style={styles.addPhotoText}>
+              {uploading ? 'Uploading…' : 'Add photo'}
+            </Text>
           </TouchableOpacity>
-          {uploadError ? (
-            <Text style={styles.errorText}>{uploadError}</Text>
-          ) : null}
+          {uploadError ? <Text style={styles.errorText}>{uploadError}</Text> : null}
         </View>
 
         {/* Caption */}
         <View style={styles.section}>
+          <Text style={styles.sectionLabel}>CAPTION</Text>
           <TextInput
             style={styles.captionInput}
             value={caption}
             onChangeText={setCaption}
-            placeholder="Write a caption..."
-            placeholderTextColor="#71717a"
+            placeholder="Write a caption…"
+            placeholderTextColor={Colors.muted}
             multiline
           />
         </View>
 
+        {/* Submit */}
         <TouchableOpacity
-          style={[styles.submitButton, (submitting || !eventName.trim()) && styles.submitDisabled]}
+          style={[
+            styles.submitButton,
+            (submitting || !eventName.trim()) && styles.submitDisabled,
+          ]}
           onPress={handleSubmit}
           disabled={submitting || !eventName.trim()}
+          activeOpacity={0.88}
         >
           {submitting ? (
             <ActivityIndicator size="small" color="#000" />
@@ -322,147 +319,166 @@ export default function PostMemoryScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: Colors.bg1,
   },
   scroll: {
     flex: 1,
   },
   content: {
-    padding: 24,
-    paddingBottom: 48,
+    padding: Space.xxl,
+    paddingBottom: 56,
   },
+
+  // Event name
   eventInput: {
     backgroundColor: 'transparent',
-    color: '#fafaf9',
+    color: Colors.ivory,
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: '600',
     textAlign: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: '#3f3f46',
-    paddingVertical: 16,
-    marginBottom: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.glassBorder,
+    paddingVertical: Space.lg,
+    marginBottom: Space.xl,
+    letterSpacing: -0.3,
   },
-  timeSection: {
-    marginBottom: 32,
+
+  // Time card
+  timeCard: {
+    marginBottom: Space.xl,
+    gap: Space.xs,
   },
   timeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+    gap: Space.xs,
+    flexWrap: 'wrap',
   },
   timeText: {
-    fontSize: 14,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    color: '#fda4af',
+    fontSize: 12,
+    color: Colors.goldDim,
     fontWeight: '500',
+  },
+  timeDivider: {
+    color: Colors.muted,
+    fontSize: 12,
   },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: Space.xs,
   },
   locationText: {
-    fontSize: 14,
-    color: '#10b981',
+    fontSize: 12,
+    color: Colors.success,
     fontWeight: '500',
   },
+
+  // Section
   section: {
-    marginBottom: 32,
+    marginBottom: Space.xxxl,
   },
-  sectionHeader: {
+  sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: Space.md,
   },
-  label: {
-    fontSize: 10,
+  sectionLabel: {
+    fontSize: 9,
     fontWeight: '700',
-    color: '#a1a1aa',
-    letterSpacing: 2,
+    color: Colors.muted,
+    letterSpacing: 1.8,
+    marginBottom: Space.sm,
   },
+
+  // Rating
   ratingDisplay: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#fbbf24',
+    fontSize: 20,
+    fontWeight: '300',
+    color: Colors.gold,
   },
   ratingMax: {
     fontSize: 14,
-    color: 'rgba(251, 191, 36, 0.6)',
-    marginLeft: 2,
+    color: Colors.goldDim,
   },
   starsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 12,
+    gap: Space.xs,
+    marginBottom: Space.sm,
   },
   starBtn: {
     padding: 4,
-    opacity: 0.3,
   },
-  starActive: {
-    opacity: 1,
+  starDot: {
+    fontSize: 22,
+    color: Colors.muted,
+  },
+  starDotActive: {
+    color: Colors.gold,
   },
   ratingLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   ratingLabel: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: '#52525b',
-    letterSpacing: 1,
+    fontSize: 9,
+    color: Colors.muted,
+    letterSpacing: 0.8,
   },
+
+  // Vibes
   chipsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
+    gap: Space.sm,
   },
   chip: {
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: '#18181b',
+    paddingVertical: 9,
+    borderRadius: Radius.xl,
+    backgroundColor: Colors.surface1,
     borderWidth: 1,
-    borderColor: '#27272a',
+    borderColor: Colors.glassBorder,
   },
   chipActive: {
-    backgroundColor: '#3f3f46',
-    borderColor: '#52525b',
+    backgroundColor: Colors.goldFaint,
+    borderColor: Colors.goldDim,
   },
   chipText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#71717a',
+    fontWeight: '600',
+    color: Colors.text3,
   },
   chipTextActive: {
-    color: '#fafaf9',
+    color: Colors.gold,
   },
+
+  // Photos
   photoArea: {
-    minHeight: 200,
-    borderRadius: 24,
-    borderWidth: 2,
+    minHeight: 160,
+    borderRadius: Radius.xxl,
+    borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: '#3f3f46',
-    backgroundColor: 'rgba(24, 24, 27, 0.3)',
-    padding: 16,
-    marginBottom: 16,
+    borderColor: Colors.glassBorder,
+    backgroundColor: Colors.glassBg,
+    padding: Space.md,
+    marginBottom: Space.md,
   },
   photoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: Space.sm,
   },
   photoCell: {
     width: '47%',
     aspectRatio: 4 / 3,
-    borderRadius: 16,
+    borderRadius: Radius.lg,
     overflow: 'hidden',
     position: 'relative',
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
   },
   photoPreview: {
     width: '100%',
@@ -471,29 +487,31 @@ const styles = StyleSheet.create({
   },
   removePhoto: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#ef4444',
+    top: 6,
+    right: 6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: Colors.error,
     alignItems: 'center',
     justifyContent: 'center',
   },
   removePhotoText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    lineHeight: 20,
+    lineHeight: 18,
   },
   uploadedBadge: {
     position: 'absolute',
-    top: 8,
-    left: 8,
-    backgroundColor: '#10b981',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
+    top: 6,
+    left: 6,
+    backgroundColor: Colors.success,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   uploadedText: {
     fontSize: 10,
@@ -502,67 +520,71 @@ const styles = StyleSheet.create({
   },
   photoPlaceholder: {
     flex: 1,
-    minHeight: 168,
+    minHeight: 120,
     justifyContent: 'center',
     alignItems: 'center',
   },
   photoPlaceholderText: {
-    color: '#71717a',
-    fontSize: 14,
-    fontWeight: '500',
+    color: Colors.muted,
+    fontSize: 13,
   },
   addPhotoBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    backgroundColor: '#27272a',
-    borderRadius: 12,
+    gap: Space.sm,
+    paddingVertical: 12,
+    paddingHorizontal: Space.lg,
+    backgroundColor: Colors.surface1,
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: '#3f3f46',
+    borderColor: Colors.glassBorder,
     alignSelf: 'flex-start',
   },
   addPhotoDisabled: {
     opacity: 0.5,
   },
   addPhotoText: {
-    color: '#d4d4d8',
-    fontSize: 14,
+    color: Colors.text3,
+    fontSize: 13,
     fontWeight: '600',
   },
   errorText: {
-    marginTop: 8,
+    marginTop: Space.sm,
     fontSize: 12,
-    color: '#f87171',
+    color: Colors.error,
     fontWeight: '500',
   },
+
+  // Caption
   captionInput: {
-    backgroundColor: '#18181b',
-    borderRadius: 16,
-    padding: 16,
-    color: '#fafaf9',
+    backgroundColor: Colors.surface1,
+    borderRadius: Radius.xl,
+    padding: Space.md,
+    color: Colors.ivory,
     fontSize: 14,
-    fontWeight: '500',
-    minHeight: 100,
+    minHeight: 88,
     borderWidth: 1,
-    borderColor: '#27272a',
+    borderColor: Colors.glassBorder,
     textAlignVertical: 'top',
+    marginTop: Space.md,
   },
+
+  // Submit
   submitButton: {
-    backgroundColor: '#fafaf9',
-    paddingVertical: 20,
-    borderRadius: 24,
+    backgroundColor: Colors.gold,
+    paddingVertical: Space.xl,
+    borderRadius: Radius.xxl,
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: Space.lg,
+    ...Shadows.gold,
   },
   submitDisabled: {
-    opacity: 0.5,
+    opacity: 0.45,
   },
   submitText: {
     color: '#000',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });

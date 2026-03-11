@@ -1,7 +1,6 @@
 /**
- * Chat screen. Displays conversation with a friend and allows sending messages.
- * Uses GET/POST /api/messages for message history and sending.
- * Also fetches focus sessions and displays "Session Complete" system messages.
+ * Chat screen — ver2 MessageScreen style.
+ * Gold bubbles for outgoing, glass bubbles for incoming.
  */
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -23,7 +22,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_PATHS } from '@hyve/shared';
 import { formatMessageTime } from '@hyve/utils';
 import type { Friend } from '@hyve/types';
+import HyveAvatar from '../components/ui/HyveAvatar';
 import { Clock, MapPin } from '../components/icons';
+import { Colors, Radius, Space, Shadows } from '../theme';
 
 type MessagesStackParamList = {
   MessagesList: undefined;
@@ -75,13 +76,18 @@ export default function ChatScreen() {
   useEffect(() => {
     navigation.setOptions({
       headerShown: true,
-      headerTitle: friend.name ?? 'Chat',
-      headerStyle: { backgroundColor: '#000' },
-      headerTintColor: '#fff',
+      headerTitle: () => (
+        <View style={styles.headerTitle}>
+          <HyveAvatar uri={friend.avatar} name={friend.name} size={30} />
+          <Text style={styles.headerName}>{friend.name ?? 'Chat'}</Text>
+        </View>
+      ),
+      headerStyle: { backgroundColor: Colors.bg1 },
+      headerTintColor: Colors.ivory,
       headerBackTitleVisible: false,
       headerBackButtonDisplayMode: 'minimal',
     });
-  }, [friend.name, navigation]);
+  }, [friend, navigation]);
 
   const loadMessages = async () => {
     setLoading(true);
@@ -95,17 +101,15 @@ export default function ChatScreen() {
         ),
       ]);
 
-      const textMessages = (messagesRes && 'messages' in messagesRes && Array.isArray(messagesRes.messages)
-        ? messagesRes.messages
-        : []) as ApiMessage[];
+      const textMessages = (
+        messagesRes && 'messages' in messagesRes && Array.isArray(messagesRes.messages)
+          ? messagesRes.messages
+          : []
+      ) as ApiMessage[];
       const sessions = (sessionsRes?.sessions ?? []) as FocusSession[];
 
       const items: ChatItem[] = [];
-
-      textMessages.forEach((msg) => {
-        items.push({ type: 'text', data: msg });
-      });
-
+      textMessages.forEach((msg) => items.push({ type: 'text', data: msg }));
       sessions.forEach((session) => {
         const endTime = session.endTime ?? session.createdAt ?? '';
         const ts = endTime ? new Date(endTime).toISOString() : new Date().toISOString();
@@ -116,14 +120,8 @@ export default function ChatScreen() {
       });
 
       items.sort((a, b) => {
-        const timeA =
-          a.type === 'text'
-            ? a.data.createdAt ?? ''
-            : a.data.timestamp;
-        const timeB =
-          b.type === 'text'
-            ? b.data.createdAt ?? ''
-            : b.data.timestamp;
+        const timeA = a.type === 'text' ? a.data.createdAt ?? '' : a.data.timestamp;
+        const timeB = b.type === 'text' ? b.data.createdAt ?? '' : b.data.timestamp;
         return new Date(timeA).getTime() - new Date(timeB).getTime();
       });
 
@@ -185,13 +183,11 @@ export default function ChatScreen() {
     const firstMemory = session.memories?.[0];
     const allPhotoUrls: string[] = [];
     session.memories?.forEach((mem) => {
-      if (mem.photos?.length) {
-        allPhotoUrls.push(...mem.photos);
-      }
+      if (mem.photos?.length) allPhotoUrls.push(...mem.photos);
     });
     const photoUrls =
       allPhotoUrls.length > 0
-        ? allPhotoUrls.slice(0, 12)
+        ? allPhotoUrls.slice(0, 8)
         : ['https://picsum.photos/200/200?random=201'];
     const durationMinutes = session.minutes ?? 0;
     const formattedDuration =
@@ -204,32 +200,31 @@ export default function ChatScreen() {
 
     return (
       <View style={styles.systemCard}>
-        <Text style={styles.systemCardTitle}>Session Complete</Text>
+        <View style={styles.systemCardHeader}>
+          <View style={styles.systemCardDot} />
+          <Text style={styles.systemCardTitle}>Session Complete</Text>
+        </View>
         <View style={styles.systemCardRow}>
-          <Clock color="#888" size={14} />
+          <Clock color={Colors.muted} size={12} />
           <Text style={styles.systemCardText}>{formattedDuration}</Text>
         </View>
         <View style={styles.systemCardRow}>
-          <MapPin color="#888" size={14} />
-          <Text
-            style={styles.systemCardText}
-            numberOfLines={2}
-            ellipsizeMode="tail"
-          >
+          <MapPin color={Colors.muted} size={12} />
+          <Text style={styles.systemCardText} numberOfLines={1}>
             {location}
           </Text>
         </View>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={styles.systemCardPhotos}
+          style={styles.photosScroll}
           nestedScrollEnabled
         >
           {photoUrls.map((uri, idx) => (
             <Image
               key={idx}
               source={{ uri }}
-              style={styles.systemCardPhoto}
+              style={styles.sessionPhoto}
               resizeMode="cover"
             />
           ))}
@@ -241,7 +236,7 @@ export default function ChatScreen() {
   const renderItem = ({ item }: { item: ChatItem }) => {
     if (item.type === 'system') {
       return (
-        <View style={styles.systemMessageRow}>
+        <View style={styles.systemRow}>
           {renderSystemMessage(item.data.session)}
           <Text style={styles.systemTimestamp}>
             {formatMessageTime(item.data.timestamp)}
@@ -254,8 +249,12 @@ export default function ChatScreen() {
     return (
       <View style={[styles.messageRow, isMe ? styles.messageRowMe : styles.messageRowThem]}>
         <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleThem]}>
-          <Text style={styles.bubbleText}>{msg.content}</Text>
-          <Text style={styles.timestamp}>{formatMessageTime(msg.createdAt)}</Text>
+          <Text style={[styles.bubbleText, isMe && styles.bubbleTextMe]}>
+            {msg.content}
+          </Text>
+          <Text style={[styles.timestamp, isMe && styles.timestampMe]}>
+            {formatMessageTime(msg.createdAt)}
+          </Text>
         </View>
       </View>
     );
@@ -264,7 +263,7 @@ export default function ChatScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#fff" />
+        <ActivityIndicator size="large" color={Colors.gold} />
       </View>
     );
   }
@@ -279,9 +278,7 @@ export default function ChatScreen() {
         ref={flatListRef}
         data={[...chatItems].reverse()}
         inverted
-        keyExtractor={(item) =>
-          item.type === 'text' ? item.data.id : item.data.id
-        }
+        keyExtractor={(item) => (item.type === 'text' ? item.data.id : item.data.id)}
         renderItem={renderItem}
         style={styles.list}
         contentContainerStyle={styles.listContent}
@@ -293,29 +290,35 @@ export default function ChatScreen() {
         }}
         keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
-          <Text style={styles.empty}>No messages yet. Say hi!</Text>
+          <Text style={styles.empty}>No messages yet. Say hi! 👋</Text>
         }
       />
+
+      {/* Input row */}
       <View style={styles.inputRow}>
         <TextInput
           style={styles.input}
           value={inputValue}
           onChangeText={setInputValue}
           placeholder={`Message ${friend.name ?? 'friend'}...`}
-          placeholderTextColor="#666"
+          placeholderTextColor={Colors.muted}
           multiline
           maxLength={1000}
           editable={!sending}
         />
         <TouchableOpacity
-          style={[styles.sendButton, (!inputValue.trim() || sending) && styles.sendButtonDisabled]}
+          style={[
+            styles.sendButton,
+            (!inputValue.trim() || sending) && styles.sendButtonDisabled,
+          ]}
           onPress={handleSend}
           disabled={!inputValue.trim() || sending}
+          activeOpacity={0.85}
         >
           {sending ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color="#000" />
           ) : (
-            <Text style={styles.sendText}>Send</Text>
+            <Text style={styles.sendIcon}>↑</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -326,23 +329,40 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: Colors.bg1,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000',
+    backgroundColor: Colors.bg1,
   },
+
+  // Custom header
+  headerTitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.sm,
+  },
+  headerName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.text1,
+  },
+
+  // List
   list: {
     flex: 1,
   },
   listContent: {
-    padding: 16,
-    paddingBottom: 24,
+    paddingHorizontal: Space.lg,
+    paddingVertical: Space.lg,
+    gap: Space.sm,
   },
+
+  // Messages
   messageRow: {
-    marginBottom: 12,
+    marginBottom: 4,
   },
   messageRowMe: {
     alignItems: 'flex-end',
@@ -352,109 +372,144 @@ const styles = StyleSheet.create({
   },
   bubble: {
     maxWidth: '75%',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 18,
+    borderRadius: Radius.xl,
   },
   bubbleMe: {
-    backgroundColor: '#333',
+    backgroundColor: Colors.gold,
     borderBottomRightRadius: 4,
+    ...Shadows.gold,
   },
   bubbleThem: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: Colors.surface2,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
     borderBottomLeftRadius: 4,
   },
   bubbleText: {
-    color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
+    color: Colors.text1,
+    lineHeight: 21,
+  },
+  bubbleTextMe: {
+    color: '#000',
   },
   timestamp: {
-    color: '#888',
-    fontSize: 11,
+    fontSize: 10,
+    color: Colors.muted,
     marginTop: 4,
+    alignSelf: 'flex-end',
+  },
+  timestampMe: {
+    color: 'rgba(0,0,0,0.45)',
   },
   empty: {
-    color: '#666',
+    color: Colors.muted,
     fontSize: 14,
     textAlign: 'center',
     paddingVertical: 48,
   },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    padding: 12,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 12,
-    backgroundColor: '#000',
-    borderTopWidth: 1,
-    borderTopColor: '#222',
-  },
-  input: {
-    flex: 1,
-    backgroundColor: '#1a1a1a',
-    color: '#fff',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    maxHeight: 100,
-    marginRight: 8,
-  },
-  sendButton: {
-    backgroundColor: '#4285f4',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    justifyContent: 'center',
-    minHeight: 40,
-  },
-  sendButtonDisabled: {
-    opacity: 0.5,
-  },
-  sendText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  systemMessageRow: {
-    marginBottom: 12,
+
+  // System messages
+  systemRow: {
     alignItems: 'center',
+    marginBottom: Space.md,
+    gap: Space.xs,
   },
   systemCard: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 8,
-    padding: 16,
-    maxWidth: '85%',
-    maxHeight: 280,
+    backgroundColor: Colors.surface1,
+    borderRadius: Radius.xl,
+    padding: Space.md,
+    maxWidth: '80%',
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: Colors.glassBorder,
+    gap: Space.xs,
+  },
+  systemCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.xs,
+    marginBottom: 4,
+  },
+  systemCardDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.gold,
   },
   systemCardTitle: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '700',
-    color: '#fff',
-    marginBottom: 8,
+    color: Colors.text2,
+    letterSpacing: 0.5,
   },
   systemCardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
+    gap: Space.xs,
   },
   systemCardText: {
-    fontSize: 13,
-    color: '#888',
+    fontSize: 11,
+    color: Colors.text3,
   },
-  systemCardPhotos: {
-    marginTop: 12,
-    height: 64,
+  photosScroll: {
+    marginTop: Space.sm,
+    height: 56,
   },
-  systemCardPhoto: {
-    width: 64,
-    height: 64,
-    borderRadius: 8,
-    marginRight: 8,
+  sessionPhoto: {
+    width: 56,
+    height: 56,
+    borderRadius: Radius.sm,
+    marginRight: Space.xs,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
   },
   systemTimestamp: {
-    fontSize: 11,
-    color: '#666',
-    marginTop: 4,
+    fontSize: 10,
+    color: Colors.muted,
+  },
+
+  // Input
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: Space.sm,
+    paddingHorizontal: Space.md,
+    paddingTop: Space.sm,
+    paddingBottom: Platform.OS === 'ios' ? 28 : Space.md,
+    backgroundColor: 'rgba(12, 13, 16, 0.98)',
+    borderTopWidth: 1,
+    borderTopColor: Colors.glassBorder,
+  },
+  input: {
+    flex: 1,
+    backgroundColor: Colors.surface1,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+    color: Colors.text1,
+    borderRadius: Radius.xl,
+    paddingHorizontal: Space.md,
+    paddingVertical: 10,
+    maxHeight: 100,
+    fontSize: 14,
+  },
+  sendButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.gold,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Shadows.gold,
+  },
+  sendButtonDisabled: {
+    backgroundColor: Colors.surface2,
+    opacity: 0.5,
+  },
+  sendIcon: {
+    fontSize: 18,
+    color: '#000',
+    fontWeight: '700',
   },
 });

@@ -1,24 +1,28 @@
 /**
- * Dashboard screen. Shows friends list and weekly focus chart.
+ * Dashboard screen — ver2 HomeScreen style.
+ * Shows greeting, today's focus stats, friend circles, and floating start button.
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  ScrollView,
+  TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  TouchableOpacity,
-  Platform,
   Alert,
+  Animated,
+  Easing,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
 import { API_PATHS } from '@hyve/shared';
 import type { Friend, ChartDataPoint } from '@hyve/types';
-import { Flame } from '../components/icons';
+import HyveAvatar from '../components/ui/HyveAvatar';
+import { Colors, Radius, Space, Shadows } from '../theme';
 
 type RootStackParamList = {
   Main: undefined;
@@ -29,8 +33,18 @@ type RootStackParamList = {
   SpringBloom: undefined;
 };
 
+const FRIEND_COLORS = [
+  '#EF4444', '#3B82F6', '#EC4899', '#8B5CF6',
+  '#F97316', '#06B6D4', '#C9A86A', '#10B981',
+];
+
+function getDayLabel(): string {
+  return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+}
+
 export default function DashboardScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Main'>>();
+  const insets = useSafeAreaInsets();
   const { apiClient, user } = useAuth();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
@@ -38,12 +52,32 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [startingSession, setStartingSession] = useState(false);
 
+  // Pulse animation for the floating button
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.12,
+          duration: 1800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [pulseAnim]);
+
   const handleStartSoloSession = useCallback(async () => {
     if (!user?.id || startingSession) return;
     setStartingSession(true);
     try {
       const now = new Date();
-      // API requires durationSeconds/endTime; use a large default, actual end is set on End
       const placeholderEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000);
       const res = await apiClient.post<{ sessionId: string }>(API_PATHS.SESSIONS, {
         userIds: [user.id],
@@ -71,8 +105,8 @@ export default function DashboardScreen() {
       ]);
       setFriends(friendsRes?.friends ?? []);
       setChartData(chartRes?.chartData ?? []);
-    } catch (e) {
-      console.error('Dashboard load error:', e);
+    } catch {
+      // keep previous state on error
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -88,84 +122,159 @@ export default function DashboardScreen() {
     load();
   };
 
+  const totalMinutes = chartData.reduce((s, d) => s + (d.minutes ?? 0), 0);
+  const totalHours = Math.floor(totalMinutes / 60);
+  const remainingMinutes = totalMinutes % 60;
+  const timeDisplay = totalHours > 0
+    ? `${totalHours}h ${remainingMinutes}m`
+    : `${remainingMinutes}m`;
+
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#fff" />
+        <ActivityIndicator size="large" color={Colors.gold} />
       </View>
     );
   }
 
-  const totalMinutes = chartData.reduce((s, d) => s + (d.minutes ?? 0), 0);
-
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.greeting}>Hi, {user?.name ?? 'there'}</Text>
-        <Text style={styles.weekSummary}>
-          This week: {totalMinutes} min focus
-        </Text>
-        <View style={styles.headerButtons}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.gold} />
+        }
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.dateLabel}>{getDayLabel()}</Text>
+            <Text style={styles.greeting}>
+              Hi, {user?.name?.split(' ')[0] ?? 'there'}
+            </Text>
+          </View>
           <TouchableOpacity
-            style={styles.findFriendsButton}
-            onPress={() => navigation.navigate('FindFriends')}
+            onPress={() => navigation.navigate('Main')}
+            activeOpacity={0.8}
           >
-            <Text style={styles.findFriendsText}>Find Friends</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={() => navigation.navigate('HappyIndex')}
-          >
-            <Text style={styles.secondaryButtonText}>Happy Index</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={() => navigation.navigate('SpringBloom')}
-          >
-            <Text style={styles.secondaryButtonText}>Spring Bloom</Text>
+            <HyveAvatar
+              uri={user?.image}
+              name={user?.name}
+              size={40}
+              ringColor={Colors.goldDim}
+            />
           </TouchableOpacity>
         </View>
-      </View>
 
-      <Text style={styles.sectionTitle}>Friends</Text>
-      <FlatList
-        data={friends}
-        keyExtractor={(item) => item.id}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#fff"
-          />
-        }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.friendRow}
-            onPress={() => navigation.navigate('FriendProfile', { friend: item })}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.friendName}>{item.name ?? 'Unknown'}</Text>
-            <Text style={styles.friendMeta}>
-              {item.totalHours ?? 0}h together · streak {item.streak ?? 0}
-            </Text>
-          </TouchableOpacity>
-        )}
-        ListEmptyComponent={
-          <Text style={styles.empty}>No friends yet. Add some!</Text>
-        }
-      />
-      <TouchableOpacity
-        style={[styles.floatingButton, startingSession && styles.floatingButtonDisabled]}
-        onPress={handleStartSoloSession}
-        disabled={startingSession}
-        activeOpacity={0.9}
+        {/* Today stats card */}
+        <View style={styles.statsCard}>
+          <View style={styles.statsCardInner}>
+            <View>
+              <Text style={styles.statsLabel}>THIS WEEK</Text>
+              <Text style={styles.statsValue}>{timeDisplay}</Text>
+              <Text style={styles.statsSubLabel}>of focus time</Text>
+            </View>
+            <View style={styles.statsActions}>
+              <TouchableOpacity
+                style={styles.miniButton}
+                onPress={() => navigation.navigate('HappyIndex')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.miniButtonText}>Happy Index</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.miniButton}
+                onPress={() => navigation.navigate('SpringBloom')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.miniButtonText}>Spring Bloom</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        {/* Friends section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>FRIENDS</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('FindFriends')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.sectionAction}>+ Add</Text>
+            </TouchableOpacity>
+          </View>
+
+          {friends.length === 0 ? (
+            <View style={styles.emptyFriends}>
+              <Text style={styles.emptyText}>No friends yet.</Text>
+              <TouchableOpacity
+                style={styles.addFriendBtn}
+                onPress={() => navigation.navigate('FindFriends')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.addFriendText}>Find Friends</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.friendsRow}
+            >
+              {friends.map((friend, index) => {
+                const ringColor = FRIEND_COLORS[index % FRIEND_COLORS.length];
+                return (
+                  <TouchableOpacity
+                    key={friend.id}
+                    style={styles.friendCircleItem}
+                    onPress={() => navigation.navigate('FriendProfile', { friend })}
+                    activeOpacity={0.75}
+                  >
+                    <HyveAvatar
+                      uri={friend.avatar}
+                      name={friend.name}
+                      size={52}
+                      ringColor={ringColor}
+                    />
+                    <Text style={styles.friendName} numberOfLines={1}>
+                      {(friend.name ?? 'Unknown').split(' ')[0]}
+                    </Text>
+                    {(friend.totalHours ?? 0) > 0 && (
+                      <Text style={styles.friendHours}>
+                        {friend.totalHours}h
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          )}
+        </View>
+      </ScrollView>
+
+      {/* Floating focus button */}
+      <Animated.View
+        style={[
+          styles.floatingButtonWrap,
+          { bottom: insets.bottom + 80 },
+          { transform: [{ scale: startingSession ? 1 : pulseAnim }] },
+        ]}
       >
-        {startingSession ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <Flame color="#fff" size={28} fill="#fff" />
-        )}
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.floatingButton, startingSession && styles.floatingButtonDisabled]}
+          onPress={handleStartSoloSession}
+          disabled={startingSession}
+          activeOpacity={0.9}
+        >
+          {startingSession ? (
+            <ActivityIndicator size="small" color="#000" />
+          ) : (
+            <Text style={styles.floatingButtonText}>▶</Text>
+          )}
+        </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 }
@@ -173,106 +282,184 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
-    padding: 16,
+    backgroundColor: Colors.bg1,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000',
+    backgroundColor: Colors.bg1,
   },
+  scrollContent: {
+    paddingHorizontal: Space.lg,
+    paddingBottom: 120,
+  },
+
+  // Header
   header: {
-    marginBottom: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: Space.lg,
+    paddingBottom: Space.xl,
+  },
+  dateLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.muted,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 4,
   },
   greeting: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontSize: 22,
+    fontWeight: '300',
+    color: Colors.text1,
+    letterSpacing: -0.5,
   },
-  weekSummary: {
-    fontSize: 14,
-    color: '#888',
-    marginTop: 4,
+
+  // Stats card
+  statsCard: {
+    backgroundColor: Colors.surface1,
+    borderWidth: 1,
+    borderColor: Colors.surfaceBorder,
+    borderRadius: Radius.xxxl,
+    padding: Space.xl,
+    marginBottom: Space.xl,
+    ...Shadows.soft,
   },
-  headerButtons: {
+  statsCardInner: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  findFriendsButton: {
-    backgroundColor: '#4285f4',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
+  statsLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: Colors.muted,
+    letterSpacing: 1.5,
+    marginBottom: 6,
   },
-  findFriendsText: {
-    color: '#fff',
+  statsValue: {
+    fontSize: 32,
+    fontWeight: '300',
+    color: Colors.gold,
+    letterSpacing: -1,
+  },
+  statsSubLabel: {
+    fontSize: 11,
+    color: Colors.text3,
+    marginTop: 2,
+  },
+  statsActions: {
+    gap: 8,
+    alignItems: 'flex-end',
+  },
+  miniButton: {
+    backgroundColor: Colors.glassBg,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: Radius.full,
+  },
+  miniButtonText: {
+    fontSize: 10,
     fontWeight: '600',
-    fontSize: 14,
+    color: Colors.text3,
+    letterSpacing: 0.3,
   },
-  secondaryButton: {
-    backgroundColor: '#333',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
+
+  // Section
+  section: {
+    marginBottom: Space.xxl,
   },
-  secondaryButtonText: {
-    color: '#fff',
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Space.md,
+  },
+  sectionTitle: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: Colors.muted,
+    letterSpacing: 1.8,
+  },
+  sectionAction: {
+    fontSize: 11,
     fontWeight: '600',
-    fontSize: 14,
+    color: Colors.gold,
+    letterSpacing: 0.3,
+  },
+
+  // Friends
+  friendsRow: {
+    gap: Space.lg,
+    paddingBottom: Space.sm,
+  },
+  friendCircleItem: {
+    alignItems: 'center',
+    gap: Space.xs,
+    width: 60,
+  },
+  friendName: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: Colors.text3,
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+  friendHours: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: Colors.goldDim,
+    letterSpacing: 0.3,
+  },
+  emptyFriends: {
+    alignItems: 'center',
+    paddingVertical: Space.xxl,
+    gap: Space.md,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: Colors.muted,
+  },
+  addFriendBtn: {
+    backgroundColor: Colors.goldFaint,
+    borderWidth: 1,
+    borderColor: Colors.goldDim,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: Radius.full,
+  },
+  addFriendText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.gold,
+    letterSpacing: 0.5,
+  },
+
+  // Floating button
+  floatingButtonWrap: {
+    position: 'absolute',
+    right: 24,
   },
   floatingButton: {
-    position: 'absolute',
-    bottom: 88,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#f43f5e',
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: Colors.gold,
     justifyContent: 'center',
     alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#fb7185',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.5,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
+    ...Shadows.gold,
   },
   floatingButtonDisabled: {
     opacity: 0.6,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 12,
-  },
-  friendRow: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  friendName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  friendMeta: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 4,
-  },
-  empty: {
-    color: '#666',
-    fontSize: 14,
-    paddingVertical: 24,
+  floatingButtonText: {
+    fontSize: 20,
+    color: '#000',
+    fontWeight: '700',
   },
 });
