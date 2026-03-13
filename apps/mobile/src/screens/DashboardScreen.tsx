@@ -1,6 +1,7 @@
 /**
- * Dashboard screen — ver2 HomeScreen style.
- * Shows greeting, today's focus stats, friend circles, and floating start button.
+ * Dashboard screen — v1 HomeScreen style.
+ * Shows greeting, expandable today stats with timeline,
+ * friend circles with badges, floating start button, and insight ticker.
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -15,14 +16,22 @@ import {
   Animated,
   Easing,
   SafeAreaView,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { ChevronDown, ChevronRight, Play } from 'lucide-react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { API_PATHS } from '@hyve/shared';
-import type { Friend, ChartDataPoint } from '@hyve/types';
+import type { Friend, ChartDataPoint, SessionListItem, TodaySessionsResponse } from '@hyve/types';
 import HyveAvatar from '../components/ui/HyveAvatar';
 import { Colors, Radius, Space, Shadows } from '../theme';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 type RootStackParamList = {
   Main: undefined;
@@ -38,8 +47,22 @@ const FRIEND_COLORS = [
   '#F97316', '#06B6D4', '#C9A86A', '#10B981',
 ];
 
+const INSIGHTS = [
+  'Sunday is your day',
+  'You focus best in the afternoon',
+  'You and Emily bonded 3x this week',
+  'Your streak is on fire — 7 days!',
+];
+
 function getDayLabel(): string {
-  return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  return new Date().toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric',
+  }).toUpperCase();
+}
+
+function formatSessionTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 export default function DashboardScreen() {
@@ -47,12 +70,20 @@ export default function DashboardScreen() {
   const { apiClient, user } = useAuth();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [todaySessions, setTodaySessions] = useState<SessionListItem[]>([]);
+  const [todayTotalMinutes, setTodayTotalMinutes] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [startingSession, setStartingSession] = useState(false);
+  const [isTodayExpanded, setIsTodayExpanded] = useState(false);
+  const [tooltipFriendId, setTooltipFriendId] = useState<string | null>(null);
+  const [insightIndex, setInsightIndex] = useState(0);
 
   // Pulse animation for the floating button
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const chevronRotation = useRef(new Animated.Value(0)).current;
+  const insightOpacity = useRef(new Animated.Value(1)).current;
+
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -71,6 +102,35 @@ export default function DashboardScreen() {
       ])
     ).start();
   }, [pulseAnim]);
+
+  // Insight ticker cycling
+  useEffect(() => {
+    const interval = setInterval(() => {
+      Animated.timing(insightOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        setInsightIndex(prev => (prev + 1) % INSIGHTS.length);
+        Animated.timing(insightOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+      });
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [insightOpacity]);
+
+  const toggleTodayExpanded = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsTodayExpanded(prev => !prev);
+    Animated.timing(chevronRotation, {
+      toValue: isTodayExpanded ? 0 : 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [isTodayExpanded, chevronRotation]);
 
   const handleStartSoloSession = useCallback(async () => {
     if (!user?.id || startingSession) return;
@@ -107,6 +167,15 @@ export default function DashboardScreen() {
       setChartData(chartRes?.chartData ?? []);
     } catch {
       // keep previous state on error
+    }
+
+    // Fetch today sessions independently so failure doesn't block friends/chart
+    try {
+      const todayRes = await apiClient.get<TodaySessionsResponse>(API_PATHS.SESSIONS_TODAY);
+      setTodaySessions(todayRes?.sessions ?? []);
+      setTodayTotalMinutes(todayRes?.totalMinutes ?? 0);
+    } catch {
+      // keep previous state on error
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -122,12 +191,16 @@ export default function DashboardScreen() {
     load();
   };
 
-  const totalMinutes = chartData.reduce((s, d) => s + (d.minutes ?? 0), 0);
-  const totalHours = Math.floor(totalMinutes / 60);
-  const remainingMinutes = totalMinutes % 60;
-  const timeDisplay = totalHours > 0
-    ? `${totalHours}h ${remainingMinutes}m`
-    : `${remainingMinutes}m`;
+  const todayHours = Math.floor(todayTotalMinutes / 60);
+  const todayMins = todayTotalMinutes % 60;
+  const todayTimeDisplay = todayHours > 0
+    ? `${todayHours}h ${todayMins}m`
+    : `${todayMins}m`;
+
+  const chevronSpin = chevronRotation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
 
   if (loading) {
     return (
@@ -167,42 +240,124 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Today stats card */}
-        <View style={styles.statsCard}>
-          <View style={styles.statsCardInner}>
-            <View>
-              <Text style={styles.statsLabel}>THIS WEEK</Text>
-              <Text style={styles.statsValue}>{timeDisplay}</Text>
-              <Text style={styles.statsSubLabel}>of focus time</Text>
+        {/* Expandable Today Stats Card */}
+        <TouchableOpacity
+          style={styles.statsCard}
+          onPress={toggleTodayExpanded}
+          activeOpacity={0.85}
+        >
+          {/* Collapsed header row */}
+          <View style={styles.statsCollapsedRow}>
+            <View style={styles.statsLeftGroup}>
+              <Text style={styles.statsValue}>{todayTimeDisplay}</Text>
+              <Text style={styles.statsLabel}>Today</Text>
             </View>
-            <View style={styles.statsActions}>
-              <TouchableOpacity
-                style={styles.miniButton}
-                onPress={() => navigation.navigate('HappyIndex')}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.miniButtonText}>Happy Index</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.miniButton}
-                onPress={() => navigation.navigate('SpringBloom')}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.miniButtonText}>Spring Bloom</Text>
-              </TouchableOpacity>
-            </View>
+            <Animated.View
+              style={[
+                styles.chevronCircle,
+                { transform: [{ rotate: chevronSpin }] },
+              ]}
+            >
+              <ChevronDown size={14} color={Colors.text2} />
+            </Animated.View>
           </View>
-        </View>
+
+          {/* Expanded timeline */}
+          {isTodayExpanded && (
+            <View style={styles.timelineWrap}>
+              <View style={styles.timelineDivider} />
+              {todaySessions.length === 0 ? (
+                <Text style={styles.timelineEmpty}>No sessions today yet.</Text>
+              ) : (
+                todaySessions.map((session, i) => {
+                  const isRight = i % 2 === 0;
+                  const color = FRIEND_COLORS[i % FRIEND_COLORS.length];
+                  const mins = session.minutes ?? 0;
+
+                  return (
+                    <View key={session.id} style={styles.timelineRow}>
+                      {/* Center dot */}
+                      <View style={[styles.timelineDot, { borderColor: color }]} />
+
+                      {/* Left side */}
+                      <View style={[styles.timelineSide, styles.timelineLeft]}>
+                        {isRight ? (
+                          <View style={styles.timelineLabelWrap}>
+                            <Text style={styles.timelineTime}>
+                              {formatSessionTime(session.startTime)}
+                            </Text>
+                            {session.endTime && (
+                              <Text style={styles.timelineTimeSub}>
+                                - {formatSessionTime(session.endTime)}
+                              </Text>
+                            )}
+                          </View>
+                        ) : (
+                          <View style={[styles.sessionCard, {
+                            backgroundColor: `${color}10`,
+                            borderColor: `${color}30`,
+                            borderTopRightRadius: 4,
+                          }]}>
+                            <Text style={styles.sessionCardMins}>{mins}m</Text>
+                            <Text style={[styles.sessionCardStatus, { color }]}>
+                              {session.status === 'active' ? 'ACTIVE' : 'COMPLETED'}
+                            </Text>
+                            {/* Watermark */}
+                            <Text style={[styles.sessionWatermark, { color }]}>
+                              {mins}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Right side */}
+                      <View style={[styles.timelineSide, styles.timelineRight]}>
+                        {isRight ? (
+                          <View style={[styles.sessionCard, {
+                            backgroundColor: `${color}10`,
+                            borderColor: `${color}30`,
+                            borderTopLeftRadius: 4,
+                          }]}>
+                            <Text style={styles.sessionCardMins}>{mins}m</Text>
+                            <Text style={[styles.sessionCardStatus, { color }]}>
+                              {session.status === 'active' ? 'ACTIVE' : 'COMPLETED'}
+                            </Text>
+                            <Text style={[styles.sessionWatermark, { color }]}>
+                              {mins}
+                            </Text>
+                          </View>
+                        ) : (
+                          <View style={styles.timelineLabelWrap}>
+                            <Text style={styles.timelineTime}>
+                              {formatSessionTime(session.startTime)}
+                            </Text>
+                            {session.endTime && (
+                              <Text style={styles.timelineTimeSub}>
+                                - {formatSessionTime(session.endTime)}
+                              </Text>
+                            )}
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          )}
+        </TouchableOpacity>
 
         {/* Friends section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>FRIENDS</Text>
+            <Text style={styles.sectionTitle}>MY CIRCLE</Text>
             <TouchableOpacity
+              style={styles.seeAllBtn}
               onPress={() => navigation.navigate('FindFriends')}
               activeOpacity={0.7}
             >
-              <Text style={styles.sectionAction}>+ Add</Text>
+              <Text style={styles.sectionAction}>See all</Text>
+              <ChevronRight size={10} color={Colors.text3} />
             </TouchableOpacity>
           </View>
 
@@ -225,33 +380,66 @@ export default function DashboardScreen() {
             >
               {friends.map((friend, index) => {
                 const ringColor = FRIEND_COLORS[index % FRIEND_COLORS.length];
+                const momentsCount = friend.recentMemories?.length ?? 0;
+                const isTooltipVisible = tooltipFriendId === friend.id;
+
                 return (
                   <TouchableOpacity
                     key={friend.id}
                     style={styles.friendCircleItem}
                     onPress={() => navigation.navigate('FriendProfile', { friend })}
+                    onLongPress={() => {
+                      setTooltipFriendId(friend.id);
+                      setTimeout(() => setTooltipFriendId(null), 2500);
+                    }}
                     activeOpacity={0.75}
+                    delayLongPress={400}
                   >
-                    <HyveAvatar
-                      uri={friend.avatar}
-                      name={friend.name}
-                      size={68}
-                      ringColor={ringColor}
-                    />
+                    {/* Tooltip */}
+                    {isTooltipVisible && (
+                      <View style={styles.tooltip}>
+                        <Text style={styles.tooltipName}>{friend.name}</Text>
+                        <Text style={styles.tooltipSub}>
+                          {momentsCount === 0
+                            ? 'No saved moments yet'
+                            : `${momentsCount} saved moments (7d)`}
+                        </Text>
+                        <View style={styles.tooltipArrow} />
+                      </View>
+                    )}
+
+                    {/* Avatar with badge */}
+                    <View>
+                      <HyveAvatar
+                        uri={friend.avatar}
+                        name={friend.name}
+                        size={52}
+                        ringColor={ringColor}
+                      />
+                      {momentsCount > 0 && (
+                        <View style={styles.badge}>
+                          <View style={styles.badgeGlow} />
+                          <View style={styles.badgeInner}>
+                            <Text style={styles.badgeText}>{momentsCount}</Text>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+
                     <Text style={styles.friendName} numberOfLines={1}>
                       {(friend.name ?? 'Unknown').split(' ')[0]}
                     </Text>
-                    {(friend.totalHours ?? 0) > 0 && (
-                      <Text style={styles.friendHours}>
-                        {friend.totalHours}h
-                      </Text>
-                    )}
                   </TouchableOpacity>
                 );
               })}
             </ScrollView>
           )}
         </View>
+
+        {/* Insight Ticker */}
+        <Animated.View style={[styles.insightWrap, { opacity: insightOpacity }]}>
+          <Text style={styles.insightText}>"{INSIGHTS[insightIndex]}"</Text>
+        </Animated.View>
       </ScrollView>
 
       {/* Floating focus button */}
@@ -271,7 +459,7 @@ export default function DashboardScreen() {
           {startingSession ? (
             <ActivityIndicator size="small" color="#000" />
           ) : (
-            <Text style={styles.floatingButtonText}>▶</Text>
+            <Play size={30} fill="#000" color="#000" style={{ marginLeft: 3 }} />
           )}
         </TouchableOpacity>
       </Animated.View>
@@ -300,122 +488,294 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 0,
+    paddingTop: Space.sm,
     paddingBottom: Space.md,
   },
   dateLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: Colors.muted,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    marginBottom: 4,
+    fontSize: 8,
+    fontWeight: '800',
+    color: Colors.text3,
+    letterSpacing: 2,
+    marginBottom: 2,
   },
   greeting: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '300',
     color: Colors.text1,
     letterSpacing: -0.5,
   },
 
-  // Stats card
+  // Expandable stats card
   statsCard: {
     backgroundColor: Colors.surface1,
     borderWidth: 1,
     borderColor: Colors.surfaceBorder,
-    borderRadius: Radius.xxxl,
-    padding: Space.xl,
-    marginBottom: Space.xl,
-    ...Shadows.soft,
+    borderRadius: Radius.xxl,
+    marginBottom: Space.lg,
+    overflow: 'hidden',
   },
-  statsCardInner: {
+  statsCollapsedRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    paddingHorizontal: Space.xl,
+    height: 56,
   },
-  statsLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: Colors.muted,
-    letterSpacing: 1.5,
-    marginBottom: 6,
+  statsLeftGroup: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 10,
   },
   statsValue: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: '300',
-    color: Colors.gold,
+    color: Colors.text1,
     letterSpacing: -1,
   },
-  statsSubLabel: {
-    fontSize: 11,
+  statsLabel: {
+    fontSize: 8,
+    fontWeight: '800',
     color: Colors.text3,
-    marginTop: 2,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
-  statsActions: {
-    gap: 8,
+  chevronCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Timeline (expanded)
+  timelineWrap: {
+    paddingHorizontal: Space.lg,
+    paddingBottom: Space.lg,
+    paddingTop: Space.xs,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+    position: 'relative',
+  },
+  timelineDivider: {
+    position: 'absolute',
+    left: '50%',
+    top: Space.xs,
+    bottom: Space.lg,
+    width: 1,
+    borderLeftWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  timelineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Space.lg,
+    position: 'relative',
+  },
+  timelineDot: {
+    position: 'absolute',
+    left: '50%',
+    marginLeft: -4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 2,
+    backgroundColor: Colors.bg1,
+    zIndex: 10,
+  },
+  timelineSide: {
+    flex: 1,
+  },
+  timelineLeft: {
+    paddingRight: 20,
     alignItems: 'flex-end',
   },
-  miniButton: {
-    backgroundColor: Colors.glassBg,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: Radius.full,
+  timelineRight: {
+    paddingLeft: 20,
+    alignItems: 'flex-start',
   },
-  miniButtonText: {
+  timelineLabelWrap: {
+    paddingTop: 4,
+  },
+  timelineTime: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.text1,
+    fontVariant: ['tabular-nums'],
+    letterSpacing: -0.5,
+  },
+  timelineTimeSub: {
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '500',
     color: Colors.text3,
-    letterSpacing: 0.3,
+    fontVariant: ['tabular-nums'],
+    marginTop: 1,
+    opacity: 0.6,
+  },
+  timelineEmpty: {
+    fontSize: 12,
+    color: Colors.muted,
+    textAlign: 'center',
+    paddingVertical: Space.md,
+  },
+
+  // Session card (timeline item)
+  sessionCard: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    width: 120,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  sessionCardMins: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: Colors.text1,
+  },
+  sessionCardStatus: {
+    fontSize: 8,
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginTop: 2,
+  },
+  sessionWatermark: {
+    position: 'absolute',
+    right: -2,
+    bottom: -8,
+    fontSize: 42,
+    fontWeight: '900',
+    opacity: 0.12,
   },
 
   // Section
   section: {
-    marginBottom: Space.xxl,
+    marginBottom: Space.md,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Space.md,
+    marginBottom: Space.sm,
+    paddingHorizontal: Space.xs,
   },
   sectionTitle: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: Colors.muted,
-    letterSpacing: 1.8,
+    fontSize: 8,
+    fontWeight: '800',
+    color: Colors.text3,
+    letterSpacing: 2,
+  },
+  seeAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
   sectionAction: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: Colors.gold,
-    letterSpacing: 0.3,
+    fontSize: 8,
+    fontWeight: '500',
+    color: Colors.text3,
+    opacity: 0.6,
   },
 
   // Friends
   friendsRow: {
-    gap: Space.lg,
+    gap: 12,
+    paddingTop: Space.md,
     paddingBottom: Space.sm,
   },
   friendCircleItem: {
     alignItems: 'center',
     gap: Space.xs,
-    width: 76,
+    width: 64,
+    position: 'relative',
   },
   friendName: {
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: '500',
-    color: Colors.text3,
+    color: Colors.text2,
     textAlign: 'center',
     letterSpacing: 0.2,
   },
-  friendHours: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: Colors.goldDim,
-    letterSpacing: 0.3,
+
+  // Badge
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    zIndex: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  badgeGlow: {
+    position: 'absolute',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(201,168,106,0.5)',
+  },
+  badgeInner: {
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 3,
+    backgroundColor: Colors.bg0,
+    borderWidth: 1,
+    borderColor: 'rgba(201,168,106,0.7)',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    fontSize: 8,
+    fontWeight: '900',
+    color: Colors.gold,
+  },
+
+  // Tooltip
+  tooltip: {
+    position: 'absolute',
+    bottom: '100%',
+    left: '50%',
+    transform: [{ translateX: -50 }],
+    marginBottom: 8,
+    backgroundColor: 'rgba(18,19,25,0.92)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    borderRadius: Radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: 'center',
+    zIndex: 100,
+    minWidth: 100,
+    ...Shadows.soft,
+  },
+  tooltipName: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.text1,
+  },
+  tooltipSub: {
+    fontSize: 8,
+    fontWeight: '500',
+    color: Colors.text3,
+    marginTop: 1,
+  },
+  tooltipArrow: {
+    position: 'absolute',
+    bottom: -4,
+    width: 8,
+    height: 8,
+    backgroundColor: 'rgba(18,19,25,0.92)',
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    transform: [{ rotate: '45deg' }],
+  },
+
+  // Empty friends
   emptyFriends: {
     alignItems: 'center',
     paddingVertical: Space.xxl,
@@ -440,26 +800,43 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
+  // Insight Ticker
+  insightWrap: {
+    alignItems: 'center',
+    paddingVertical: Space.sm,
+  },
+  insightText: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: Colors.text3,
+    fontStyle: 'italic',
+  },
+
   // Floating button
   floatingButtonWrap: {
     position: 'absolute',
     right: 24,
   },
   floatingButton: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: Colors.gold,
     justifyContent: 'center',
     alignItems: 'center',
-    ...Shadows.gold,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.20)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#C9A86A',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.6,
+        shadowRadius: 40,
+      },
+      android: { elevation: 12 },
+    }),
   },
   floatingButtonDisabled: {
     opacity: 0.6,
-  },
-  floatingButtonText: {
-    fontSize: 20,
-    color: '#000',
-    fontWeight: '700',
   },
 });
