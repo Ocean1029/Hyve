@@ -235,7 +235,7 @@ export default function DashboardScreen() {
                     <HyveAvatar
                       uri={friend.avatar}
                       name={friend.name}
-                      size={52}
+                      size={68}
                       ringColor={ringColor}
                     />
                     <Text style={styles.friendName} numberOfLines={1}>
@@ -401,10 +401,10 @@ const styles = StyleSheet.create({
   friendCircleItem: {
     alignItems: 'center',
     gap: Space.xs,
-    width: 60,
+    width: 76,
   },
   friendName: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '500',
     color: Colors.text3,
     textAlign: 'center',
