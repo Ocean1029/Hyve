@@ -1,8 +1,8 @@
 /**
- * Chat screen — ver2 MessageScreen style.
+ * Chat screen — v1 MessageScreen style.
  * Gold bubbles for outgoing, glass bubbles for incoming.
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -23,7 +23,7 @@ import { API_PATHS } from '@hyve/shared';
 import { formatMessageTime } from '@hyve/utils';
 import type { Friend } from '@hyve/types';
 import HyveAvatar from '../components/ui/HyveAvatar';
-import { Clock, MapPin } from '../components/icons';
+import { Clock, MapPin, Camera, Smile, Send, MoreVertical } from '../components/icons';
 import { Colors, Radius, Space, Shadows } from '../theme';
 
 type MessagesStackParamList = {
@@ -59,7 +59,54 @@ interface FocusSession {
 
 type ChatItem =
   | { type: 'text'; data: ApiMessage }
-  | { type: 'system'; data: { id: string; session: FocusSession; timestamp: string } };
+  | { type: 'system'; data: { id: string; session: FocusSession; timestamp: string } }
+  | { type: 'dateSeparator'; data: { id: string; label: string } };
+
+// Format a date into a separator label
+function getDateLabel(date: Date): string {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.round((today.getTime() - target.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'TODAY';
+  if (diffDays === 1) return 'YESTERDAY';
+
+  const weekday = date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+  const month = date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+  const day = date.getDate();
+  return `${weekday}, ${month} ${day}`;
+}
+
+// Get the date string (YYYY-MM-DD) from a ChatItem for grouping
+function getItemDateKey(item: ChatItem): string {
+  if (item.type === 'dateSeparator') return '';
+  const raw = item.type === 'text' ? item.data.createdAt : item.data.timestamp;
+  if (!raw) return '';
+  const d = new Date(raw);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Insert date separators between items with different dates
+function insertDateSeparators(items: ChatItem[]): ChatItem[] {
+  if (items.length === 0) return items;
+  const result: ChatItem[] = [];
+  let prevDateKey = '';
+
+  for (const item of items) {
+    const dateKey = getItemDateKey(item);
+    if (dateKey && dateKey !== prevDateKey) {
+      const raw = item.type === 'text' ? item.data.createdAt : (item as any).data.timestamp;
+      result.push({
+        type: 'dateSeparator',
+        data: { id: `sep-${dateKey}`, label: getDateLabel(new Date(raw)) },
+      });
+      prevDateKey = dateKey;
+    }
+    result.push(item);
+  }
+  return result;
+}
 
 export default function ChatScreen() {
   const route = useRoute<ChatScreenRouteProp>();
@@ -79,8 +126,23 @@ export default function ChatScreen() {
       headerTitle: () => (
         <View style={styles.headerTitle}>
           <HyveAvatar uri={friend.avatar} name={friend.name} size={30} />
-          <Text style={styles.headerName}>{friend.name ?? 'Chat'}</Text>
+          <View style={styles.headerInfo}>
+            <Text style={styles.headerName}>{friend.name ?? 'Chat'}</Text>
+            <Text
+              style={[
+                styles.headerStatus,
+                { color: (friend as any).isOnline ? Colors.online : Colors.text3 },
+              ]}
+            >
+              {(friend as any).isOnline ? 'Online' : 'Offline'}
+            </Text>
+          </View>
         </View>
+      ),
+      headerRight: () => (
+        <TouchableOpacity style={styles.headerMoreButton} activeOpacity={0.7}>
+          <MoreVertical color={Colors.text3} size={18} />
+        </TouchableOpacity>
       ),
       headerStyle: { backgroundColor: Colors.bg1 },
       headerTintColor: Colors.ivory,
@@ -120,8 +182,8 @@ export default function ChatScreen() {
       });
 
       items.sort((a, b) => {
-        const timeA = a.type === 'text' ? a.data.createdAt ?? '' : a.data.timestamp;
-        const timeB = b.type === 'text' ? b.data.createdAt ?? '' : b.data.timestamp;
+        const timeA = a.type === 'text' ? a.data.createdAt ?? '' : (a as any).data.timestamp;
+        const timeB = b.type === 'text' ? b.data.createdAt ?? '' : (b as any).data.timestamp;
         return new Date(timeA).getTime() - new Date(timeB).getTime();
       });
 
@@ -179,6 +241,12 @@ export default function ChatScreen() {
     }
   };
 
+  // Memoize items with date separators inserted
+  const displayItems = useMemo(() => {
+    const withSeps = insertDateSeparators(chatItems);
+    return [...withSeps].reverse();
+  }, [chatItems]);
+
   const renderSystemMessage = (session: FocusSession) => {
     const firstMemory = session.memories?.[0];
     const allPhotoUrls: string[] = [];
@@ -234,6 +302,14 @@ export default function ChatScreen() {
   };
 
   const renderItem = ({ item }: { item: ChatItem }) => {
+    if (item.type === 'dateSeparator') {
+      return (
+        <View style={styles.dateSeparatorRow}>
+          <Text style={styles.dateSeparatorText}>{item.data.label}</Text>
+        </View>
+      );
+    }
+
     if (item.type === 'system') {
       return (
         <View style={styles.systemRow}>
@@ -260,6 +336,8 @@ export default function ChatScreen() {
     );
   };
 
+  const hasInput = inputValue.trim().length > 0;
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -276,9 +354,12 @@ export default function ChatScreen() {
     >
       <FlatList
         ref={flatListRef}
-        data={[...chatItems].reverse()}
+        data={displayItems}
         inverted
-        keyExtractor={(item) => (item.type === 'text' ? item.data.id : item.data.id)}
+        keyExtractor={(item) => {
+          if (item.type === 'dateSeparator') return item.data.id;
+          return item.type === 'text' ? item.data.id : item.data.id;
+        }}
         renderItem={renderItem}
         style={styles.list}
         contentContainerStyle={styles.listContent}
@@ -296,29 +377,40 @@ export default function ChatScreen() {
 
       {/* Input row */}
       <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          value={inputValue}
-          onChangeText={setInputValue}
-          placeholder={`Message ${friend.name ?? 'friend'}...`}
-          placeholderTextColor={Colors.muted}
-          multiline
-          maxLength={1000}
-          editable={!sending}
-        />
+        <TouchableOpacity style={styles.mediaButton} activeOpacity={0.7}>
+          <Camera color={Colors.text3} size={22} strokeWidth={1.5} />
+        </TouchableOpacity>
+
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={styles.input}
+            value={inputValue}
+            onChangeText={setInputValue}
+            placeholder="Message..."
+            placeholderTextColor={Colors.muted}
+            multiline
+            maxLength={1000}
+            editable={!sending}
+          />
+          <TouchableOpacity style={styles.emojiButton} activeOpacity={0.7}>
+            <Smile color={Colors.text3} size={20} strokeWidth={1.5} />
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity
-          style={[
-            styles.sendButton,
-            (!inputValue.trim() || sending) && styles.sendButtonDisabled,
-          ]}
           onPress={handleSend}
-          disabled={!inputValue.trim() || sending}
-          activeOpacity={0.85}
+          disabled={!hasInput || sending}
+          activeOpacity={0.7}
+          style={styles.sendButton}
         >
           {sending ? (
-            <ActivityIndicator size="small" color="#000" />
+            <ActivityIndicator size="small" color={Colors.text3} />
           ) : (
-            <Text style={styles.sendIcon}>↑</Text>
+            <Send
+              color={hasInput ? Colors.gold : Colors.text3}
+              size={22}
+              strokeWidth={1.5}
+            />
           )}
         </TouchableOpacity>
       </View>
@@ -344,10 +436,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Space.sm,
   },
+  headerInfo: {
+    flexDirection: 'column',
+  },
   headerName: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: Colors.text1,
+    lineHeight: 18,
+  },
+  headerStatus: {
+    fontSize: 10,
+    fontWeight: '500',
+    lineHeight: 14,
+  },
+  headerMoreButton: {
+    padding: Space.xs,
+    marginRight: Space.xs,
+  },
+
+  // Date separator
+  dateSeparatorRow: {
+    alignItems: 'center',
+    paddingVertical: Space.lg,
+  },
+  dateSeparatorText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.text3,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
 
   // List
@@ -378,14 +496,14 @@ const styles = StyleSheet.create({
   },
   bubbleMe: {
     backgroundColor: Colors.gold,
-    borderBottomRightRadius: 4,
+    borderTopRightRadius: 4,
     ...Shadows.gold,
   },
   bubbleThem: {
     backgroundColor: Colors.surface2,
     borderWidth: 1,
     borderColor: Colors.glassBorder,
-    borderBottomLeftRadius: 4,
+    borderTopLeftRadius: 4,
   },
   bubbleText: {
     fontSize: 15,
@@ -474,42 +592,40 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: Space.sm,
-    paddingHorizontal: Space.md,
+    gap: Space.md,
+    paddingHorizontal: Space.lg,
     paddingTop: Space.sm,
     paddingBottom: Platform.OS === 'ios' ? 28 : Space.md,
-    backgroundColor: 'rgba(12, 13, 16, 0.98)',
+    backgroundColor: Colors.bg0,
     borderTopWidth: 1,
-    borderTopColor: Colors.glassBorder,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+  },
+  mediaButton: {
+    paddingBottom: 10,
+  },
+  inputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    backgroundColor: Colors.surface1,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    borderRadius: Radius.full,
+    paddingLeft: Space.lg,
+    paddingRight: Space.xs,
   },
   input: {
     flex: 1,
-    backgroundColor: Colors.surface1,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
     color: Colors.text1,
-    borderRadius: Radius.xl,
-    paddingHorizontal: Space.md,
     paddingVertical: 10,
     maxHeight: 100,
     fontSize: 14,
   },
+  emojiButton: {
+    paddingHorizontal: Space.sm,
+    paddingBottom: 10,
+  },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.gold,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...Shadows.gold,
-  },
-  sendButtonDisabled: {
-    backgroundColor: Colors.surface2,
-    opacity: 0.5,
-  },
-  sendIcon: {
-    fontSize: 18,
-    color: '#000',
-    fontWeight: '700',
+    paddingBottom: 10,
   },
 });

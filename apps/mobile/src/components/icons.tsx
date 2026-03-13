@@ -37,4 +37,6 @@ export {
   Sparkles,
   Hash,
   LayoutGrid as Grid,
+  MoreVertical,
+  Smile,
 } from 'lucide-react-native';
