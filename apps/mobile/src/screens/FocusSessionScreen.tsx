@@ -81,19 +81,21 @@ export default function FocusSessionScreen() {
         if (!sessionStartTime && (s as { startTime?: string }).startTime) {
           setSessionStartTime(new Date((s as { startTime?: string }).startTime!));
         }
-      } else {
+      } else if (!params?.autoEntered) {
         setActiveSession(null);
         setSessionStartTime(null);
       }
     } catch {
-      setActiveSession(null);
+      if (!params?.autoEntered) {
+        setActiveSession(null);
+      }
     }
   }, [apiClient, user?.id, sessionStartTime]);
 
   useEffect(() => {
-    if (params?.sessionId && params?.autoEntered) {
+    if (params?.autoEntered) {
       setActiveSession({
-        sessionId: params.sessionId,
+        sessionId: params.sessionId ?? '',
         status: 'active',
         isPaused: false,
         startTime: params.startTime,
@@ -104,11 +106,14 @@ export default function FocusSessionScreen() {
     }
   }, [params?.sessionId, params?.autoEntered, params?.startTime]);
 
+  // Poll to sync session state (and resolve sessionId when auto-entered without one)
+  const hasActiveSession = !!activeSession;
   useEffect(() => {
-    if (!activeSession) return;
+    if (!hasActiveSession) return;
+    pollActiveSession();
     const interval = setInterval(pollActiveSession, 5000);
     return () => clearInterval(interval);
-  }, [activeSession, pollActiveSession]);
+  }, [hasActiveSession, pollActiveSession]);
 
   // Elapsed time ticker
   useEffect(() => {
