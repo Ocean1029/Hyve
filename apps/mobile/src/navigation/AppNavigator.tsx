@@ -14,7 +14,6 @@ import DashboardScreen from '../screens/DashboardScreen';
 import MessagesListScreen from '../screens/MessagesListScreen';
 import ChatScreen from '../screens/ChatScreen';
 import FindFriendsScreen from '../screens/FindFriendsScreen';
-import TodayScreen from '../screens/TodayScreen';
 import HappyIndexScreen from '../screens/HappyIndexScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import FocusSessionScreen from '../screens/FocusSessionScreen';
@@ -24,7 +23,7 @@ import SpringBloomScreen from '../screens/SpringBloomScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import FriendProfileScreen from '../screens/FriendProfileScreen';
 import { ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
-import { Home, MessageCircle, User, Calendar } from '../components/icons';
+import { Home, MessageCircle, User } from '../components/icons';
 import { Colors, Shadows } from '../theme';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -85,15 +84,6 @@ function MainTabs() {
           title: 'Dashboard',
           tabBarLabel: 'Dashboard',
           tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
-        }}
-      />
-      <Tab.Screen
-        name="Today"
-        component={TodayScreen}
-        options={{
-          title: 'Today',
-          tabBarLabel: 'Today',
-          tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} />,
         }}
       />
       <Tab.Screen

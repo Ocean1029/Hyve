@@ -26,7 +26,6 @@ import { Colors, Radius, Space, Shadows } from '../theme';
 type RootStackParamList = {
   Main: undefined;
   Settings: undefined;
-  Today: undefined;
 };
 
 interface Stats {
@@ -48,7 +47,6 @@ export default function ProfileScreen() {
   const { user, apiClient } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
   const [memories, setMemories] = useState<Memory[]>([]);
-  const [todayMinutes, setTodayMinutes] = useState(0);
   const [friendCount, setFriendCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -56,21 +54,17 @@ export default function ProfileScreen() {
   const loadProfile = async () => {
     if (!user?.id) return;
     try {
-      const [statsRes, memoriesRes, todayRes, friendsRes] = await Promise.all([
+      const [statsRes, memoriesRes, friendsRes] = await Promise.all([
         apiClient.get<{ success: boolean; stats?: Stats }>(
           API_PATHS.USER_STATS(user.id)
         ),
         apiClient.get<{ success: boolean; memories?: Memory[] }>(
           `${API_PATHS.MEMORIES_PEAK_HAPPINESS}?limit=20`
         ),
-        apiClient.get<{ totalMinutes?: number }>(
-          `${API_PATHS.SESSIONS_TODAY}?userId=${encodeURIComponent(user.id)}`
-        ),
         apiClient.get<{ friends?: unknown[] }>(API_PATHS.FRIENDS_LIST),
       ]);
       setStats(statsRes?.stats ?? null);
       setMemories(memoriesRes?.memories ?? []);
-      setTodayMinutes(todayRes?.totalMinutes ?? 0);
       setFriendCount((friendsRes?.friends ?? []).length);
     } catch {
       setStats(null);
@@ -91,14 +85,10 @@ export default function ProfileScreen() {
   };
 
   const totalHours = stats?.totalMinutes ? Math.floor(stats.totalMinutes / 60) : 0;
-  const todayHours = Math.floor(todayMinutes / 60);
-  const todayMins = todayMinutes % 60;
-  const todayDisplay = todayHours > 0 ? `${todayHours}h ${todayMins}m` : `${todayMins}m`;
 
   const statCapsules = [
     { label: 'FRIENDS', value: loading ? '–' : String(friendCount) },
     { label: 'FOCUSED', value: loading ? '–' : `${totalHours}h` },
-    { label: 'TODAY', value: loading ? '–' : todayDisplay },
     { label: 'MEMORIES', value: loading ? '–' : String(stats?.totalMemories ?? 0) },
   ];
 
@@ -151,23 +141,6 @@ export default function ProfileScreen() {
             </View>
           ))}
         </ScrollView>
-
-        {/* Today card */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => (navigation as { navigate: (s: string) => void }).navigate('Today')}
-        >
-          <GlassCard style={styles.todayCard} radius={Radius.xxl}>
-            <View style={styles.todayCardContent}>
-              <View style={styles.todayDot} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.todayTitle}>Today's Focus</Text>
-                <Text style={styles.todayValue}>{loading ? '…' : todayDisplay}</Text>
-              </View>
-              <Text style={styles.todayArrow}>›</Text>
-            </View>
-          </GlassCard>
-        </TouchableOpacity>
 
         {/* Memories vault */}
         <View style={styles.vaultSection}>
@@ -296,39 +269,6 @@ const styles = StyleSheet.create({
     color: Colors.muted,
     letterSpacing: 1.2,
     marginTop: 4,
-  },
-
-  // Today card
-  todayCard: {
-    marginBottom: Space.xl,
-  },
-  todayCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Space.md,
-  },
-  todayDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.gold,
-  },
-  todayTitle: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: Colors.text3,
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
-  todayValue: {
-    fontSize: 20,
-    fontWeight: '300',
-    color: Colors.text1,
-    letterSpacing: -0.5,
-  },
-  todayArrow: {
-    fontSize: 22,
-    color: Colors.muted,
   },
 
   // Vault
