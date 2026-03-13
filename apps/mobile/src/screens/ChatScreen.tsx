@@ -497,7 +497,6 @@ const styles = StyleSheet.create({
   bubbleMe: {
     backgroundColor: Colors.gold,
     borderTopRightRadius: 4,
-    ...Shadows.gold,
   },
   bubbleThem: {
     backgroundColor: Colors.surface2,
