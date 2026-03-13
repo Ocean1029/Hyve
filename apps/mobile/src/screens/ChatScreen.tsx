@@ -328,10 +328,10 @@ export default function ChatScreen() {
           <Text style={[styles.bubbleText, isMe && styles.bubbleTextMe]}>
             {msg.content}
           </Text>
-          <Text style={[styles.timestamp, isMe && styles.timestampMe]}>
-            {formatMessageTime(msg.createdAt)}
-          </Text>
         </View>
+        <Text style={[styles.timestamp, isMe && styles.timestampMe]}>
+          {formatMessageTime(msg.createdAt)}
+        </Text>
       </View>
     );
   };
@@ -517,10 +517,10 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: Colors.muted,
     marginTop: 4,
-    alignSelf: 'flex-end',
+    paddingHorizontal: 2,
   },
   timestampMe: {
-    color: 'rgba(0,0,0,0.45)',
+    color: Colors.muted,
   },
   empty: {
     color: Colors.muted,
