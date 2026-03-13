@@ -25,20 +25,22 @@ export default function HyveAvatar({
 }: HyveAvatarProps) {
   const letter = (name ?? 'U').charAt(0).toUpperCase();
   const fontSize = Math.round(size * 0.38);
+  const ringPad = ringColor ? 3 : 0;
+  const totalSize = size + ringPad * 2;
 
   return (
-    <View style={[{ width: size, height: size }, style]}>
+    <View style={[{ width: totalSize, height: totalSize }, style]}>
       {ringColor && (
         <View
           style={[
             styles.ring,
             {
-              width: size + 6,
-              height: size + 6,
-              borderRadius: (size + 6) / 2,
+              width: totalSize,
+              height: totalSize,
+              borderRadius: totalSize / 2,
               borderColor: ringColor,
-              top: -3,
-              left: -3,
+              top: 0,
+              left: 0,
             },
           ]}
         />
@@ -46,14 +48,26 @@ export default function HyveAvatar({
       {uri ? (
         <Image
           source={{ uri }}
-          style={{ width: size, height: size, borderRadius: size / 2 }}
+          style={{
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+            marginTop: ringPad,
+            marginLeft: ringPad,
+          }}
           resizeMode="cover"
         />
       ) : (
         <View
           style={[
             styles.placeholder,
-            { width: size, height: size, borderRadius: size / 2 },
+            {
+              width: size,
+              height: size,
+              borderRadius: size / 2,
+              marginTop: ringPad,
+              marginLeft: ringPad,
+            },
           ]}
         >
           <Text style={[styles.letter, { fontSize }]}>{letter}</Text>
