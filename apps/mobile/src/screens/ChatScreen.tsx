@@ -15,6 +15,7 @@ import {
   Platform,
   Image,
   ScrollView,
+  Dimensions,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -253,10 +254,7 @@ export default function ChatScreen() {
     session.memories?.forEach((mem) => {
       if (mem.photos?.length) allPhotoUrls.push(...mem.photos);
     });
-    const photoUrls =
-      allPhotoUrls.length > 0
-        ? allPhotoUrls.slice(0, 8)
-        : ['https://picsum.photos/200/200?random=201'];
+    const photoUrls = allPhotoUrls.slice(0, 8);
     const durationMinutes = session.minutes ?? 0;
     const formattedDuration =
       durationMinutes > 0
@@ -282,21 +280,23 @@ export default function ChatScreen() {
             {location}
           </Text>
         </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.photosScroll}
-          nestedScrollEnabled
-        >
-          {photoUrls.map((uri, idx) => (
-            <Image
-              key={idx}
-              source={{ uri }}
-              style={styles.sessionPhoto}
-              resizeMode="cover"
-            />
-          ))}
-        </ScrollView>
+        {photoUrls.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.photosScroll}
+            nestedScrollEnabled
+          >
+            {photoUrls.map((uri, idx) => (
+              <Image
+                key={idx}
+                source={{ uri }}
+                style={styles.sessionPhoto}
+                resizeMode="cover"
+              />
+            ))}
+          </ScrollView>
+        )}
       </View>
     );
   };
@@ -362,7 +362,6 @@ export default function ChatScreen() {
         }}
         renderItem={renderItem}
         style={styles.list}
-        contentContainerStyle={styles.listContent}
         onContentSizeChange={() => {
           if (shouldScrollToBottom.current) {
             shouldScrollToBottom.current = false;
@@ -371,7 +370,14 @@ export default function ChatScreen() {
         }}
         keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
-          <Text style={styles.empty}>No messages yet. Say hi! 👋</Text>
+          <View style={styles.listEmpty}>
+            <Text style={styles.empty}>No messages yet. Say hi! 👋</Text>
+          </View>
+        }
+        contentContainerStyle={
+          displayItems.length === 0
+            ? [styles.listContent, { flexGrow: 1 }]
+            : styles.listContent
         }
       />
 
@@ -521,11 +527,16 @@ const styles = StyleSheet.create({
   timestampMe: {
     color: Colors.muted,
   },
+  listEmpty: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    transform: [{ scaleY: -1 }],
+  },
   empty: {
     color: Colors.muted,
     fontSize: 14,
     textAlign: 'center',
-    paddingVertical: 48,
   },
 
   // System messages
@@ -538,10 +549,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface1,
     borderRadius: Radius.xl,
     padding: Space.md,
-    maxWidth: '80%',
+    width: Math.round(Dimensions.get('window').width * 0.8),
     borderWidth: 1,
     borderColor: Colors.glassBorder,
     gap: Space.xs,
+    overflow: 'hidden',
   },
   systemCardHeader: {
     flexDirection: 'row',
