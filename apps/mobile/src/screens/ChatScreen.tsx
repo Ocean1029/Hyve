@@ -374,11 +374,10 @@ export default function ChatScreen() {
             <Text style={styles.empty}>No messages yet. Say hi! 👋</Text>
           </View>
         }
-        contentContainerStyle={
-          displayItems.length === 0
-            ? [styles.listContent, { flexGrow: 1 }]
-            : styles.listContent
-        }
+        contentContainerStyle={[
+          styles.listContent,
+          { flexGrow: 1, justifyContent: 'flex-end' },
+        ]}
       />
 
       {/* Input row */}
