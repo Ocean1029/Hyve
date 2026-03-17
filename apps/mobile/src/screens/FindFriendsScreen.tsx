@@ -15,6 +15,7 @@ import {
   TextInput,
   Animated,
   Easing,
+  Platform,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,7 +24,11 @@ import { formatDistance } from '@hyve/utils';
 import HyveAvatar from '../components/ui/HyveAvatar';
 import HyveButton from '../components/ui/HyveButton';
 import { Check, X, Search } from '../components/icons';
+import { Wifi } from 'lucide-react-native';
 import { Colors, Radius, Space, Shadows } from '../theme';
+
+const RING_COUNT = 3;
+const RING_DURATION = 2500;
 
 interface NearbyUser {
   id: string;
@@ -73,27 +78,89 @@ export default function FindFriendsScreen() {
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
   const [searching, setSearching] = useState(false);
 
-  // Radar pulse animation
-  const pulseScale = useRef(new Animated.Value(1)).current;
-  const pulseOpacity = useRef(new Animated.Value(0.6)).current;
+  // Radar ripple animations (3 staggered rings)
+  const ringAnims = useRef(
+    Array.from({ length: RING_COUNT }, () => ({
+      scale: new Animated.Value(0.3),
+      opacity: new Animated.Value(0.6),
+    }))
+  ).current;
+
+  // Scan line rotation
+  const scanRotation = useRef(new Animated.Value(0)).current;
+
+  // Center wifi icon pulse
+  const wifiPulse = useRef(new Animated.Value(0.6)).current;
+
+  // Status text pulse
+  const textPulse = useRef(new Animated.Value(1)).current;
+
   useEffect(() => {
+    // Start staggered ring animations
+    ringAnims.forEach((anim, i) => {
+      const delay = i * (RING_DURATION / RING_COUNT);
+      setTimeout(() => {
+        Animated.loop(
+          Animated.parallel([
+            Animated.timing(anim.scale, {
+              toValue: 1,
+              duration: RING_DURATION,
+              easing: Easing.out(Easing.ease),
+              useNativeDriver: true,
+            }),
+            Animated.timing(anim.opacity, {
+              toValue: 0,
+              duration: RING_DURATION,
+              easing: Easing.out(Easing.ease),
+              useNativeDriver: true,
+            }),
+          ])
+        ).start();
+      }, delay);
+    });
+
+    // Scan line rotation
     Animated.loop(
-      Animated.parallel([
-        Animated.timing(pulseScale, {
-          toValue: 2.2,
-          duration: 2400,
-          easing: Easing.out(Easing.ease),
+      Animated.timing(scanRotation, {
+        toValue: 1,
+        duration: 2000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
+
+    // Wifi icon pulse
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(wifiPulse, {
+          toValue: 1,
+          duration: 1200,
           useNativeDriver: true,
         }),
-        Animated.timing(pulseOpacity, {
-          toValue: 0,
-          duration: 2400,
-          easing: Easing.out(Easing.ease),
+        Animated.timing(wifiPulse, {
+          toValue: 0.4,
+          duration: 1200,
           useNativeDriver: true,
         }),
       ])
     ).start();
-  }, [pulseScale, pulseOpacity]);
+
+    // Status text pulse
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(textPulse, {
+          toValue: 0.4,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(textPulse, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [ringAnims, scanRotation, wifiPulse, textPulse]);
 
   const fetchPendingRequests = useCallback(async () => {
     try {
@@ -371,28 +438,61 @@ export default function FindFriendsScreen() {
 
   const displaySearch = searchQuery.trim().length > 0;
 
+  const scanSpin = scanRotation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        {/* Radar pulse rings */}
-        <View style={styles.radarCenter}>
-          {[0, 1, 2].map((i) => (
-            <View
+        {/* Background grid */}
+        <View style={styles.gridOverlay}>
+          <View style={styles.gridLineH} />
+          <View style={styles.gridLineV} />
+        </View>
+
+        {/* Radar visual */}
+        <View style={styles.radarContainer}>
+          {/* Ping ripple rings */}
+          {ringAnims.map((anim, i) => (
+            <Animated.View
               key={i}
               style={[
-                styles.radarRing,
+                styles.rippleRing,
                 {
-                  width: 80 + i * 60,
-                  height: 80 + i * 60,
-                  borderRadius: 40 + i * 30,
-                  opacity: 0.08 - i * 0.02,
+                  transform: [{ scale: anim.scale }],
+                  opacity: anim.opacity,
                 },
               ]}
             />
           ))}
-          <ActivityIndicator size="large" color={Colors.gold} />
+
+          {/* Scan line */}
+          <Animated.View
+            style={[
+              styles.scanLineWrap,
+              { transform: [{ rotate: scanSpin }] },
+            ]}
+          >
+            <View style={styles.scanLine} />
+          </Animated.View>
+
+          {/* Center node */}
+          <View style={styles.centerNode}>
+            <Animated.View style={{ opacity: wifiPulse }}>
+              <Wifi size={28} color={Colors.gold} />
+            </Animated.View>
+          </View>
         </View>
-        <Text style={styles.loadingText}>Finding nearby friends…</Text>
+
+        {/* Status text */}
+        <View style={styles.statusTextWrap}>
+          <Animated.Text style={[styles.scanTitle, { opacity: textPulse }]}>
+            SCANNING FREQUENCY
+          </Animated.Text>
+          <Text style={styles.scanSubtitle}>Searching for nearby signals...</Text>
+        </View>
       </View>
     );
   }
@@ -500,27 +600,100 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: Colors.bg1,
+    backgroundColor: Colors.bg0,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: Space.lg,
   },
-  radarCenter: {
-    width: 200,
-    height: 200,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
+
+  // Background grid
+  gridOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.15,
   },
-  radarRing: {
+  gridLineH: {
     position: 'absolute',
-    borderWidth: 1,
-    borderColor: Colors.gold,
+    top: '50%',
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.10)',
   },
-  loadingText: {
-    fontSize: 13,
-    color: Colors.muted,
-    letterSpacing: 0.5,
+  gridLineV: {
+    position: 'absolute',
+    left: '50%',
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+  },
+
+  // Radar container
+  radarContainer: {
+    width: 256,
+    height: 256,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 48,
+  },
+  rippleRing: {
+    position: 'absolute',
+    width: 256,
+    height: 256,
+    borderRadius: 128,
+    borderWidth: 1,
+    borderColor: 'rgba(201,168,106,0.25)',
+  },
+  scanLineWrap: {
+    position: 'absolute',
+    width: 256,
+    height: 256,
+    alignItems: 'center',
+  },
+  scanLine: {
+    width: 128,
+    height: 2,
+    position: 'absolute',
+    top: '50%',
+    right: '50%',
+    backgroundColor: 'rgba(201,168,106,0.15)',
+    borderRadius: 1,
+  },
+  centerNode: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Colors.bg1,
+    borderWidth: 1,
+    borderColor: 'rgba(201,168,106,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#C9A86A',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.25,
+        shadowRadius: 30,
+      },
+      android: { elevation: 8 },
+    }),
+  },
+
+  // Status text
+  statusTextWrap: {
+    alignItems: 'center',
+    height: 60,
+  },
+  scanTitle: {
+    fontSize: 16,
+    fontWeight: '300',
+    color: Colors.text1,
+    letterSpacing: 6,
+    marginBottom: 8,
+  },
+  scanSubtitle: {
+    fontSize: 10,
+    color: Colors.text3,
   },
 
   // Search
