@@ -22,8 +22,8 @@ import PostMemoryScreen from '../screens/PostMemoryScreen';
 import SpringBloomScreen from '../screens/SpringBloomScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import FriendProfileScreen from '../screens/FriendProfileScreen';
-import { ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
-import { Home, MessageCircle, User } from '../components/icons';
+import { ActivityIndicator, View, StyleSheet, Platform, Image } from 'react-native';
+import { Home, Users } from '../components/icons';
 import { Colors, Shadows } from '../theme';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -55,10 +55,14 @@ function MessagesStack() {
 }
 
 function MainTabs() {
+  const { user } = useAuth();
+
   return (
     <Tab.Navigator
+      initialRouteName="Dashboard"
       screenOptions={{
         headerShown: false,
+        tabBarShowLabel: false,
         tabBarStyle: {
           backgroundColor: 'rgba(12, 13, 16, 0.97)',
           borderTopColor: Colors.glassBorder,
@@ -78,31 +82,41 @@ function MainTabs() {
       }}
     >
       <Tab.Screen
-        name="Dashboard"
-        component={DashboardScreen}
+        name="Friends"
+        component={MessagesStack}
         options={{
-          title: 'Dashboard',
-          tabBarLabel: 'Dashboard',
-          tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
         }}
       />
       <Tab.Screen
-        name="Messages"
-        component={MessagesStack}
+        name="Dashboard"
+        component={DashboardScreen}
         options={{
-          title: 'Messages',
-          tabBarLabel: 'Messages',
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => <MessageCircle color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
         }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
-          title: 'Profile',
-          tabBarLabel: 'Profile',
-          tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
+          tabBarIcon: ({ focused }) => (
+            <View style={[
+              tabStyles.avatarWrap,
+              focused && tabStyles.avatarActive,
+            ]}>
+              {user?.image ? (
+                <Image
+                  source={{ uri: user.image }}
+                  style={tabStyles.avatar}
+                />
+              ) : (
+                <View style={tabStyles.avatarPlaceholder}>
+                  <Users color={focused ? Colors.gold : Colors.text3} size={16} />
+                </View>
+              )}
+            </View>
+          ),
         }}
       />
     </Tab.Navigator>
@@ -230,5 +244,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: Colors.bg1,
+  },
+});
+
+const tabStyles = StyleSheet.create({
+  avatarWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  avatarActive: {
+    borderColor: Colors.gold,
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: Colors.surface1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
