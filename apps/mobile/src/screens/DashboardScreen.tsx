@@ -413,7 +413,7 @@ export default function DashboardScreen() {
                       <HyveAvatar
                         uri={friend.avatar}
                         name={friend.name}
-                        size={52}
+                        size={56}
                         ringColor={ringColor}
                       />
                       {momentsCount > 0 && (
@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bg1,
   },
   scrollContent: {
-    paddingHorizontal: Space.lg,
+    paddingHorizontal: Space.lg + 8,
     paddingBottom: 120,
   },
 
@@ -488,18 +488,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: Space.sm,
-    paddingBottom: Space.md,
+    paddingTop: Space.lg,
+    paddingBottom: Space.xl,
   },
   dateLabel: {
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '800',
     color: Colors.text3,
     letterSpacing: 2,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   greeting: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '300',
     color: Colors.text1,
     letterSpacing: -0.5,
@@ -511,7 +511,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.surfaceBorder,
     borderRadius: Radius.xxl,
-    marginBottom: Space.lg,
+    marginBottom: Space.xxl,
     overflow: 'hidden',
   },
   statsCollapsedRow: {
@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Space.xl,
-    height: 56,
+    height: 64,
   },
   statsLeftGroup: {
     flexDirection: 'row',
@@ -527,13 +527,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   statsValue: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '300',
     color: Colors.text1,
     letterSpacing: -1,
   },
   statsLabel: {
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '800',
     color: Colors.text3,
     letterSpacing: 2,
@@ -654,17 +654,17 @@ const styles = StyleSheet.create({
 
   // Section
   section: {
-    marginBottom: Space.md,
+    marginBottom: Space.xl,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Space.sm,
+    marginBottom: Space.md,
     paddingHorizontal: Space.xs,
   },
   sectionTitle: {
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '800',
     color: Colors.text3,
     letterSpacing: 2,
@@ -675,7 +675,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   sectionAction: {
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '500',
     color: Colors.text3,
     opacity: 0.6,
@@ -683,18 +683,18 @@ const styles = StyleSheet.create({
 
   // Friends
   friendsRow: {
-    gap: 12,
+    gap: 16,
     paddingTop: Space.md,
-    paddingBottom: Space.sm,
+    paddingBottom: Space.md,
   },
   friendCircleItem: {
     alignItems: 'center',
-    gap: Space.xs,
-    width: 64,
+    gap: Space.sm,
+    width: 72,
     position: 'relative',
   },
   friendName: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '500',
     color: Colors.text2,
     textAlign: 'center',
@@ -803,10 +803,10 @@ const styles = StyleSheet.create({
   // Insight Ticker
   insightWrap: {
     alignItems: 'center',
-    paddingVertical: Space.sm,
+    paddingVertical: Space.lg,
   },
   insightText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '500',
     color: Colors.text3,
     fontStyle: 'italic',
