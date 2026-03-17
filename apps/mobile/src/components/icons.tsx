@@ -49,4 +49,5 @@ export {
   Flag,
   FileText,
   Building,
+  CircleUser,
 } from 'lucide-react-native';
