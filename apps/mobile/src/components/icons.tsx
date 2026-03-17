@@ -48,4 +48,5 @@ export {
   HelpCircle,
   Flag,
   FileText,
+  Building,
 } from 'lucide-react-native';
