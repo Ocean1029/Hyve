@@ -67,6 +67,9 @@ function MainTabs() {
           backgroundColor: 'rgba(12, 13, 16, 0.97)',
           borderTopColor: Colors.glassBorder,
           borderTopWidth: 1,
+          height: Platform.OS === 'ios' ? 72 : 56,
+          paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+          paddingTop: 8,
           ...Platform.select({
             ios: {
               shadowColor: '#000',
