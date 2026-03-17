@@ -187,7 +187,7 @@ export default function ProfileScreen() {
             value={loading ? '–' : `${totalHours}h`}
             label="HOURS"
             themeColor={Colors.gold}
-            position={{ top: 0, left: 0 }}
+            position={{ top: 0, left: 12 }}
             delay={0}
           />
           <MetricCapsule
@@ -195,7 +195,7 @@ export default function ProfileScreen() {
             value={loading ? '–' : String(stats?.totalSessions ?? 0)}
             label="SESSIONS"
             themeColor={Colors.gold}
-            position={{ top: 0, right: 0 }}
+            position={{ top: 0, right: 12 }}
             delay={500}
           />
           <MetricCapsule
@@ -203,7 +203,7 @@ export default function ProfileScreen() {
             value={loading ? '–' : String(friendCount)}
             label="CIRCLE"
             themeColor={Colors.gold}
-            position={{ bottom: 24, left: 0 }}
+            position={{ bottom: 24, left: 12 }}
             delay={1000}
           />
           <MetricCapsule
@@ -211,7 +211,7 @@ export default function ProfileScreen() {
             value="—"
             label="MAP"
             themeColor={Colors.gold}
-            position={{ bottom: 24, right: 0 }}
+            position={{ bottom: 24, right: 12 }}
             delay={1500}
           />
         </View>

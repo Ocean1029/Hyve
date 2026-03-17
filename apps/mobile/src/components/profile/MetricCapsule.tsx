@@ -19,18 +19,18 @@ export default function MetricCapsule({
   position,
   delay,
 }: MetricCapsuleProps) {
-  const translateY = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(-10)).current;
 
   useEffect(() => {
     const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(translateY, {
-          toValue: -10,
+          toValue: 10,
           duration: 3000,
           useNativeDriver: true,
         }),
         Animated.timing(translateY, {
-          toValue: 10,
+          toValue: -10,
           duration: 3000,
           useNativeDriver: true,
         }),
