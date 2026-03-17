@@ -116,7 +116,7 @@ ${combinedContent}`,
 };
 
 export const getFriendListService = async (sourceUserId: string): Promise<Friend[]> => {
-  const friends = await getFriendsWithDetails(sourceUserId);
+  const friends = await getFriendsWithLastMessage(sourceUserId);
   
   // Batch fetch friend counts for all friends
   const friendCounts = await Promise.all(
@@ -173,6 +173,12 @@ export const getFriendListService = async (sourceUserId: string): Promise<Friend
       recentMemories,
       friendCount: friendCounts[index],
       sessionCount: f.focusSessionUsers?.length || 0,
+      lastMessage: f.messages?.[0] ? {
+        id: f.messages[0].id,
+        content: f.messages[0].content,
+        senderId: f.messages[0].senderId,
+        timestamp: f.messages[0].timestamp,
+      } : undefined,
     };
   });
 };

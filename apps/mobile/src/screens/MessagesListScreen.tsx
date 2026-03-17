@@ -209,11 +209,7 @@ export default function MessagesListScreen() {
                     </>
                   ) : (
                     <View style={styles.messageBubble}>
-                      <Text style={styles.messageText}>
-                        {(item.totalHours ?? 0) > 0
-                          ? `${item.totalHours}h together`
-                          : 'Say hello!'}
-                      </Text>
+                      <Text style={styles.messageText}>Say hello!</Text>
                     </View>
                   )}
                 </TouchableOpacity>
