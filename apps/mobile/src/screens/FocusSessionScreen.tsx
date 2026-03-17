@@ -19,7 +19,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_PATHS } from '@hyve/shared';
 import { FocusStatus } from '@hyve/types';
 import { Sparkles } from '../components/icons';
-import Hyve from '../components/Hyve';
 import { useDeviceOrientation } from '../hooks/useDeviceOrientation';
 import { Colors, Radius, Space, Shadows } from '../theme';
 
@@ -218,7 +217,6 @@ export default function FocusSessionScreen() {
     );
   }
 
-  const intensity = Math.min((elapsedSeconds / 60) * 10, 100);
   const isActive = focusStatus === FocusStatus.ACTIVE;
 
   return (
@@ -261,9 +259,8 @@ export default function FocusSessionScreen() {
           <View style={[styles.toggleDot, effectiveFaceDown && styles.toggleDotActive]} />
         </TouchableOpacity>
 
-        {/* Campfire center */}
+        {/* Timer center */}
         <View style={styles.campfireSection}>
-          <Hyve status={focusStatus} intensity={intensity} />
           <View style={styles.timerArea}>
             {isActive ? (
               <View style={styles.timerRingContainer}>

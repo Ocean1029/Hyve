@@ -7,7 +7,6 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Camera } from '../components/icons';
 import type { RootStackParamList } from '../navigation/types';
 import { Colors, Radius, Space, Shadows } from '../theme';
 
@@ -52,13 +51,19 @@ export default function SessionSummaryScreen() {
         </View>
 
         {/* Title */}
-        <Text style={styles.title}>Session{'\n'}Complete</Text>
-        <Text style={styles.subtitle}>Quality time captured.</Text>
+        <Text style={styles.title}>Presence{'\n'}Built.</Text>
+        <Text style={styles.subtitle}>SESSION SUMMARY</Text>
 
-        {/* Time display */}
-        <View style={styles.timeCard}>
-          <Text style={styles.timeLabel}>TOTAL FOCUS TIME</Text>
-          <Text style={styles.timeValue}>{formatTime(elapsedSeconds)}</Text>
+        {/* Stat capsules */}
+        <View style={styles.capsulesRow}>
+          <View style={styles.capsule}>
+            <Text style={styles.capsuleValue}>{Math.floor(elapsedSeconds / 60)}</Text>
+            <Text style={styles.capsuleLabel}>MINUTES</Text>
+          </View>
+          <View style={styles.capsule}>
+            <Text style={styles.capsuleValue}>+{Math.max(1, Math.floor(elapsedSeconds / 60 * 0.27))}px</Text>
+            <Text style={styles.capsuleLabel}>GROWTH</Text>
+          </View>
         </View>
 
         {/* Primary action */}
@@ -67,8 +72,7 @@ export default function SessionSummaryScreen() {
           onPress={handleUnlockPhotoMoment}
           activeOpacity={0.88}
         >
-          <Camera color="#000" size={18} />
-          <Text style={styles.primaryButtonText}>Unlock Photo Moment</Text>
+          <Text style={styles.primaryButtonText}>POST YOUR SESSION!</Text>
         </TouchableOpacity>
 
         {/* Secondary action */}
@@ -77,7 +81,7 @@ export default function SessionSummaryScreen() {
           onPress={handleReturnHome}
           activeOpacity={0.7}
         >
-          <Text style={styles.secondaryButtonText}>RETURN HOME</Text>
+          <Text style={styles.secondaryButtonText}>ONLY RECORD IT</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -129,37 +133,41 @@ const styles = StyleSheet.create({
     marginBottom: Space.sm,
   },
   subtitle: {
-    fontSize: 13,
-    color: Colors.muted,
-    marginBottom: Space.xxxl,
-    letterSpacing: 0.3,
-  },
-
-  // Time card
-  timeCard: {
-    backgroundColor: Colors.surface1,
-    borderWidth: 1,
-    borderColor: Colors.surfaceBorder,
-    borderRadius: Radius.xxxl,
-    paddingVertical: Space.xxxl,
-    paddingHorizontal: Space.xxl,
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: Space.xxxl,
-    ...Shadows.soft,
-  },
-  timeLabel: {
     fontSize: 9,
     fontWeight: '700',
     color: Colors.muted,
-    letterSpacing: 2,
-    marginBottom: Space.md,
+    letterSpacing: 2.5,
+    marginBottom: Space.xxxl,
   },
-  timeValue: {
-    fontSize: 56,
+
+  // Stat capsules
+  capsulesRow: {
+    flexDirection: 'row',
+    gap: Space.md,
+    width: '100%',
+    marginBottom: Space.xxxl,
+  },
+  capsule: {
+    flex: 1,
+    backgroundColor: Colors.surface1,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+    borderRadius: Radius.xxl,
+    paddingVertical: Space.xl,
+    alignItems: 'center',
+    gap: Space.xs,
+  },
+  capsuleValue: {
+    fontSize: 32,
     fontWeight: '200',
     color: Colors.ivory,
-    letterSpacing: -2,
+    letterSpacing: -1,
+  },
+  capsuleLabel: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: Colors.muted,
+    letterSpacing: 2,
   },
 
   // Buttons
@@ -184,6 +192,7 @@ const styles = StyleSheet.create({
   secondaryButton: {
     paddingVertical: Space.md,
     paddingHorizontal: Space.xl,
+    alignItems: 'center',
   },
   secondaryButtonText: {
     fontSize: 10,
