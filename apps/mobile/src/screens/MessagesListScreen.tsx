@@ -32,9 +32,27 @@ type RootStackParamList = {
   MessagesList: undefined;
   Chat: { friend: Friend };
   FindFriends: undefined;
+  FriendProfile: { friend: Friend };
 };
 
 type MessagesListNavProp = NativeStackNavigationProp<MessagesStackParamList, 'MessagesList'>;
+
+function formatTimeAgo(date: Date | string | undefined): string {
+  if (!date) return '';
+  const now = Date.now();
+  const then = new Date(date).getTime();
+  const diffSec = Math.floor((now - then) / 1000);
+  if (diffSec < 60) return 'just now';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay === 1) return 'yesterday';
+  if (diffDay < 7) return `${diffDay}d ago`;
+  const diffWeek = Math.floor(diffDay / 7);
+  return `${diffWeek}w ago`;
+}
 
 export default function MessagesListScreen() {
   const navigation = useNavigation<MessagesListNavProp>();
@@ -72,9 +90,10 @@ export default function MessagesListScreen() {
   }
 
   const getInteraction = (friend: Friend) => {
-    const photo = friend.recentMemories?.[0]?.photos?.[0]?.photoUrl;
-    if (photo) return { type: 'photo' as const, content: photo };
-    if (friend.lastMessage) return { type: 'message' as const, content: friend.lastMessage.content };
+    const memory = friend.recentMemories?.[0];
+    const photo = memory?.photos?.[0]?.photoUrl;
+    if (photo) return { type: 'photo' as const, content: photo, timestamp: memory?.timestamp };
+    if (friend.lastMessage) return { type: 'message' as const, content: friend.lastMessage.content, timestamp: friend.lastMessage.timestamp };
     return null;
   };
 
@@ -88,7 +107,7 @@ export default function MessagesListScreen() {
       {/* Search bar + Radar button */}
       <View style={styles.searchRow}>
         <View style={styles.searchBar}>
-          <Search color={Colors.text3} size={12} />
+          <Search color={Colors.text3} size={16} />
           <TextInput
             style={styles.searchInput}
             value={query}
@@ -104,7 +123,7 @@ export default function MessagesListScreen() {
           onPress={() => rootNavigation.navigate('FindFriends')}
           activeOpacity={0.7}
         >
-          <UserPlus color={Colors.gold} size={16} />
+          <UserPlus color={Colors.gold} size={20} />
         </TouchableOpacity>
       </View>
 
@@ -119,18 +138,26 @@ export default function MessagesListScreen() {
           return (
             <View style={styles.friendRow}>
               {/* Profile zone: Avatar */}
-              <TouchableOpacity activeOpacity={0.7} style={styles.avatarZone}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.avatarZone}
+                onPress={() => rootNavigation.navigate('FriendProfile', { friend: item })}
+              >
                 <HyveAvatar
                   uri={item.avatar}
                   name={item.name}
-                  size={32}
+                  size={42}
                   ringColor={Colors.online}
                 />
               </TouchableOpacity>
 
               <View style={styles.contentZone}>
                 {/* Profile zone: Name + handle */}
-                <TouchableOpacity activeOpacity={0.7} style={styles.nameRow}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  style={styles.nameRow}
+                  onPress={() => rootNavigation.navigate('FriendProfile', { friend: item })}
+                >
                   <View style={styles.nameBlock}>
                     <Text style={styles.friendName}>{item.name ?? 'Unknown'}</Text>
                     {item.userId && (
@@ -161,11 +188,25 @@ export default function MessagesListScreen() {
                         </View>
                         <Text style={styles.photoLabelText}>Last Session</Text>
                       </View>
+                      {interaction.timestamp && (
+                        <View style={styles.photoTimeBadge}>
+                          <Text style={styles.photoTimeText}>
+                            {formatTimeAgo(interaction.timestamp)}
+                          </Text>
+                        </View>
+                      )}
                     </View>
                   ) : interaction?.type === 'message' ? (
-                    <View style={styles.messageBubble}>
-                      <Text style={styles.messageText}>{interaction.content}</Text>
-                    </View>
+                    <>
+                      <View style={styles.messageBubble}>
+                        <Text style={styles.messageText}>{interaction.content}</Text>
+                      </View>
+                      {interaction.timestamp && (
+                        <Text style={styles.messageTimestamp}>
+                          {formatTimeAgo(interaction.timestamp)}
+                        </Text>
+                      )}
+                    </>
                   ) : (
                     <View style={styles.messageBubble}>
                       <Text style={styles.messageText}>
@@ -209,7 +250,7 @@ const styles = StyleSheet.create({
     paddingBottom: Space.md,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '300',
     color: Colors.text1,
     letterSpacing: -0.5,
@@ -222,7 +263,7 @@ const styles = StyleSheet.create({
     gap: Space.sm,
     paddingHorizontal: Space.lg + 8,
     marginBottom: Space.lg,
-    height: 40,
+    height: 44,
   },
   searchBar: {
     flex: 1,
@@ -239,12 +280,12 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     color: Colors.text1,
-    fontSize: 10,
+    fontSize: 14,
     padding: 0,
   },
   radarBtn: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     backgroundColor: Colors.surface1,
     borderWidth: 1,
     borderColor: Colors.glassBorder,
@@ -287,13 +328,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   friendName: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
     color: Colors.text1,
     marginBottom: 2,
   },
   friendHandle: {
-    fontSize: 10,
+    fontSize: 12,
     color: Colors.text3,
   },
 
@@ -305,17 +346,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.05)',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 18,
     borderTopLeftRadius: 0,
     alignSelf: 'flex-start',
     maxWidth: '90%',
   },
   messageText: {
-    fontSize: 11,
+    fontSize: 14,
     color: Colors.text2,
-    lineHeight: 16,
+    lineHeight: 20,
   },
 
   // Photo interaction
@@ -354,11 +395,36 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   photoLabelText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '700',
     color: '#fff',
     textTransform: 'uppercase',
     letterSpacing: 1,
+  },
+
+  // Photo time badge
+  photoTimeBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  photoTimeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#fff',
+    letterSpacing: 0.3,
+  },
+
+  // Message timestamp
+  messageTimestamp: {
+    fontSize: 11,
+    color: Colors.muted,
+    marginTop: 4,
+    paddingLeft: 2,
   },
 
   // Empty
