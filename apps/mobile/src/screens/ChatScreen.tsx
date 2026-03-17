@@ -24,7 +24,7 @@ import { API_PATHS } from '@hyve/shared';
 import { formatMessageTime } from '@hyve/utils';
 import type { Friend } from '@hyve/types';
 import HyveAvatar from '../components/ui/HyveAvatar';
-import { Clock, MapPin, Camera, Smile, Send, MoreVertical } from '../components/icons';
+import { Clock, MapPin, Camera, Smile, Send } from '../components/icons';
 import { Colors, Radius, Space, Shadows } from '../theme';
 
 type MessagesStackParamList = {
@@ -139,11 +139,6 @@ export default function ChatScreen() {
             </Text>
           </View>
         </View>
-      ),
-      headerRight: () => (
-        <TouchableOpacity style={styles.headerMoreButton} activeOpacity={0.7}>
-          <MoreVertical color={Colors.text3} size={18} />
-        </TouchableOpacity>
       ),
       headerStyle: { backgroundColor: Colors.bg1 },
       headerTintColor: Colors.ivory,
@@ -455,11 +450,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     lineHeight: 14,
   },
-  headerMoreButton: {
-    padding: Space.xs,
-    marginRight: Space.xs,
-  },
-
   // Date separator
   dateSeparatorRow: {
     alignItems: 'center',
