@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -56,6 +57,27 @@ export default function FocusSessionScreen() {
   const { isFaceDown, permissionStatus, sensorAvailable, requestPermission } = useDeviceOrientation();
   const [simulateFaceDown, setSimulateFaceDown] = useState<boolean | null>(null);
   const effectiveFaceDown = simulateFaceDown !== null ? simulateFaceDown : (isFaceDown ?? false);
+
+  // Pulse animation for timer ring
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const pulseOpacity = useRef(new Animated.Value(0.6)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.35, duration: 2000, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 2000, useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(pulseOpacity, { toValue: 0, duration: 2000, useNativeDriver: true }),
+          Animated.timing(pulseOpacity, { toValue: 0.6, duration: 2000, useNativeDriver: true }),
+        ]),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulseAnim, pulseOpacity]);
 
   const isSessionPausedByOthers = activeSession?.isPaused ?? false;
   const focusStatus =
@@ -244,10 +266,18 @@ export default function FocusSessionScreen() {
           <Hyve status={focusStatus} intensity={intensity} />
           <View style={styles.timerArea}>
             {isActive ? (
-              <>
-                <Text style={styles.activeLabel}>FOCUS MODE ACTIVE</Text>
-                <Text style={styles.timerText}>{formatTime(elapsedSeconds)}</Text>
-              </>
+              <View style={styles.timerRingContainer}>
+                <Animated.View
+                  style={[
+                    styles.timerPulseRing,
+                    { transform: [{ scale: pulseAnim }], opacity: pulseOpacity },
+                  ]}
+                />
+                <View style={styles.timerRing}>
+                  <Text style={styles.activeLabel}>RECORDING RITUAL</Text>
+                  <Text style={styles.timerText}>{formatTime(elapsedSeconds)}</Text>
+                </View>
+              </View>
             ) : (
               <Text style={styles.pausedText}>Put your phone face down…</Text>
             )}
@@ -386,15 +416,34 @@ const styles = StyleSheet.create({
     marginTop: Space.xxxl,
     alignItems: 'center',
   },
+  timerRingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timerPulseRing: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.goldDim,
+  },
+  timerRing: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    borderWidth: 1,
+    borderColor: Colors.goldDim,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   activeLabel: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '700',
     color: Colors.muted,
-    letterSpacing: 2,
-    marginBottom: Space.md,
+    letterSpacing: 2.5,
+    marginBottom: Space.sm,
   },
   timerText: {
-    fontSize: 64,
+    fontSize: 48,
     fontWeight: '200',
     color: Colors.ivory,
     letterSpacing: -2,
