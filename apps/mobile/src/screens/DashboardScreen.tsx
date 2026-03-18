@@ -350,6 +350,50 @@ export default function DashboardScreen() {
           )}
         </TouchableOpacity>
 
+        {/* Map Preview */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>MAP</Text>
+            <TouchableOpacity
+              style={styles.seeAllBtn}
+              onPress={() => (navigation as any).navigate('Map')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.sectionAction}>Explore</Text>
+              <ChevronRight size={10} color={Colors.text3} />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => (navigation as any).navigate('Map')}
+            style={styles.mapCard}
+          >
+            <MapView
+              style={styles.mapView}
+              provider={PROVIDER_DEFAULT}
+              initialRegion={TAIPEI_REGION}
+              customMapStyle={DARK_MAP_STYLE}
+              scrollEnabled={false}
+              zoomEnabled={false}
+              rotateEnabled={false}
+              pitchEnabled={false}
+              showsUserLocation={false}
+              showsCompass={false}
+              showsScale={false}
+              toolbarEnabled={false}
+              pointerEvents="none"
+            >
+              {MOCK_PLACES.map((place) => (
+                <BuildingMarker
+                  key={place.id}
+                  place={place}
+                  onPress={() => {}}
+                />
+              ))}
+            </MapView>
+          </TouchableOpacity>
+        </View>
+
         {/* Friends section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -416,7 +460,7 @@ export default function DashboardScreen() {
                       <HyveAvatar
                         uri={friend.avatar}
                         name={friend.name}
-                        size={56}
+                        size={64}
                         ringColor={ringColor}
                       />
                       {momentsCount > 0 && (
@@ -439,50 +483,6 @@ export default function DashboardScreen() {
           )}
         </View>
 
-        {/* Map Preview */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>MAP</Text>
-            <TouchableOpacity
-              style={styles.seeAllBtn}
-              onPress={() => (navigation as any).navigate('Map')}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.sectionAction}>Explore</Text>
-              <ChevronRight size={10} color={Colors.text3} />
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => (navigation as any).navigate('Map')}
-            style={styles.mapCard}
-          >
-            <MapView
-              style={styles.mapView}
-              provider={PROVIDER_DEFAULT}
-              initialRegion={TAIPEI_REGION}
-              customMapStyle={DARK_MAP_STYLE}
-              scrollEnabled={false}
-              zoomEnabled={false}
-              rotateEnabled={false}
-              pitchEnabled={false}
-              showsUserLocation={false}
-              showsCompass={false}
-              showsScale={false}
-              toolbarEnabled={false}
-              pointerEvents="none"
-            >
-              {MOCK_PLACES.map((place) => (
-                <BuildingMarker
-                  key={place.id}
-                  place={place}
-                  onPress={() => {}}
-                />
-              ))}
-            </MapView>
-          </TouchableOpacity>
-        </View>
-
         {/* Insight Ticker */}
         <Animated.View style={[styles.insightWrap, { opacity: insightOpacity }]}>
           <Text style={styles.insightText}>"{INSIGHTS[insightIndex]}"</Text>
@@ -493,7 +493,7 @@ export default function DashboardScreen() {
       <Animated.View
         style={[
           styles.floatingButtonWrap,
-          { bottom: 80 },
+          { bottom: 24 },
           { transform: [{ scale: startingSession ? 1 : pulseAnim }] },
         ]}
       >
@@ -506,7 +506,7 @@ export default function DashboardScreen() {
           {startingSession ? (
             <ActivityIndicator size="small" color="#000" />
           ) : (
-            <Play size={30} fill="#000" color="#000" style={{ marginLeft: 3 }} />
+            <Play size={20} fill="#000" color="#000" style={{ marginLeft: 2 }} />
           )}
         </TouchableOpacity>
       </Animated.View>
@@ -539,14 +539,14 @@ const styles = StyleSheet.create({
     paddingBottom: Space.xl,
   },
   dateLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '800',
     color: Colors.text3,
     letterSpacing: 2,
     marginBottom: 4,
   },
   greeting: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '300',
     color: Colors.text1,
     letterSpacing: -0.5,
@@ -574,13 +574,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   statsValue: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '300',
     color: Colors.text1,
     letterSpacing: -1,
   },
   statsLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '800',
     color: Colors.text3,
     letterSpacing: 2,
@@ -701,7 +701,7 @@ const styles = StyleSheet.create({
 
   // Section
   section: {
-    marginBottom: Space.xl,
+    marginBottom: Space.xxxl,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -711,7 +711,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Space.xs,
   },
   sectionTitle: {
-    fontSize: 10,
+    fontSize: 13,
     fontWeight: '800',
     color: Colors.text3,
     letterSpacing: 2,
@@ -722,7 +722,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   sectionAction: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '500',
     color: Colors.text3,
     opacity: 0.6,
@@ -737,11 +737,11 @@ const styles = StyleSheet.create({
   friendCircleItem: {
     alignItems: 'center',
     gap: Space.sm,
-    width: 72,
+    width: 80,
     position: 'relative',
   },
   friendName: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '500',
     color: Colors.text2,
     textAlign: 'center',
@@ -853,7 +853,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   mapView: {
-    height: 160,
+    height: 220,
     borderRadius: Radius.xxl,
   },
 
@@ -863,7 +863,7 @@ const styles = StyleSheet.create({
     paddingVertical: Space.lg,
   },
   insightText: {
-    fontSize: 12,
+    fontSize: 17,
     fontWeight: '500',
     color: Colors.text3,
     fontStyle: 'italic',
@@ -875,9 +875,9 @@ const styles = StyleSheet.create({
     right: 24,
   },
   floatingButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: Colors.gold,
     justifyContent: 'center',
     alignItems: 'center',
