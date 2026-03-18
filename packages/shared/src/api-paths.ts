@@ -52,6 +52,7 @@ export const API_PATHS = {
   USERS_ME: '/api/users/me',
   USER_PROFILE: (userId: string) => `/api/users/${userId}/profile`,
   USER_STATS: (userId: string) => `/api/users/${userId}/stats`,
+  USER_PROFILE_INSIGHTS: (userId: string) => `/api/users/${userId}/profile-insights`,
 
   // Search
   SEARCH_USERS: '/api/search/users',

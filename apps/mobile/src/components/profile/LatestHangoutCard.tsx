@@ -8,6 +8,7 @@ interface HangoutData {
   date: string;
   location: string;
   duration: string;
+  durationMinutes?: number;
   imageUrl?: string | null;
 }
 
@@ -15,7 +16,34 @@ interface LatestHangoutCardProps {
   hangout: HangoutData;
 }
 
+function formatRelativeDate(isoDate: string): string {
+  const date = new Date(isoDate);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return `Last ${days[date.getDay()]}`;
+  }
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function formatDuration(minutes: number): string {
+  if (minutes >= 60) return `${Math.round(minutes / 60)} Hours`;
+  return `${minutes} Min`;
+}
+
 export default function LatestHangoutCard({ hangout }: LatestHangoutCardProps) {
+  const displayDate = hangout.durationMinutes !== undefined
+    ? formatRelativeDate(hangout.date)
+    : hangout.date;
+  const displayDuration = hangout.durationMinutes !== undefined
+    ? formatDuration(hangout.durationMinutes)
+    : hangout.duration;
+
   return (
     <View style={styles.card}>
       {hangout.imageUrl ? (
@@ -44,14 +72,14 @@ export default function LatestHangoutCard({ hangout }: LatestHangoutCardProps) {
 
       {/* Duration badge */}
       <View style={styles.badge}>
-        <Text style={styles.badgeText}>{hangout.duration}</Text>
+        <Text style={styles.badgeText}>{displayDuration}</Text>
       </View>
 
       {/* Bottom info */}
       <View style={styles.bottomInfo}>
         <View style={styles.bottomLeft}>
           <Text style={styles.friendName}>with {hangout.friendName}</Text>
-          <Text style={styles.date}>{hangout.date}</Text>
+          <Text style={styles.date}>{displayDate}</Text>
         </View>
         <Text style={styles.location}>{hangout.location}</Text>
       </View>

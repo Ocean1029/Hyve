@@ -103,7 +103,7 @@ export default function ProfileScreen() {
   const loadProfile = async () => {
     if (!user?.id) return;
     try {
-      const [statsRes, memoriesRes, friendsRes, insightsRes] = await Promise.all([
+      const [statsRes, memoriesRes, friendsRes] = await Promise.all([
         apiClient.get<{ success: boolean; stats?: Stats }>(
           API_PATHS.USER_STATS(user.id),
         ),
@@ -111,17 +111,22 @@ export default function ProfileScreen() {
           `${API_PATHS.MEMORIES_PEAK_HAPPINESS}?limit=27`,
         ),
         apiClient.get<{ friends?: unknown[] }>(API_PATHS.FRIENDS_LIST),
-        apiClient.get<{ success: boolean } & ProfileInsights>(
-          API_PATHS.USER_PROFILE_INSIGHTS(user.id),
-        ),
       ]);
       setStats(statsRes?.stats ?? null);
       setMemories(memoriesRes?.memories ?? []);
       setFriendCount((friendsRes?.friends ?? []).length);
-      setInsights(insightsRes ?? null);
     } catch {
       setStats(null);
       setMemories([]);
+    }
+
+    // Fetch insights separately so a failure doesn't break the rest
+    try {
+      const insightsRes = await apiClient.get<{ success: boolean } & ProfileInsights>(
+        API_PATHS.USER_PROFILE_INSIGHTS(user.id),
+      );
+      setInsights(insightsRes ?? null);
+    } catch {
       setInsights(null);
     } finally {
       setLoading(false);
@@ -312,42 +317,63 @@ export default function ProfileScreen() {
           </View>
 
           {/* Latest Hangout */}
-          {insights?.latestHangout && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>LATEST HANGOUT</Text>
-              <View style={{ marginTop: Space.md }}>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>LATEST HANGOUT</Text>
+            <View style={{ marginTop: Space.md }}>
+              {insights?.latestHangout ? (
                 <LatestHangoutCard
                   hangout={{
                     ...insights.latestHangout,
                     duration: '',
                   }}
                 />
-              </View>
+              ) : (
+                <GlassCard style={styles.emptySection} radius={Radius.xxl}>
+                  <Text style={styles.emptySectionText}>No hangouts yet</Text>
+                  <Text style={styles.emptySectionSub}>
+                    Complete a focus session to see it here
+                  </Text>
+                </GlassCard>
+              )}
             </View>
-          )}
+          </View>
 
           {/* Spot Ranking */}
-          {insights?.spotRanking && insights.spotRanking.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>SPOT RANKING</Text>
-              <View style={{ marginTop: Space.md }}>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>SPOT RANKING</Text>
+            <View style={{ marginTop: Space.md }}>
+              {insights?.spotRanking && insights.spotRanking.length > 0 ? (
                 <SpotRankingList spots={insights.spotRanking} themeColor={Colors.gold} />
-              </View>
+              ) : (
+                <GlassCard style={styles.emptySection} radius={Radius.xxl}>
+                  <Text style={styles.emptySectionText}>No spots ranked yet</Text>
+                  <Text style={styles.emptySectionSub}>
+                    Visit places with friends to build your ranking
+                  </Text>
+                </GlassCard>
+              )}
             </View>
-          )}
+          </View>
 
           {/* Activity Breakdown */}
-          {insights?.activityBreakdown && insights.activityBreakdown.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>ACTIVITY TYPE</Text>
-              <View style={{ marginTop: Space.md }}>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>ACTIVITY TYPE</Text>
+            <View style={{ marginTop: Space.md }}>
+              {insights?.activityBreakdown && insights.activityBreakdown.length > 0 ? (
                 <ActivityBreakdown
                   activities={insights.activityBreakdown}
                   themeColor={Colors.gold}
                 />
-              </View>
+              ) : (
+                <GlassCard style={styles.emptySection} radius={Radius.xxl}>
+                  <Text style={styles.emptySectionText}>No activity data yet</Text>
+                  <Text style={styles.emptySectionSub}>
+                    Start focus sessions to track your activity types
+                  </Text>
+                </GlassCard>
+              )}
             </View>
-          )}
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -486,6 +512,22 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   emptyAlbumSub: {
+    fontSize: 11,
+    color: Colors.muted,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  emptySection: {
+    alignItems: 'center',
+    paddingVertical: Space.xxl,
+    gap: Space.sm,
+  },
+  emptySectionText: {
+    fontSize: 14,
+    color: Colors.text3,
+    fontWeight: '500',
+  },
+  emptySectionSub: {
     fontSize: 11,
     color: Colors.muted,
     textAlign: 'center',
