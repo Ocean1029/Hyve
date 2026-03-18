@@ -2,7 +2,7 @@
  * Root navigator. Shows Login or main app (tabs) based on auth state.
  */
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import type { NavigationContainerRefWithCurrent } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -21,10 +21,21 @@ import SessionSummaryScreen from '../screens/SessionSummaryScreen';
 import PostMemoryScreen from '../screens/PostMemoryScreen';
 import SpringBloomScreen from '../screens/SpringBloomScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import MapScreen from '../screens/MapScreen';
 import FriendProfileScreen from '../screens/FriendProfileScreen';
 import { ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
-import { Home, Users, CircleUser } from '../components/icons';
+import { Home, Users, Map, CircleUser } from '../components/icons';
 import { Colors, Shadows } from '../theme';
+
+const HyveDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: Colors.bg0,
+    card: Colors.bg1,
+    border: Colors.glassBorder,
+  },
+};
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
@@ -58,6 +69,7 @@ function MainTabs() {
   return (
     <Tab.Navigator
       initialRouteName="Dashboard"
+      sceneContainerStyle={{ backgroundColor: Colors.bg0 }}
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
@@ -98,6 +110,13 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
+        name="Map"
+        component={MapScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => <Map color={color} size={size} />,
+        }}
+      />
+      <Tab.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
@@ -124,10 +143,11 @@ export default function AppNavigator() {
   return (
     <>
       {isAuthenticated && <SessionPolling navigationRef={navigationRef} />}
-      <NavigationContainer ref={navigationRef}>
+      <NavigationContainer ref={navigationRef} theme={HyveDarkTheme}>
         <Stack.Navigator
         screenOptions={{
           headerShown: false,
+          contentStyle: { backgroundColor: Colors.bg0 },
         }}
       >
         {!isAuthenticated ? (
