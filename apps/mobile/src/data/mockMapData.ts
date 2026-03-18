@@ -32,6 +32,70 @@ export const PLACE_CATEGORIES = {
   other: { label: 'Other', color: '#64748b' },
 } as const;
 
+export const TAIPEI_REGION = {
+  latitude: 25.035,
+  longitude: 121.5555,
+  latitudeDelta: 0.05,
+  longitudeDelta: 0.05,
+};
+
+// Dark map style to match Hyve design palette
+export const DARK_MAP_STYLE = [
+  { elementType: 'geometry', stylers: [{ color: '#0C0D10' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#0C0D10' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#4a4a5a' }] },
+  {
+    featureType: 'administrative',
+    elementType: 'geometry.stroke',
+    stylers: [{ color: '#1a1b22' }],
+  },
+  {
+    featureType: 'poi',
+    elementType: 'geometry',
+    stylers: [{ color: '#121319' }],
+  },
+  {
+    featureType: 'poi',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#4a4a5a' }],
+  },
+  {
+    featureType: 'poi.park',
+    elementType: 'geometry',
+    stylers: [{ color: '#111218' }],
+  },
+  {
+    featureType: 'road',
+    elementType: 'geometry',
+    stylers: [{ color: '#1a1b25' }],
+  },
+  {
+    featureType: 'road',
+    elementType: 'geometry.stroke',
+    stylers: [{ color: '#121319' }],
+  },
+  {
+    featureType: 'road.highway',
+    elementType: 'geometry',
+    stylers: [{ color: '#22232e' }],
+  },
+  {
+    featureType: 'transit',
+    elementType: 'geometry',
+    stylers: [{ color: '#16171f' }],
+  },
+  {
+    featureType: 'water',
+    elementType: 'geometry',
+    stylers: [{ color: '#060607' }],
+  },
+  {
+    featureType: 'water',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#2a2a3a' }],
+  },
+];
+
 export const MOCK_PLACES: MapPlace[] = [
   {
     id: '1',

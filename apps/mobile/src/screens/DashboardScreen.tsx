@@ -26,7 +26,10 @@ import { ChevronDown, ChevronRight, Play } from 'lucide-react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { API_PATHS } from '@hyve/shared';
 import type { Friend, ChartDataPoint, SessionListItem, TodaySessionsResponse } from '@hyve/types';
+import MapView, { PROVIDER_DEFAULT } from 'react-native-maps';
 import HyveAvatar from '../components/ui/HyveAvatar';
+import BuildingMarker from '../components/map/BuildingMarker';
+import { MOCK_PLACES, TAIPEI_REGION, DARK_MAP_STYLE } from '../data/mockMapData';
 import { Colors, Radius, Space, Shadows } from '../theme';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -436,6 +439,50 @@ export default function DashboardScreen() {
           )}
         </View>
 
+        {/* Map Preview */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>MAP</Text>
+            <TouchableOpacity
+              style={styles.seeAllBtn}
+              onPress={() => (navigation as any).navigate('Map')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.sectionAction}>Explore</Text>
+              <ChevronRight size={10} color={Colors.text3} />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => (navigation as any).navigate('Map')}
+            style={styles.mapCard}
+          >
+            <MapView
+              style={styles.mapView}
+              provider={PROVIDER_DEFAULT}
+              initialRegion={TAIPEI_REGION}
+              customMapStyle={DARK_MAP_STYLE}
+              scrollEnabled={false}
+              zoomEnabled={false}
+              rotateEnabled={false}
+              pitchEnabled={false}
+              showsUserLocation={false}
+              showsCompass={false}
+              showsScale={false}
+              toolbarEnabled={false}
+              pointerEvents="none"
+            >
+              {MOCK_PLACES.map((place) => (
+                <BuildingMarker
+                  key={place.id}
+                  place={place}
+                  onPress={() => {}}
+                />
+              ))}
+            </MapView>
+          </TouchableOpacity>
+        </View>
+
         {/* Insight Ticker */}
         <Animated.View style={[styles.insightWrap, { opacity: insightOpacity }]}>
           <Text style={styles.insightText}>"{INSIGHTS[insightIndex]}"</Text>
@@ -798,6 +845,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.gold,
     letterSpacing: 0.5,
+  },
+
+  // Map preview
+  mapCard: {
+    borderRadius: Radius.xxl,
+    overflow: 'hidden',
+  },
+  mapView: {
+    height: 160,
+    borderRadius: Radius.xxl,
   },
 
   // Insight Ticker
