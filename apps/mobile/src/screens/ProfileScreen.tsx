@@ -31,11 +31,6 @@ import MetricCapsule from '../components/profile/MetricCapsule';
 import LatestHangoutCard from '../components/profile/LatestHangoutCard';
 import SpotRankingList from '../components/profile/SpotRankingList';
 import ActivityBreakdown from '../components/profile/ActivityBreakdown';
-import {
-  MOCK_HANGOUT,
-  MOCK_SPOTS,
-  MOCK_ACTIVITIES,
-} from '../components/profile/mockData';
 
 if (
   Platform.OS === 'android' &&
@@ -62,6 +57,30 @@ interface Memory {
   photos?: { id: string; photoUrl: string }[];
 }
 
+interface HangoutData {
+  friendName: string;
+  date: string;
+  location: string;
+  durationMinutes: number;
+  imageUrl: string | null;
+}
+
+interface SpotData {
+  name: string;
+  visits: number;
+}
+
+interface ActivityData {
+  label: string;
+  hours: number;
+}
+
+interface ProfileInsights {
+  latestHangout: HangoutData | null;
+  spotRanking: SpotData[];
+  activityBreakdown: ActivityData[];
+}
+
 const AVATAR_SIZE = 140;
 const COLLAPSED_ALBUM_COUNT = 9;
 
@@ -76,6 +95,7 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [albumExpanded, setAlbumExpanded] = useState(false);
+  const [insights, setInsights] = useState<ProfileInsights | null>(null);
 
   // Fade-in animation for album items
   const fadeAnims = useRef<Animated.Value[]>([]);
@@ -83,7 +103,7 @@ export default function ProfileScreen() {
   const loadProfile = async () => {
     if (!user?.id) return;
     try {
-      const [statsRes, memoriesRes, friendsRes] = await Promise.all([
+      const [statsRes, memoriesRes, friendsRes, insightsRes] = await Promise.all([
         apiClient.get<{ success: boolean; stats?: Stats }>(
           API_PATHS.USER_STATS(user.id),
         ),
@@ -91,13 +111,18 @@ export default function ProfileScreen() {
           `${API_PATHS.MEMORIES_PEAK_HAPPINESS}?limit=27`,
         ),
         apiClient.get<{ friends?: unknown[] }>(API_PATHS.FRIENDS_LIST),
+        apiClient.get<{ success: boolean } & ProfileInsights>(
+          API_PATHS.USER_PROFILE_INSIGHTS(user.id),
+        ),
       ]);
       setStats(statsRes?.stats ?? null);
       setMemories(memoriesRes?.memories ?? []);
       setFriendCount((friendsRes?.friends ?? []).length);
+      setInsights(insightsRes ?? null);
     } catch {
       setStats(null);
       setMemories([]);
+      setInsights(null);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -170,9 +195,6 @@ export default function ProfileScreen() {
 
         {/* Avatar section with floating capsules */}
         <View style={styles.avatarSection}>
-          {/* Gold glow behind avatar */}
-          <View style={styles.avatarGlow} pointerEvents="none" />
-
           <HyveAvatar
             uri={user?.image}
             name={user?.name}
@@ -290,31 +312,42 @@ export default function ProfileScreen() {
           </View>
 
           {/* Latest Hangout */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>LATEST HANGOUT</Text>
-            <View style={{ marginTop: Space.md }}>
-              <LatestHangoutCard hangout={MOCK_HANGOUT} />
+          {insights?.latestHangout && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>LATEST HANGOUT</Text>
+              <View style={{ marginTop: Space.md }}>
+                <LatestHangoutCard
+                  hangout={{
+                    ...insights.latestHangout,
+                    duration: '',
+                  }}
+                />
+              </View>
             </View>
-          </View>
+          )}
 
           {/* Spot Ranking */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>SPOT RANKING</Text>
-            <View style={{ marginTop: Space.md }}>
-              <SpotRankingList spots={MOCK_SPOTS} themeColor={Colors.gold} />
+          {insights?.spotRanking && insights.spotRanking.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>SPOT RANKING</Text>
+              <View style={{ marginTop: Space.md }}>
+                <SpotRankingList spots={insights.spotRanking} themeColor={Colors.gold} />
+              </View>
             </View>
-          </View>
+          )}
 
           {/* Activity Breakdown */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>ACTIVITY TYPE</Text>
-            <View style={{ marginTop: Space.md }}>
-              <ActivityBreakdown
-                activities={MOCK_ACTIVITIES}
-                themeColor={Colors.gold}
-              />
+          {insights?.activityBreakdown && insights.activityBreakdown.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>ACTIVITY TYPE</Text>
+              <View style={{ marginTop: Space.md }}>
+                <ActivityBreakdown
+                  activities={insights.activityBreakdown}
+                  themeColor={Colors.gold}
+                />
+              </View>
             </View>
-          </View>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -354,15 +387,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Space.xxxl,
     position: 'relative',
     minHeight: AVATAR_SIZE + 80,
-  },
-  avatarGlow: {
-    position: 'absolute',
-    top: Space.xl,
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: Colors.goldFaint,
-    alignSelf: 'center',
   },
 
   // Identity
