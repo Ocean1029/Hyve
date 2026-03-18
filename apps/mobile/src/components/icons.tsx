@@ -50,4 +50,5 @@ export {
   FileText,
   Building,
   CircleUser,
+  Map,
 } from 'lucide-react-native';

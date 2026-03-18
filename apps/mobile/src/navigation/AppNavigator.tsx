@@ -69,7 +69,6 @@ function MainTabs() {
   return (
     <Tab.Navigator
       initialRouteName="Dashboard"
-      sceneContainerStyle={{ backgroundColor: Colors.bg0 }}
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,

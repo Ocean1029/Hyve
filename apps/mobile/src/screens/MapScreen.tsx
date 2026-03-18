@@ -1,0 +1,164 @@
+/**
+ * Map screen — displays visited places as colored bar markers on a dark map.
+ */
+import React, { useMemo, useState } from 'react';
+import { View, StyleSheet } from 'react-native';
+import MapView, { PROVIDER_DEFAULT } from 'react-native-maps';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Colors } from '../theme';
+import { MOCK_PLACES } from '../data/mockMapData';
+import type { MapPlace } from '../data/mockMapData';
+import BuildingMarker from '../components/map/BuildingMarker';
+import TimeFilterBar from '../components/map/TimeFilterBar';
+import type { TimeFilter } from '../components/map/TimeFilterBar';
+import PlaceCard from '../components/map/PlaceCard';
+
+const TAIPEI_REGION = {
+  latitude: 25.035,
+  longitude: 121.5555,
+  latitudeDelta: 0.05,
+  longitudeDelta: 0.05,
+};
+
+// Dark map style to match Hyve design palette
+const DARK_MAP_STYLE = [
+  { elementType: 'geometry', stylers: [{ color: '#0C0D10' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#0C0D10' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#4a4a5a' }] },
+  {
+    featureType: 'administrative',
+    elementType: 'geometry.stroke',
+    stylers: [{ color: '#1a1b22' }],
+  },
+  {
+    featureType: 'poi',
+    elementType: 'geometry',
+    stylers: [{ color: '#121319' }],
+  },
+  {
+    featureType: 'poi',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#4a4a5a' }],
+  },
+  {
+    featureType: 'poi.park',
+    elementType: 'geometry',
+    stylers: [{ color: '#111218' }],
+  },
+  {
+    featureType: 'road',
+    elementType: 'geometry',
+    stylers: [{ color: '#1a1b25' }],
+  },
+  {
+    featureType: 'road',
+    elementType: 'geometry.stroke',
+    stylers: [{ color: '#121319' }],
+  },
+  {
+    featureType: 'road.highway',
+    elementType: 'geometry',
+    stylers: [{ color: '#22232e' }],
+  },
+  {
+    featureType: 'transit',
+    elementType: 'geometry',
+    stylers: [{ color: '#16171f' }],
+  },
+  {
+    featureType: 'water',
+    elementType: 'geometry',
+    stylers: [{ color: '#060607' }],
+  },
+  {
+    featureType: 'water',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: '#2a2a3a' }],
+  },
+];
+
+export default function MapScreen() {
+  const insets = useSafeAreaInsets();
+  const [selectedPlace, setSelectedPlace] = useState<MapPlace | null>(null);
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
+
+  const getVisitCount = (place: MapPlace) => {
+    switch (timeFilter) {
+      case 'week':
+        return place.visitsThisWeek;
+      case 'month':
+        return place.visitsThisMonth;
+      default:
+        return place.visitCount;
+    }
+  };
+
+  const filteredPlaces = useMemo(
+    () => MOCK_PLACES.filter((p) => getVisitCount(p) > 0),
+    [timeFilter],
+  );
+
+  const handleFilterChange = (filter: TimeFilter) => {
+    setTimeFilter(filter);
+    if (selectedPlace && getVisitCount(selectedPlace) === 0) {
+      setSelectedPlace(null);
+    }
+  };
+
+  return (
+    <View style={styles.root}>
+      <MapView
+        style={StyleSheet.absoluteFillObject}
+        provider={PROVIDER_DEFAULT}
+        initialRegion={TAIPEI_REGION}
+        customMapStyle={DARK_MAP_STYLE}
+        showsUserLocation={false}
+        showsCompass={false}
+        showsScale={false}
+        toolbarEnabled={false}
+        onPress={() => setSelectedPlace(null)}
+      >
+        {filteredPlaces.map((place) => (
+          <BuildingMarker
+            key={place.id}
+            place={place}
+            displayCount={getVisitCount(place)}
+            onPress={setSelectedPlace}
+          />
+        ))}
+      </MapView>
+
+      {/* Time filter bar */}
+      <View style={[styles.filterContainer, { top: insets.top + 12 }]}>
+        <TimeFilterBar value={timeFilter} onChange={handleFilterChange} />
+      </View>
+
+      {/* Place card */}
+      {selectedPlace && (
+        <View style={[styles.cardContainer, { bottom: insets.bottom + 12 }]}>
+          <PlaceCard
+            place={selectedPlace}
+            displayCount={getVisitCount(selectedPlace)}
+            onClose={() => setSelectedPlace(null)}
+          />
+        </View>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: Colors.bg0,
+  },
+  filterContainer: {
+    position: 'absolute',
+    alignSelf: 'center',
+  },
+  cardContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+  },
+});
