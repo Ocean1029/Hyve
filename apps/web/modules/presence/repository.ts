@@ -1,29 +1,24 @@
 // modules/presence/repository.ts
 import prisma from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
 
 /**
  * Update user's last seen timestamp and record heartbeat
  */
 export const updateLastSeen = async (userId: string) => {
   const now = new Date();
-  
-  // Use transaction to ensure both operations succeed
-  return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    // Update user's lastSeenAt
-    await tx.user.update({
+
+  await Promise.all([
+    prisma.user.update({
       where: { id: userId },
       data: { lastSeenAt: now },
-    });
-    
-    // Record heartbeat in Heartbeat table
-    await tx.heartbeat.create({
+    }),
+    prisma.heartbeat.create({
       data: {
         userId: userId,
         timestamp: now,
       },
-    });
-  });
+    }),
+  ]);
 };
 
 /**
