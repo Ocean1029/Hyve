@@ -468,14 +468,13 @@ export default function FindFriendsScreen() {
             />
           ))}
 
-          {/* Gold sector sweep */}
+          {/* Rotating scan line */}
           <Animated.View
             style={[
               styles.scanLineWrap,
               { transform: [{ rotate: scanSpin }] },
             ]}
           >
-            <View style={styles.sweepSector} />
             <View style={styles.scanLine} />
           </Animated.View>
 
@@ -648,17 +647,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 256,
     height: 256,
-    borderRadius: 128,
-    overflow: 'hidden',
-  },
-  sweepSector: {
-    position: 'absolute',
-    width: 128,
-    height: 128,
-    top: 128,
-    left: 0,
-    backgroundColor: 'rgba(201,168,106,0.10)',
-    borderTopRightRadius: 128,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scanLine: {
     width: 128,
@@ -666,7 +656,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: '50%',
     right: '50%',
-    backgroundColor: 'rgba(201,168,106,0.35)',
+    backgroundColor: Colors.gold,
+    opacity: 0.5,
     borderRadius: 1,
   },
   centerNode: {

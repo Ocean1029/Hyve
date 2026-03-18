@@ -52,7 +52,7 @@ export default function FriendProfileScreen() {
   const route = useRoute<FriendProfileScreenRouteProp>();
   const navigation = useNavigation();
   const { friend } = route.params;
-  const { apiClient } = useAuth();
+  const { apiClient, user: currentUser } = useAuth();
   const [iceBreaker, setIceBreaker] = useState<string | null>(null);
   const [loadingIceBreaker, setLoadingIceBreaker] = useState(false);
   const [albumExpanded, setAlbumExpanded] = useState(false);
@@ -87,6 +87,30 @@ export default function FriendProfileScreen() {
   }, [recentMemories]);
 
   const displayedPhotos = albumExpanded ? allPhotos : allPhotos.slice(0, 9);
+
+  // Aggregate spot ranking from memory locations
+  const spotRanking = useMemo(() => {
+    const counts: Record<string, number> = {};
+    recentMemories.forEach((m) => {
+      if (m.location) counts[m.location] = (counts[m.location] ?? 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([name, visits]) => ({ name, visits }))
+      .sort((a, b) => b.visits - a.visits)
+      .slice(0, 5);
+  }, [recentMemories]);
+
+  // Aggregate activity types from memory types
+  const activityTypes = useMemo(() => {
+    const hours: Record<string, number> = {};
+    recentMemories.forEach((m) => {
+      const label = (m.type ?? 'other').charAt(0).toUpperCase() + (m.type ?? 'other').slice(1);
+      hours[label] = (hours[label] ?? 0) + (m.focusSessionMinutes ?? 0);
+    });
+    return Object.entries(hours)
+      .map(([label, minutes]) => ({ label, hours: Math.round(minutes / 60 * 10) / 10 }))
+      .sort((a, b) => b.hours - a.hours);
+  }, [recentMemories]);
 
   // Latest memory with photo
   const latestMemory = recentMemories[0] ?? null;
@@ -133,6 +157,13 @@ export default function FriendProfileScreen() {
           <Text style={styles.handle}>@{friend.userId}</Text>
         )}
 
+        {/* Quote */}
+        {totalHours > 0 && (
+          <Text style={styles.quote}>
+            "{totalHours}h of presence shared together"
+          </Text>
+        )}
+
         {/* Streak badge */}
         {streak > 0 && (
           <View style={styles.streakBadge}>
@@ -141,6 +172,9 @@ export default function FriendProfileScreen() {
           </View>
         )}
       </View>
+
+      {/* Pull handle */}
+      <View style={styles.pullHandle} />
 
       {/* Metric Capsules — 2x2 grid */}
       <View style={styles.capsulesGrid}>
@@ -242,16 +276,15 @@ export default function FriendProfileScreen() {
             {/* Bottom info */}
             <View style={styles.momentInfo}>
               <View>
+                <Text style={styles.momentWith}>
+                  with {currentUser?.name?.split(' ')[0] ?? 'you'}
+                </Text>
                 <Text style={styles.momentTimeAgo}>
                   {formatTimeAgo(
                     latestMemory.timestamp instanceof Date
                       ? latestMemory.timestamp
                       : new Date(latestMemory.timestamp as string)
                   )}
-                </Text>
-                <Text style={styles.momentType}>
-                  {(latestMemory.type ?? 'moment').charAt(0).toUpperCase() +
-                    (latestMemory.type ?? 'moment').slice(1)}
                 </Text>
               </View>
               {latestMemory.location && (
@@ -260,6 +293,92 @@ export default function FriendProfileScreen() {
                 </Text>
               )}
             </View>
+          </View>
+        </View>
+      )}
+
+      {/* Shared Spot Ranking */}
+      {spotRanking.length > 0 && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { marginBottom: Space.md }]}>
+            SHARED SPOT RANKING
+          </Text>
+          <View style={styles.rankingList}>
+            {spotRanking.map((spot, i) => {
+              const rank = i + 1;
+              const isFirst = rank === 1;
+              return (
+                <View
+                  key={spot.name}
+                  style={[styles.rankingItem, !isFirst && styles.rankingItemDim]}
+                >
+                  <View style={styles.rankingLeft}>
+                    <View
+                      style={[
+                        styles.rankCircle,
+                        isFirst && styles.rankCircleFirst,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.rankNumber,
+                          isFirst && styles.rankNumberFirst,
+                        ]}
+                      >
+                        {rank}
+                      </Text>
+                    </View>
+                    <Text
+                      style={[
+                        styles.rankName,
+                        isFirst && styles.rankNameFirst,
+                      ]}
+                    >
+                      {spot.name}
+                    </Text>
+                  </View>
+                  <View style={styles.rankingRight}>
+                    <Text
+                      style={[
+                        styles.rankVisits,
+                        isFirst && styles.rankVisitsFirst,
+                      ]}
+                    >
+                      {spot.visits}
+                    </Text>
+                    <Text style={styles.rankVisitsLabel}>TOGETHER</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
+      {/* Together Type */}
+      {activityTypes.length > 0 && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { marginBottom: Space.md }]}>
+            TOGETHER TYPE
+          </Text>
+          <View style={styles.activityList}>
+            {activityTypes.map((act) => {
+              const maxHours = activityTypes[0]?.hours || 1;
+              const pct = Math.min((act.hours / maxHours) * 100, 100);
+              return (
+                <View key={act.label} style={styles.activityRow}>
+                  <View style={styles.activityHeader}>
+                    <Text style={styles.activityLabel}>{act.label}</Text>
+                    <Text style={styles.activityHours}>{act.hours} Hours</Text>
+                  </View>
+                  <View style={styles.activityBarBg}>
+                    <View
+                      style={[styles.activityBarFill, { width: `${pct}%` }]}
+                    />
+                  </View>
+                </View>
+              );
+            })}
           </View>
         </View>
       )}
@@ -360,6 +479,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: Colors.text3,
+    marginBottom: Space.sm,
+  },
+  quote: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: Colors.text2,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    maxWidth: 220,
+    lineHeight: 20,
+    opacity: 0.75,
     marginBottom: Space.md,
   },
   streakBadge: {
@@ -378,6 +508,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.gold,
     letterSpacing: 0.3,
+  },
+
+  pullHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    alignSelf: 'center',
+    marginBottom: Space.xxl,
+    opacity: 0.5,
   },
 
   // Metric Capsules
@@ -530,13 +670,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-end',
   },
-  momentTimeAgo: {
-    fontSize: 12,
+  momentWith: {
+    fontSize: 13,
     fontWeight: '500',
     color: Colors.text2,
     marginBottom: 2,
   },
-  momentType: {
+  momentTimeAgo: {
     fontSize: 18,
     fontWeight: '800',
     color: Colors.text1,
@@ -549,6 +689,119 @@ const styles = StyleSheet.create({
     color: Colors.text3,
     letterSpacing: -0.3,
     textTransform: 'uppercase',
+  },
+
+  // Shared Spot Ranking
+  rankingList: {
+    gap: Space.sm,
+  },
+  rankingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surface1,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    borderRadius: Radius.xxl,
+    paddingHorizontal: Space.lg,
+    paddingVertical: Space.lg,
+  },
+  rankingItemDim: {
+    borderColor: Colors.glassBorder,
+    opacity: 0.8,
+  },
+  rankingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.lg,
+  },
+  rankCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rankCircleFirst: {
+    backgroundColor: Colors.goldFaint,
+    borderColor: Colors.goldDim,
+  },
+  rankNumber: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.text1,
+  },
+  rankNumberFirst: {
+    color: Colors.gold,
+  },
+  rankName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.text2,
+  },
+  rankNameFirst: {
+    fontWeight: '700',
+    color: Colors.text1,
+  },
+  rankingRight: {
+    alignItems: 'flex-end',
+  },
+  rankVisits: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: Colors.text1,
+  },
+  rankVisitsFirst: {
+    color: Colors.gold,
+  },
+  rankVisitsLabel: {
+    fontSize: 7,
+    fontWeight: '800',
+    color: Colors.text3,
+    letterSpacing: 1,
+    marginTop: 1,
+  },
+
+  // Together Type
+  activityList: {
+    gap: Space.lg,
+  },
+  activityRow: {
+    gap: Space.sm + 2,
+  },
+  activityHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 2,
+  },
+  activityLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: Colors.text1,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  activityHours: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.text3,
+    letterSpacing: -0.3,
+    textTransform: 'uppercase',
+  },
+  activityBarBg: {
+    height: 4,
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  activityBarFill: {
+    height: '100%',
+    backgroundColor: Colors.gold,
+    borderRadius: 2,
   },
 
   // Timeline
