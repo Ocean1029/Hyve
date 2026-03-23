@@ -57,7 +57,7 @@ export default function MetricCapsule({
       ]}
     >
       <View style={styles.row}>
-        <Icon color={themeColor} size={14} />
+        <Icon color={themeColor} size={18} />
         <Text style={[styles.value, { color: themeColor }]}>{value}</Text>
       </View>
       <Text style={[styles.label, { color: themeColor }]}>{label}</Text>
@@ -70,21 +70,21 @@ const styles = StyleSheet.create({
     position: 'absolute',
     borderWidth: 1,
     borderRadius: 9999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     alignItems: 'center',
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
   },
   value: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '700',
   },
   label: {
-    fontSize: 7,
+    fontSize: 9,
     fontWeight: '700',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
