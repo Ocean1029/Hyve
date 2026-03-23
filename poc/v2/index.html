@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+   <meta charset="utf-8" />
+   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+   <title>HYVE</title>
+   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+   <!-- Preconnect for Google Fonts -->
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <!-- Import Inter font family for premium UI feel -->
+   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  
+   <script src="https://cdn.tailwindcss.com"></script>
+   <script>
+     tailwind.config = {
+       theme: {
+         extend: {
+           colors: {
+             hyve: {
+               bg0: 'var(--hyve-bg0)', 
+               bg1: 'var(--hyve-bg1)', 
+               bg2: 'var(--hyve-bg2)', 
+              
+               surface1: 'var(--hyve-surface1)',
+               surface2: 'var(--hyve-surface2)',
+               surfaceBorder: 'var(--hyve-surfaceBorder)',
+              
+               text1: 'var(--hyve-text1)', 
+               text2: 'var(--hyve-text2)', 
+               text3: 'var(--hyve-text3)', 
+               muted: 'var(--hyve-muted)',
+              
+               gold: '#C9A86A', 
+               goldSoft: 'rgba(201, 168, 106, 0.25)',
+               ivory: '#E6E1D8', 
+             }
+           },
+           fontFamily: {
+             sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+           },
+           letterSpacing: {
+             tighter: '-0.04em',
+             tight: '-0.02em',
+             normal: '0em',
+             wide: '0.02em',
+             wider: '0.04em',
+             widest: '0.1em',
+           },
+           backgroundImage: {
+             'museum-gradient': 'linear-gradient(to bottom, var(--hyve-bg1), var(--hyve-bg0))',
+             'wedge-gradient': 'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))',
+           },
+           boxShadow: {
+             'soft': 'var(--hyve-shadow-soft)',
+             'press': 'var(--hyve-shadow-press)',
+             'gold-glow': '0 0 15px rgba(201, 168, 106, 0.3)',
+           },
+           animation: {
+             'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+             'float': 'float 6s ease-in-out infinite',
+             'flip-in': 'flip-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',
+           },
+           keyframes: {
+             float: {
+               '0%, 100%': { transform: 'translateY(0)' },
+               '50%': { transform: 'translateY(-10px)' },
+             },
+             'flip-in': {
+               '0%': { opacity: '0', transform: 'rotateX(-90deg) translateY(10px)' },
+               '100%': { opacity: '1', transform: 'rotateX(0deg) translateY(0)' },
+             }
+           }
+         },
+       },
+     }
+   </script>
+   <style>
+     :root {
+       --hyve-bg0: #060607;
+       --hyve-bg1: #0C0D10;
+       --hyve-bg2: #121319;
+       --hyve-surface1: rgba(255, 255, 255, 0.05);
+       --hyve-surface2: rgba(255, 255, 255, 0.08);
+       --hyve-surfaceBorder: rgba(255, 255, 255, 0.10);
+       --hyve-text1: rgba(255, 255, 255, 0.95);
+       --hyve-text2: rgba(255, 255, 255, 0.75);
+       --hyve-text3: rgba(255, 255, 255, 0.45);
+       --hyve-muted: rgba(255, 255, 255, 0.30);
+       --hyve-shadow-soft: 0 12px 40px rgba(0,0,0,0.45);
+       --hyve-shadow-press: 0 6px 20px rgba(0,0,0,0.6);
+       --hyve-glass-bg: rgba(255, 255, 255, 0.05);
+       --hyve-glass-border: rgba(255, 255, 255, 0.04);
+       --hyve-glass-input: rgba(255, 255, 255, 0.08);
+       --hyve-glass-input-border: rgba(255, 255, 255, 0.1);
+     }
+
+     .light-mode {
+       --hyve-bg0: #FFFFFF;
+       --hyve-bg1: #F2F4F7;
+       --hyve-bg2: #E9ECEF;
+       --hyve-surface1: rgba(0, 0, 0, 0.05);
+       --hyve-surface2: rgba(0, 0, 0, 0.08);
+       --hyve-surfaceBorder: rgba(0, 0, 0, 0.12);
+       --hyve-text1: #1A1C1E;
+       --hyve-text2: #44474E;
+       --hyve-text3: #74777F;
+       --hyve-muted: #8E9199;
+       --hyve-shadow-soft: 0 8px 32px rgba(0,0,0,0.08);
+       --hyve-shadow-press: 0 4px 12px rgba(0,0,0,0.12);
+       --hyve-glass-bg: rgba(255, 255, 255, 0.85);
+       --hyve-glass-border: rgba(0, 0, 0, 0.08);
+       --hyve-glass-input: rgba(0, 0, 0, 0.03);
+       --hyve-glass-input-border: rgba(0, 0, 0, 0.1);
+     }
+
+     html, body {
+       background-color: var(--hyve-bg1);
+       margin: 0;
+       padding: 0;
+       height: 100%;
+       display: flex;
+       align-items: center;
+       justify-content: center;
+       font-family: 'Inter', sans-serif;
+       overflow: hidden;
+       transition: background-color 0.3s ease;
+     }
+
+
+     /* Fixed Phone Dimension Container: 3.02in x 6.30in (Approx 290px x 605px) */
+     #root {
+       width: 290px;
+       height: 605px;
+       background-color: var(--hyve-bg0);
+       color: var(--hyve-text2);
+       -webkit-font-smoothing: antialiased;
+       position: relative;
+       overflow: hidden;
+       border: 10px solid #1a1c22;
+       border-radius: 44px;
+       box-shadow:
+         0 0 0 2px #2a2c32,
+         0 20px 80px rgba(0,0,0,0.9),
+         inset 0 0 10px rgba(0,0,0,0.5);
+       transition: background-color 0.3s ease, color 0.3s ease;
+     }
+
+
+     /* Inner Screen Glow */
+     #root::before {
+       content: '';
+       position: absolute;
+       inset: 0;
+       box-shadow: inset 0 0 1px 1px rgba(255,255,255,0.05);
+       border-radius: 34px;
+       pointer-events: none;
+       z-index: 1000;
+     }
+
+
+     /* Device Notch Simulation */
+     #root::after {
+       content: '';
+       position: absolute;
+       top: 0;
+       left: 50%;
+       transform: translateX(-50%);
+       width: 100px;
+       height: 18px;
+       background: #1a1c22;
+       border-bottom-left-radius: 12px;
+       border-bottom-right-radius: 12px;
+       z-index: 1001;
+     }
+
+
+     ::-webkit-scrollbar {
+       width: 0px;
+       background: transparent;
+     }
+     .glass-panel {
+       background: var(--hyve-glass-bg);
+       backdrop-filter: blur(24px);
+       -webkit-backdrop-filter: blur(24px);
+       border: 1px solid var(--hyve-glass-border);
+     }
+     .glass-input {
+       background: var(--hyve-glass-input);
+       backdrop-filter: blur(12px);
+       border: 1px solid var(--hyve-glass-input-border);
+       color: var(--hyve-text1);
+     }
+     .no-scrollbar::-webkit-scrollbar {
+       display: none;
+     }
+     .no-scrollbar {
+       -ms-overflow-style: none;
+       scrollbar-width: none;
+     }
+
+     @keyframes jiggle {
+       0%, 100% { transform: rotate(-1deg); }
+       50% { transform: rotate(1deg); }
+     }
+     .animate-jiggle {
+       animation: jiggle 0.3s ease-in-out infinite;
+     }
+
+     @keyframes rainbow-border {
+       0% { background-position: 0% 50%; }
+       50% { background-position: 100% 50%; }
+       100% { background-position: 0% 50%; }
+     }
+     .animate-rainbow-border {
+       background-size: 200% 200%;
+       animation: rainbow-border 3s linear infinite;
+     }
+   </style>
+ <script type="importmap">
+{
+ "imports": {
+   "react": "https://esm.sh/react@^18.2.0",
+   "react/": "https://esm.sh/react@^18.2.0/",
+   "lucide-react": "https://esm.sh/lucide-react@^0.263.1",
+   "react-dom/": "https://esm.sh/react-dom@^18.2.0/",
+   "leaflet": "https://unpkg.com/leaflet@1.9.4/dist/leaflet-src.esm.js",
+   "react-dom": "https://esm.sh/react-dom@^18.2.0"
+ }
+}
+</script>
+</head>
+ <body>
+   <div id="root"></div>
+ <script type="module" src="/index.tsx"></script>
+</body>
+</html>

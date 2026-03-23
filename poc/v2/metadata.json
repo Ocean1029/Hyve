@@ -1,0 +1,7 @@
+{
+  "name": "HYVE Official",
+  "description": "A social presence app focused on calmness, deep connection, and focused time memory tracking using abstract architectural visualizations.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
