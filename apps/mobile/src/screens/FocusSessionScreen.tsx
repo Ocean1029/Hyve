@@ -1,6 +1,6 @@
 /**
- * Focus Session screen. Stopwatch-style focus with Hyve campfire.
- * Auto-enters when session detected via polling or started from Dashboard.
+ * Focus Session screen — ver2 Step1InSession style.
+ * Campfire Hyve component center-stage, gold timer, end button.
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -18,8 +19,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_PATHS } from '@hyve/shared';
 import { FocusStatus } from '@hyve/types';
 import { Sparkles } from '../components/icons';
-import Hyve from '../components/Hyve';
 import { useDeviceOrientation } from '../hooks/useDeviceOrientation';
+import { Colors, Radius, Space, Shadows } from '../theme';
 
 import type { RootStackParamList } from '../navigation/types';
 
@@ -56,6 +57,27 @@ export default function FocusSessionScreen() {
   const [simulateFaceDown, setSimulateFaceDown] = useState<boolean | null>(null);
   const effectiveFaceDown = simulateFaceDown !== null ? simulateFaceDown : (isFaceDown ?? false);
 
+  // Pulse animation for timer ring
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const pulseOpacity = useRef(new Animated.Value(0.6)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.35, duration: 2000, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 2000, useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(pulseOpacity, { toValue: 0, duration: 2000, useNativeDriver: true }),
+          Animated.timing(pulseOpacity, { toValue: 0.6, duration: 2000, useNativeDriver: true }),
+        ]),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulseAnim, pulseOpacity]);
+
   const isSessionPausedByOthers = activeSession?.isPaused ?? false;
   const focusStatus =
     effectiveFaceDown && !isSessionPausedByOthers ? FocusStatus.ACTIVE : FocusStatus.PAUSED;
@@ -80,20 +102,21 @@ export default function FocusSessionScreen() {
         if (!sessionStartTime && (s as { startTime?: string }).startTime) {
           setSessionStartTime(new Date((s as { startTime?: string }).startTime!));
         }
-      } else {
+      } else if (!params?.autoEntered) {
         setActiveSession(null);
         setSessionStartTime(null);
       }
     } catch {
-      setActiveSession(null);
+      if (!params?.autoEntered) {
+        setActiveSession(null);
+      }
     }
   }, [apiClient, user?.id, sessionStartTime]);
 
-  // Auto-enter from polling or Dashboard direct start
   useEffect(() => {
-    if (params?.sessionId && params?.autoEntered) {
+    if (params?.autoEntered) {
       setActiveSession({
-        sessionId: params.sessionId,
+        sessionId: params.sessionId ?? '',
         status: 'active',
         isPaused: false,
         startTime: params.startTime,
@@ -104,11 +127,14 @@ export default function FocusSessionScreen() {
     }
   }, [params?.sessionId, params?.autoEntered, params?.startTime]);
 
+  // Poll to sync session state (and resolve sessionId when auto-entered without one)
+  const hasActiveSession = !!activeSession;
   useEffect(() => {
-    if (!activeSession) return;
+    if (!hasActiveSession) return;
+    pollActiveSession();
     const interval = setInterval(pollActiveSession, 5000);
     return () => clearInterval(interval);
-  }, [activeSession, pollActiveSession]);
+  }, [hasActiveSession, pollActiveSession]);
 
   // Elapsed time ticker
   useEffect(() => {
@@ -125,7 +151,7 @@ export default function FocusSessionScreen() {
     return () => clearInterval(interval);
   }, [activeSession, sessionStartTime, totalPausedSeconds]);
 
-  // Track paused time from face-up orientation
+  // Track paused time
   useEffect(() => {
     if (focusStatus === FocusStatus.PAUSED && pauseStartTimeRef.current === null) {
       pauseStartTimeRef.current = new Date();
@@ -186,276 +212,292 @@ export default function FocusSessionScreen() {
   if (!activeSession) {
     return (
       <View style={[styles.centered, { paddingTop: insets.top }]}>
-        <ActivityIndicator size="large" color="#fff" />
+        <ActivityIndicator size="large" color={Colors.gold} />
       </View>
     );
   }
 
-  const intensity = Math.min((elapsedSeconds / 60) * 10, 100);
+  const isActive = focusStatus === FocusStatus.ACTIVE;
 
   return (
-    <View style={styles.focusModeContainer}>
-      <View style={styles.focusOverlay} />
-      <View style={[styles.focusContent, { paddingTop: insets.top }]}>
-        <View style={styles.sensorBadge}>
+    <View style={styles.container}>
+      {/* Subtle ambient glow */}
+      <View style={[styles.ambientGlow, isActive && styles.ambientGlowActive]} />
+
+      <View style={[styles.content, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }]}>
+
+        {/* Sensor status badge (top left) */}
+        <View style={styles.topLeft}>
           {permissionStatus === 'prompt' && (
-            <TouchableOpacity style={styles.enableSensorBtn} onPress={requestPermission}>
-              <Text style={styles.enableSensorText}>Enable Sensor</Text>
+            <TouchableOpacity style={styles.sensorBadge} onPress={requestPermission} activeOpacity={0.8}>
+              <Text style={styles.sensorBadgeText}>Enable Sensor</Text>
             </TouchableOpacity>
           )}
           {sensorAvailable && permissionStatus === 'granted' && (
-            <View style={styles.sensorActive}>
-              <Text style={styles.sensorActiveText}>Sensor Active</Text>
+            <View style={[styles.sensorBadge, styles.sensorBadgeActive]}>
+              <Text style={[styles.sensorBadgeText, styles.sensorBadgeActiveText]}>Sensor Active</Text>
             </View>
           )}
           {permissionStatus === 'unavailable' && (
-            <View style={styles.sensorNa}>
-              <Text style={styles.sensorNaText}>Sensor N/A</Text>
+            <View style={[styles.sensorBadge, styles.sensorBadgeMuted]}>
+              <Text style={[styles.sensorBadgeText, styles.sensorBadgeMutedText]}>Sensor N/A</Text>
             </View>
           )}
           {permissionStatus === 'denied' && (
-            <View style={styles.sensorDenied}>
-              <Text style={styles.sensorDeniedText}>Sensor Denied</Text>
+            <View style={[styles.sensorBadge, styles.sensorBadgeDenied]}>
+              <Text style={[styles.sensorBadgeText, styles.sensorBadgeDeniedText]}>Sensor Denied</Text>
             </View>
           )}
         </View>
 
+        {/* Orientation debug toggle (top right) */}
         <TouchableOpacity
-          style={styles.simulateBtn}
+          style={styles.topRight}
           onPress={() => setSimulateFaceDown((v) => (v === null ? false : !v))}
+          activeOpacity={0.7}
         >
-          <View style={[styles.simulateDot, effectiveFaceDown && styles.simulateDotDown]} />
+          <View style={[styles.toggleDot, effectiveFaceDown && styles.toggleDotActive]} />
         </TouchableOpacity>
 
-        <View style={styles.hyveSection}>
-          <Hyve status={focusStatus} intensity={intensity} />
-          <View style={styles.timerSection}>
-            {focusStatus === FocusStatus.ACTIVE ? (
-              <>
-                <Text style={styles.focusActiveLabel}>Focus Mode Active</Text>
-                <Text style={styles.elapsedTime}>{formatTime(elapsedSeconds)}</Text>
-              </>
+        {/* Timer center */}
+        <View style={styles.campfireSection}>
+          <View style={styles.timerArea}>
+            {isActive ? (
+              <View style={styles.timerRingContainer}>
+                <Animated.View
+                  style={[
+                    styles.timerPulseRing,
+                    { transform: [{ scale: pulseAnim }], opacity: pulseOpacity },
+                  ]}
+                />
+                <View style={styles.timerRing}>
+                  <Text style={styles.activeLabel}>RECORDING RITUAL</Text>
+                  <Text style={styles.timerText}>{formatTime(elapsedSeconds)}</Text>
+                </View>
+              </View>
             ) : (
-              <Text style={styles.putDownText}>Put your phone down...</Text>
+              <Text style={styles.pausedText}>Put your phone face down…</Text>
             )}
           </View>
         </View>
 
-        {focusStatus === FocusStatus.PAUSED && (
-          <View style={styles.iceBreakerSection}>
-            {iceBreaker ? (
-              <>
-                <Text style={styles.iceBreakerText}>"{iceBreaker}"</Text>
-                <TouchableOpacity
-                  style={styles.sparkButton}
-                  onPress={handleSparkConversation}
-                  disabled={loadingIceBreaker}
-                >
-                  <Sparkles color="#a1a1aa" size={16} />
-                  <Text style={styles.sparkButtonText}>
-                    {loadingIceBreaker ? 'Thinking...' : 'Get another topic'}
-                  </Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <TouchableOpacity
-                style={styles.sparkButton}
-                onPress={handleSparkConversation}
-                disabled={loadingIceBreaker}
-              >
-                {loadingIceBreaker ? (
-                  <ActivityIndicator size="small" color="#a1a1aa" />
-                ) : (
-                  <Sparkles color="#a1a1aa" size={16} />
-                )}
-                <Text style={styles.sparkButtonText}>
-                  {loadingIceBreaker ? 'Thinking...' : 'Awkward silence? Spark a topic'}
-                </Text>
-              </TouchableOpacity>
+        {/* Icebreaker section (when paused) */}
+        {!isActive && (
+          <View style={styles.iceBreakerArea}>
+            {iceBreaker && (
+              <Text style={styles.iceBreakerText}>"{iceBreaker}"</Text>
             )}
+            <TouchableOpacity
+              style={styles.sparkBtn}
+              onPress={handleSparkConversation}
+              disabled={loadingIceBreaker}
+              activeOpacity={0.75}
+            >
+              {loadingIceBreaker ? (
+                <ActivityIndicator size="small" color={Colors.muted} />
+              ) : (
+                <Sparkles color={Colors.muted} size={14} />
+              )}
+              <Text style={styles.sparkBtnText}>
+                {loadingIceBreaker
+                  ? 'Thinking…'
+                  : iceBreaker
+                  ? 'Another topic'
+                  : 'Spark a conversation'}
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
 
-        <View style={[styles.focusActions, { paddingBottom: insets.bottom }]}>
-          <TouchableOpacity style={styles.endButton} onPress={handleEnd}>
-            <Text style={styles.endButtonText}>End Session</Text>
-          </TouchableOpacity>
-        </View>
+        {/* End session button */}
+        <TouchableOpacity style={styles.endButton} onPress={handleEnd} activeOpacity={0.85}>
+          <Text style={styles.endButtonText}>End Session</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.bg0,
+  },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000',
+    backgroundColor: Colors.bg0,
   },
-  focusModeContainer: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  focusOverlay: {
+  ambientGlow: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'transparent',
   },
-  focusContent: {
+  ambientGlowActive: {
+    backgroundColor: Colors.goldFaint,
+  },
+  content: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: Space.xl,
+  },
+
+  // Top badges
+  topLeft: {
+    position: 'absolute',
+    top: 56,
+    left: Space.xl,
+    zIndex: 10,
+  },
+  topRight: {
+    position: 'absolute',
+    top: 60,
+    right: Space.xl,
+    zIndex: 10,
+    padding: 6,
   },
   sensorBadge: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    zIndex: 50,
-  },
-  enableSensorBtn: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: 'rgba(251, 191, 36, 0.2)',
+    paddingVertical: 5,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.surface1,
     borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.3)',
+    borderColor: Colors.glassBorder,
   },
-  enableSensorText: {
+  sensorBadgeText: {
     fontSize: 9,
     fontWeight: '700',
-    color: '#fcd34d',
-    letterSpacing: 1,
+    color: Colors.muted,
+    letterSpacing: 0.8,
   },
-  sensorActive: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: 'rgba(34, 197, 94, 0.2)',
-    borderWidth: 1,
+  sensorBadgeActive: {
+    backgroundColor: 'rgba(34, 197, 94, 0.12)',
     borderColor: 'rgba(34, 197, 94, 0.3)',
   },
-  sensorActiveText: {
-    fontSize: 9,
-    fontWeight: '700',
+  sensorBadgeActiveText: {
     color: '#86efac',
   },
-  sensorNa: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: 'rgba(107, 114, 128, 0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(107, 114, 128, 0.3)',
+  sensorBadgeMuted: {
+    backgroundColor: Colors.surface1,
+    borderColor: Colors.glassBorder,
   },
-  sensorNaText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#9ca3af',
+  sensorBadgeMutedText: {
+    color: Colors.muted,
   },
-  sensorDenied: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-    borderWidth: 1,
+  sensorBadgeDenied: {
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
     borderColor: 'rgba(239, 68, 68, 0.3)',
   },
-  sensorDeniedText: {
-    fontSize: 9,
-    fontWeight: '700',
+  sensorBadgeDeniedText: {
     color: '#fca5a5',
   },
-  simulateBtn: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    zIndex: 50,
-    padding: 4,
+  toggleDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.muted,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
   },
-  simulateDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#9ca3af',
+  toggleDotActive: {
+    backgroundColor: Colors.gold,
+    borderColor: Colors.goldDim,
   },
-  simulateDotDown: {
-    backgroundColor: '#6b7280',
-  },
-  hyveSection: {
+
+  // Campfire / timer
+  campfireSection: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  timerSection: {
-    marginTop: 64,
+  timerArea: {
+    marginTop: Space.xxxl,
     alignItems: 'center',
   },
-  focusActiveLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#71717a',
-    letterSpacing: 1.2,
-    marginBottom: 16,
+  timerRingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  elapsedTime: {
-    fontSize: 60,
+  timerPulseRing: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.goldDim,
+  },
+  timerRing: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    borderWidth: 1,
+    borderColor: Colors.goldDim,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeLabel: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: Colors.muted,
+    letterSpacing: 2.5,
+    marginBottom: Space.sm,
+  },
+  timerText: {
+    fontSize: 48,
+    fontWeight: '200',
+    color: Colors.ivory,
+    letterSpacing: -2,
+  },
+  pausedText: {
+    fontSize: 20,
     fontWeight: '300',
-    color: '#fffbeb',
-    fontVariant: ['tabular-nums'],
+    color: Colors.text3,
+    letterSpacing: -0.3,
   },
-  putDownText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#d6d3d1',
-  },
-  iceBreakerSection: {
-    position: 'absolute',
-    bottom: 140,
-    left: 24,
-    right: 24,
+
+  // Icebreaker
+  iceBreakerArea: {
     alignItems: 'center',
+    paddingBottom: Space.xl,
+    gap: Space.md,
   },
   iceBreakerText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
+    fontSize: 16,
+    fontWeight: '400',
+    color: Colors.text2,
     textAlign: 'center',
-    marginBottom: 16,
+    lineHeight: 24,
+    letterSpacing: -0.2,
   },
-  sparkButton: {
+  sparkBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'transparent',
+    gap: Space.sm,
+    backgroundColor: Colors.glassBg,
     borderWidth: 1,
-    borderColor: 'rgba(161, 161, 170, 0.3)',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 999,
+    borderColor: Colors.glassBorder,
+    paddingHorizontal: Space.lg,
+    paddingVertical: 10,
+    borderRadius: Radius.full,
   },
-  sparkButtonText: {
-    color: '#a1a1aa',
-    fontSize: 13,
+  sparkBtnText: {
+    color: Colors.muted,
+    fontSize: 12,
     fontWeight: '500',
+    letterSpacing: 0.2,
   },
-  focusActions: {
-    position: 'absolute',
-    bottom: 60,
-    left: 24,
-    right: 24,
-    alignItems: 'center',
-  },
+
+  // End button
   endButton: {
-    width: '100%',
-    backgroundColor: 'rgba(39, 39, 42, 0.8)',
+    backgroundColor: Colors.surface1,
     borderWidth: 1,
-    borderColor: '#52525b',
-    paddingVertical: 16,
-    borderRadius: 24,
+    borderColor: Colors.surfaceBorder,
+    paddingVertical: Space.lg,
+    borderRadius: Radius.xxl,
     alignItems: 'center',
+    marginBottom: Space.lg,
   },
   endButtonText: {
-    color: '#fafaf9',
-    fontSize: 16,
+    color: Colors.text1,
+    fontSize: 15,
     fontWeight: '600',
+    letterSpacing: 0.3,
   },
 });

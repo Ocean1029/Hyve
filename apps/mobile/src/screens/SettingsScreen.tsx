@@ -1,6 +1,6 @@
 /**
- * Settings screen. Account info with editable userId, name, privacy. Logout.
- * Aligns with web Settings component.
+ * Settings screen — v1 design language.
+ * Glass cards, design tokens, expandable profile/privacy sections.
  */
 import React, { useState, useEffect } from 'react';
 import {
@@ -12,10 +12,52 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  Switch,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { API_PATHS } from '@hyve/shared';
-import { LogOut } from '../components/icons';
+import {
+  LogOut,
+  ChevronRight,
+  Moon,
+  User,
+  Shield,
+  Bell,
+  Globe,
+  HelpCircle,
+  Flag,
+  FileText,
+  ChevronDown,
+} from '../components/icons';
+import GlassCard from '../components/ui/GlassCard';
+import { Colors, Space, Radius } from '../theme';
+
+// Placeholder alert for unimplemented features
+const showComingSoon = () =>
+  Alert.alert('Coming Soon', '此功能尚未實作');
+
+interface SettingRowProps {
+  icon: React.ReactNode;
+  label: string;
+  onPress: () => void;
+  trailing?: React.ReactNode;
+}
+
+function SettingRow({ icon, label, onPress, trailing }: SettingRowProps) {
+  return (
+    <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.6}>
+      <View style={styles.iconBox}>{icon}</View>
+      <Text style={styles.rowLabel}>{label}</Text>
+      <View style={styles.rowTrailing}>
+        {trailing ?? <ChevronRight size={16} color={Colors.text3} />}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function SectionHeader({ title }: { title: string }) {
+  return <Text style={styles.sectionHeader}>{title}</Text>;
+}
 
 export default function SettingsScreen() {
   const { user, logout, apiClient, refreshUser } = useAuth();
@@ -31,6 +73,9 @@ export default function SettingsScreen() {
   const [savingPrivacy, setSavingPrivacy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
+
+  const [profileExpanded, setProfileExpanded] = useState(false);
+  const [privacyExpanded, setPrivacyExpanded] = useState(false);
 
   useEffect(() => {
     refreshUser();
@@ -114,157 +159,264 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Settings</Text>
+      {/* ── APPEARANCE ── */}
+      <SectionHeader title="APPEARANCE" />
+      <GlassCard padding={0}>
+        <SettingRow
+          icon={<Moon size={16} color={Colors.text1} />}
+          label="Dark Mode"
+          onPress={showComingSoon}
+          trailing={
+            <Switch
+              value={true}
+              onValueChange={showComingSoon}
+              trackColor={{ false: Colors.surface2, true: Colors.goldDim }}
+              thumbColor={Colors.gold}
+              ios_backgroundColor={Colors.surface2}
+            />
+          }
+        />
+      </GlassCard>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Profile</Text>
-
-        <View style={styles.row}>
-          <Text style={styles.label}>User ID</Text>
-          {isEditingUserId ? (
-            <View style={styles.editRow}>
-              <TextInput
-                style={styles.input}
-                value={userIdValue}
-                onChangeText={setUserIdValue}
-                placeholder="User ID"
-                placeholderTextColor="#666"
-                autoCapitalize="none"
-              />
-              <TouchableOpacity
-                style={styles.saveBtn}
-                onPress={handleSaveUserId}
-                disabled={savingUserId}
-              >
-                {savingUserId ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.saveBtnText}>Save</Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => {
-                  setIsEditingUserId(false);
-                  setUserIdValue(user?.userId ?? user?.id ?? '');
-                  setError(null);
-                }}
-                disabled={savingUserId}
-              >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity
-              onPress={() => setIsEditingUserId(true)}
-              style={styles.valueTouchable}
-            >
-              <Text style={styles.value}>{userIdValue || '—'}</Text>
-              
-            </TouchableOpacity>
-          )}
-        </View>
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-        <View style={styles.row}>
-          <Text style={styles.label}>Name</Text>
-          {isEditingName ? (
-            <View style={styles.editRow}>
-              <TextInput
-                style={styles.input}
-                value={nameValue}
-                onChangeText={setNameValue}
-                placeholder="Name"
-                placeholderTextColor="#666"
-              />
-              <TouchableOpacity
-                style={styles.saveBtn}
-                onPress={handleSaveName}
-                disabled={savingName}
-              >
-                {savingName ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.saveBtnText}>Save</Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => {
-                  setIsEditingName(false);
-                  setNameValue(user?.name ?? '');
-                  setNameError(null);
-                }}
-                disabled={savingName}
-              >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity
-              onPress={() => setIsEditingName(true)}
-              style={styles.valueTouchable}
-            >
-              <Text style={styles.value}>{user?.name ?? '—'}</Text>
-              
-            </TouchableOpacity>
-          )}
-        </View>
-        {nameError ? <Text style={styles.errorText}>{nameError}</Text> : null}
-
-        <View style={styles.row}>
-          <Text style={styles.label}>Email</Text>
-          <Text style={styles.value}>{user?.email ?? '—'}</Text>
-        </View>
-
-        <View style={styles.row}>
-          <Text style={styles.label}>Privacy</Text>
-          <View style={styles.privacyRow}>
-            <TouchableOpacity
-              style={styles.privacyOption}
-              onPress={() => handlePrivacyChange('public')}
-              disabled={savingPrivacy}
-            >
-              <Text
-                style={[
-                  styles.privacyText,
-                  privacy === 'public' && styles.privacyTextActive,
-                ]}
-              >
-                Public
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.privacyOption}
-              onPress={() => handlePrivacyChange('private')}
-              disabled={savingPrivacy}
-            >
-              <Text
-                style={[
-                  styles.privacyText,
-                  privacy === 'private' && styles.privacyTextActive,
-                ]}
-              >
-                Private
-              </Text>
-            </TouchableOpacity>
+      {/* ── ACCOUNT ── */}
+      <SectionHeader title="ACCOUNT" />
+      <GlassCard padding={0}>
+        {/* Profile Information — expandable */}
+        <TouchableOpacity
+          style={styles.row}
+          onPress={() => setProfileExpanded((v) => !v)}
+          activeOpacity={0.6}
+        >
+          <View style={styles.iconBox}>
+            <User size={16} color={Colors.text1} />
           </View>
-        </View>
-      </View>
+          <Text style={styles.rowLabel}>Profile Information</Text>
+          <View style={styles.rowTrailing}>
+            {profileExpanded ? (
+              <ChevronDown size={16} color={Colors.text3} />
+            ) : (
+              <ChevronRight size={16} color={Colors.text3} />
+            )}
+          </View>
+        </TouchableOpacity>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Notifications</Text>
-        <Text style={styles.placeholder}>Coming soon</Text>
-      </View>
+        {profileExpanded && (
+          <View style={styles.expandedContent}>
+            {/* User ID */}
+            <View style={styles.fieldRow}>
+              <Text style={styles.fieldLabel}>User ID</Text>
+              {isEditingUserId ? (
+                <View style={styles.editRow}>
+                  <TextInput
+                    style={styles.input}
+                    value={userIdValue}
+                    onChangeText={setUserIdValue}
+                    placeholder="User ID"
+                    placeholderTextColor={Colors.text3}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity
+                    style={styles.saveBtn}
+                    onPress={handleSaveUserId}
+                    disabled={savingUserId}
+                  >
+                    {savingUserId ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.saveBtnText}>Save</Text>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.cancelBtn}
+                    onPress={() => {
+                      setIsEditingUserId(false);
+                      setUserIdValue(user?.userId ?? user?.id ?? '');
+                      setError(null);
+                    }}
+                    disabled={savingUserId}
+                  >
+                    <Text style={styles.cancelBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => setIsEditingUserId(true)}
+                  style={styles.fieldValueRow}
+                >
+                  <Text style={styles.fieldValue}>{userIdValue || '—'}</Text>
+                  <Text style={styles.editHint}>Tap to edit</Text>
+                </TouchableOpacity>
+              )}
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>About</Text>
-        <Text style={styles.placeholder}>Hyve v1.0.0</Text>
-      </View>
+            {/* Name */}
+            <View style={styles.fieldRow}>
+              <Text style={styles.fieldLabel}>Name</Text>
+              {isEditingName ? (
+                <View style={styles.editRow}>
+                  <TextInput
+                    style={styles.input}
+                    value={nameValue}
+                    onChangeText={setNameValue}
+                    placeholder="Name"
+                    placeholderTextColor={Colors.text3}
+                  />
+                  <TouchableOpacity
+                    style={styles.saveBtn}
+                    onPress={handleSaveName}
+                    disabled={savingName}
+                  >
+                    {savingName ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.saveBtnText}>Save</Text>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.cancelBtn}
+                    onPress={() => {
+                      setIsEditingName(false);
+                      setNameValue(user?.name ?? '');
+                      setNameError(null);
+                    }}
+                    disabled={savingName}
+                  >
+                    <Text style={styles.cancelBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => setIsEditingName(true)}
+                  style={styles.fieldValueRow}
+                >
+                  <Text style={styles.fieldValue}>{user?.name ?? '—'}</Text>
+                  <Text style={styles.editHint}>Tap to edit</Text>
+                </TouchableOpacity>
+              )}
+              {nameError ? <Text style={styles.errorText}>{nameError}</Text> : null}
+            </View>
 
+            {/* Email (read-only) */}
+            <View style={styles.fieldRow}>
+              <Text style={styles.fieldLabel}>Email</Text>
+              <Text style={styles.fieldValue}>{user?.email ?? '—'}</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Separator */}
+        <View style={styles.separator} />
+
+        {/* Privacy & Security — expandable */}
+        <TouchableOpacity
+          style={styles.row}
+          onPress={() => setPrivacyExpanded((v) => !v)}
+          activeOpacity={0.6}
+        >
+          <View style={styles.iconBox}>
+            <Shield size={16} color={Colors.text1} />
+          </View>
+          <Text style={styles.rowLabel}>Privacy & Security</Text>
+          <View style={styles.rowTrailing}>
+            {privacyExpanded ? (
+              <ChevronDown size={16} color={Colors.text3} />
+            ) : (
+              <ChevronRight size={16} color={Colors.text3} />
+            )}
+          </View>
+        </TouchableOpacity>
+
+        {privacyExpanded && (
+          <View style={styles.expandedContent}>
+            <Text style={styles.fieldLabel}>Account Privacy</Text>
+            <View style={styles.privacyRow}>
+              <TouchableOpacity
+                style={[
+                  styles.privacyOption,
+                  privacy === 'public' && styles.privacyOptionActive,
+                ]}
+                onPress={() => handlePrivacyChange('public')}
+                disabled={savingPrivacy}
+              >
+                <Text
+                  style={[
+                    styles.privacyText,
+                    privacy === 'public' && styles.privacyTextActive,
+                  ]}
+                >
+                  Public
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.privacyOption,
+                  privacy === 'private' && styles.privacyOptionActive,
+                ]}
+                onPress={() => handlePrivacyChange('private')}
+                disabled={savingPrivacy}
+              >
+                <Text
+                  style={[
+                    styles.privacyText,
+                    privacy === 'private' && styles.privacyTextActive,
+                  ]}
+                >
+                  Private
+                </Text>
+              </TouchableOpacity>
+              {savingPrivacy && (
+                <ActivityIndicator size="small" color={Colors.gold} />
+              )}
+            </View>
+          </View>
+        )}
+
+        <View style={styles.separator} />
+
+        {/* Notifications — placeholder */}
+        <SettingRow
+          icon={<Bell size={16} color={Colors.text1} />}
+          label="Notifications"
+          onPress={showComingSoon}
+        />
+
+        <View style={styles.separator} />
+
+        {/* Language — placeholder */}
+        <SettingRow
+          icon={<Globe size={16} color={Colors.text1} />}
+          label="Language"
+          onPress={showComingSoon}
+        />
+      </GlassCard>
+
+      {/* ── SUPPORT ── */}
+      <SectionHeader title="SUPPORT" />
+      <GlassCard padding={0}>
+        <SettingRow
+          icon={<HelpCircle size={16} color={Colors.text1} />}
+          label="Help Center"
+          onPress={showComingSoon}
+        />
+        <View style={styles.separator} />
+        <SettingRow
+          icon={<Flag size={16} color={Colors.text1} />}
+          label="Report a Problem"
+          onPress={showComingSoon}
+        />
+        <View style={styles.separator} />
+        <SettingRow
+          icon={<FileText size={16} color={Colors.text1} />}
+          label="Terms of Service"
+          onPress={showComingSoon}
+        />
+      </GlassCard>
+
+      {/* ── LOGOUT ── */}
       <TouchableOpacity style={styles.logoutButton} onPress={logout} activeOpacity={0.8}>
         <LogOut color="#ef4444" size={18} />
-        <Text style={styles.logoutText}>Log out</Text>
+        <Text style={styles.logoutText}>Log Out</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -273,129 +425,182 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: Colors.bg0,
   },
   content: {
-    padding: 16,
-    paddingBottom: 40,
+    padding: Space.lg,
+    paddingBottom: 48,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 24,
+
+  // Section header
+  sectionHeader: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: Colors.muted,
+    letterSpacing: 1.8,
+    textTransform: 'uppercase',
+    marginTop: Space.xxl,
+    marginBottom: Space.sm,
+    marginLeft: Space.xs,
   },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#888',
-    marginBottom: 12,
-  },
+
+  // Row
   row: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#222',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Space.lg,
+    paddingVertical: Space.md,
+    minHeight: 48,
   },
-  label: {
+  iconBox: {
+    width: 30,
+    height: 30,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.surface1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Space.md,
+  },
+  rowLabel: {
+    flex: 1,
     fontSize: 14,
-    color: '#888',
-    marginBottom: 8,
+    fontWeight: '600',
+    color: Colors.text1,
   },
-  value: {
-    fontSize: 16,
-    color: '#fff',
+  rowTrailing: {
+    marginLeft: Space.sm,
   },
-  valueTouchable: {
+
+  // Separator
+  separator: {
+    height: 1,
+    backgroundColor: Colors.glassBorder,
+    marginHorizontal: Space.lg,
+  },
+
+  // Expandable content
+  expandedContent: {
+    paddingHorizontal: Space.lg,
+    paddingBottom: Space.lg,
+  },
+
+  // Field rows inside expanded sections
+  fieldRow: {
+    paddingVertical: Space.sm,
+  },
+  fieldLabel: {
+    fontSize: 10,
+    color: Colors.text3,
+    marginBottom: Space.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  fieldValue: {
+    fontSize: 14,
+    color: Colors.text1,
+  },
+  fieldValueRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   editHint: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 10,
+    color: Colors.text3,
   },
+
+  // Editing
   editRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: Space.sm,
     flexWrap: 'wrap',
   },
   input: {
     flex: 1,
     minWidth: 120,
-    backgroundColor: '#1a1a1a',
-    color: '#fff',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    fontSize: 16,
+    backgroundColor: Colors.surface2,
+    color: Colors.text1,
+    paddingHorizontal: Space.md,
+    paddingVertical: Space.sm,
+    borderRadius: Radius.sm,
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
   },
   saveBtn: {
-    backgroundColor: '#22c55e',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: Colors.gold,
+    paddingHorizontal: Space.lg,
+    paddingVertical: Space.sm,
+    borderRadius: Radius.sm,
     minWidth: 60,
     alignItems: 'center',
   },
   saveBtnText: {
-    color: '#fff',
-    fontWeight: '600',
+    color: Colors.bg0,
+    fontWeight: '700',
+    fontSize: 13,
   },
   cancelBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: Space.md,
+    paddingVertical: Space.sm,
   },
   cancelBtnText: {
-    color: '#888',
+    color: Colors.text3,
+    fontSize: 13,
   },
   errorText: {
-    color: '#ef4444',
-    fontSize: 12,
-    marginTop: 4,
+    color: Colors.error,
+    fontSize: 11,
+    marginTop: Space.xs,
   },
+
+  // Privacy
   privacyRow: {
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'center',
+    gap: Space.sm,
+    marginTop: Space.xs,
   },
   privacyOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#1a1a1a',
+    paddingHorizontal: Space.lg,
+    paddingVertical: Space.sm,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.surface1,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  privacyOptionActive: {
+    backgroundColor: Colors.goldFaint,
+    borderColor: Colors.goldDim,
   },
   privacyText: {
-    color: '#888',
-    fontSize: 14,
+    color: Colors.text3,
+    fontSize: 13,
+    fontWeight: '500',
   },
   privacyTextActive: {
-    color: '#fff',
+    color: Colors.gold,
     fontWeight: '600',
   },
-  placeholder: {
-    fontSize: 14,
-    color: '#666',
-    paddingVertical: 8,
-  },
+
+  // Logout
   logoutButton: {
-    marginTop: 32,
+    marginTop: Space.xxxl,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    paddingVertical: Space.lg,
+    paddingHorizontal: Space.xxl,
+    borderRadius: Radius.md,
+    backgroundColor: 'rgba(239, 68, 68, 0.10)',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.35)',
+    borderColor: 'rgba(239, 68, 68, 0.20)',
   },
   logoutText: {
     color: '#ef4444',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
 });

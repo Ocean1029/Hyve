@@ -1,14 +1,14 @@
 /**
- * Session summary screen after ending focus. Matches web SessionSummary.
- * Primary: Unlock Photo Moment -> PostMemory. Secondary: Return Home.
+ * Session Summary screen — ver2 Post-Session step 2 style.
+ * Gold checkmark, large timer, unlock photo button.
  */
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Camera, Trophy } from '../components/icons';
 import type { RootStackParamList } from '../navigation/types';
+import { Colors, Radius, Space, Shadows } from '../theme';
 
 function formatTime(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -40,34 +40,48 @@ export default function SessionSummaryScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.gradient} />
-      <View style={[styles.content, { paddingTop: insets.top + 24 }]}>
-        <View style={styles.trophyCircle}>
-          <Trophy color="#fcd34d" size={48} />
-        </View>
-        <Text style={styles.title}>Session{'\n'}Complete</Text>
-        <Text style={styles.subtitle}>Quality time captured.</Text>
+      {/* Ambient glow overlay */}
+      <View style={styles.ambientGlow} pointerEvents="none" />
 
-        <View style={styles.timeCard}>
-          <Text style={styles.timeLabel}>Total Focus Time</Text>
-          <Text style={styles.timeValue}>{formatTime(elapsedSeconds)}</Text>
+      <View style={[styles.content, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 16 }]}>
+
+        {/* Check icon */}
+        <View style={styles.checkCircle}>
+          <Text style={styles.checkIcon}>✓</Text>
         </View>
 
+        {/* Title */}
+        <Text style={styles.title}>Presence{'\n'}Built.</Text>
+        <Text style={styles.subtitle}>SESSION SUMMARY</Text>
+
+        {/* Stat capsules */}
+        <View style={styles.capsulesRow}>
+          <View style={styles.capsule}>
+            <Text style={styles.capsuleValue}>{Math.floor(elapsedSeconds / 60)}</Text>
+            <Text style={styles.capsuleLabel}>MINUTES</Text>
+          </View>
+          <View style={styles.capsule}>
+            <Text style={styles.capsuleValue}>+{Math.max(1, Math.floor(elapsedSeconds / 60 * 0.27))}px</Text>
+            <Text style={styles.capsuleLabel}>GROWTH</Text>
+          </View>
+        </View>
+
+        {/* Primary action */}
         <TouchableOpacity
           style={styles.primaryButton}
           onPress={handleUnlockPhotoMoment}
-          activeOpacity={0.9}
+          activeOpacity={0.88}
         >
-          <Camera color="#000" size={20} />
-          <Text style={styles.primaryButtonText}>Unlock Photo Moment</Text>
+          <Text style={styles.primaryButtonText}>POST YOUR SESSION!</Text>
         </TouchableOpacity>
 
+        {/* Secondary action */}
         <TouchableOpacity
           style={styles.secondaryButton}
           onPress={handleReturnHome}
-          activeOpacity={0.8}
+          activeOpacity={0.7}
         >
-          <Text style={styles.secondaryButtonText}>Return Home</Text>
+          <Text style={styles.secondaryButtonText}>ONLY RECORD IT</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -77,90 +91,113 @@ export default function SessionSummaryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: Colors.bg0,
   },
-  gradient: {
+  ambientGlow: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(120, 53, 15, 0.1)',
+    backgroundColor: Colors.goldFaint,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 32,
-    paddingTop: 48,
+    paddingHorizontal: Space.xxxl,
     alignItems: 'center',
   },
-  trophyCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(251, 113, 133, 0.1)',
+
+  // Check circle
+  checkCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Colors.goldFaint,
     borderWidth: 1,
-    borderColor: '#27272a',
+    borderColor: Colors.goldDim,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 32,
+    marginBottom: Space.xxxl,
+    ...Shadows.gold,
   },
+  checkIcon: {
+    fontSize: 32,
+    color: Colors.gold,
+    fontWeight: '300',
+  },
+
+  // Title
   title: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: '#fafaf9',
+    fontSize: 40,
+    fontWeight: '200',
+    color: Colors.ivory,
     textAlign: 'center',
-    marginBottom: 8,
+    letterSpacing: -1.5,
+    lineHeight: 46,
+    marginBottom: Space.sm,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#71717a',
-    marginBottom: 48,
-  },
-  timeCard: {
-    backgroundColor: 'rgba(24, 24, 27, 0.5)',
-    borderRadius: 24,
-    padding: 32,
-    width: '100%',
-    marginBottom: 32,
-    borderWidth: 1,
-    borderColor: '#27272a',
-    alignItems: 'center',
-  },
-  timeLabel: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
-    color: '#fda4af',
+    color: Colors.muted,
+    letterSpacing: 2.5,
+    marginBottom: Space.xxxl,
+  },
+
+  // Stat capsules
+  capsulesRow: {
+    flexDirection: 'row',
+    gap: Space.md,
+    width: '100%',
+    marginBottom: Space.xxxl,
+  },
+  capsule: {
+    flex: 1,
+    backgroundColor: Colors.surface1,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+    borderRadius: Radius.xxl,
+    paddingVertical: Space.xl,
+    alignItems: 'center',
+    gap: Space.xs,
+  },
+  capsuleValue: {
+    fontSize: 32,
+    fontWeight: '200',
+    color: Colors.ivory,
+    letterSpacing: -1,
+  },
+  capsuleLabel: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: Colors.muted,
     letterSpacing: 2,
-    marginBottom: 8,
-    textAlign: 'center',
   },
-  timeValue: {
-    fontSize: 60,
-    fontWeight: '300',
-    color: '#fafaf9',
-    fontVariant: ['tabular-nums'],
-    textAlign: 'center',
-  },
+
+  // Buttons
   primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: Space.sm,
     width: '100%',
-    backgroundColor: '#fafaf9',
-    paddingVertical: 20,
-    borderRadius: 24,
-    marginBottom: 16,
+    backgroundColor: Colors.gold,
+    paddingVertical: Space.xl,
+    borderRadius: Radius.xxl,
+    marginBottom: Space.lg,
+    ...Shadows.gold,
   },
   primaryButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: '#000',
+    letterSpacing: 0.3,
   },
   secondaryButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingVertical: Space.md,
+    paddingHorizontal: Space.xl,
+    alignItems: 'center',
   },
   secondaryButtonText: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '700',
-    color: '#71717a',
-    letterSpacing: 2,
+    color: Colors.muted,
+    letterSpacing: 2.5,
   },
 });

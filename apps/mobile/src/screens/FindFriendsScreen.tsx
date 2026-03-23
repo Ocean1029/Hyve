@@ -1,13 +1,8 @@
 /**
- * Find Friends screen. Shows nearby online users and allows sending friend requests.
- * Also displays pending received requests with Accept/Reject actions.
- * Includes text search for users (by ID or name).
- * Uses expo-location, POST /api/locations, GET /api/locations/nearby,
- * GET /api/friend-requests/status, GET /api/friend-requests/pending,
- * GET /api/search/users, GET /api/search/recommended,
- * POST /api/friend-requests, accept, reject.
+ * Find Friends screen — ver2 aesthetic with glass cards.
+ * Radar-style header, search, nearby users, pending requests.
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,16 +10,25 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  Image,
   Alert,
   RefreshControl,
   TextInput,
+  Animated,
+  Easing,
+  Platform,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { useAuth } from '../contexts/AuthContext';
 import { API_PATHS } from '@hyve/shared';
 import { formatDistance } from '@hyve/utils';
+import HyveAvatar from '../components/ui/HyveAvatar';
+import HyveButton from '../components/ui/HyveButton';
 import { Check, X, Search } from '../components/icons';
+import { Wifi } from 'lucide-react-native';
+import { Colors, Radius, Space, Shadows } from '../theme';
+
+const RING_COUNT = 3;
+const RING_DURATION = 2500;
 
 interface NearbyUser {
   id: string;
@@ -74,6 +78,90 @@ export default function FindFriendsScreen() {
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
   const [searching, setSearching] = useState(false);
 
+  // Radar ripple animations (3 staggered rings)
+  const ringAnims = useRef(
+    Array.from({ length: RING_COUNT }, () => ({
+      scale: new Animated.Value(0.3),
+      opacity: new Animated.Value(0.6),
+    }))
+  ).current;
+
+  // Scan line rotation
+  const scanRotation = useRef(new Animated.Value(0)).current;
+
+  // Center wifi icon pulse
+  const wifiPulse = useRef(new Animated.Value(0.6)).current;
+
+  // Status text pulse
+  const textPulse = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Start staggered ring animations
+    ringAnims.forEach((anim, i) => {
+      const delay = i * (RING_DURATION / RING_COUNT);
+      setTimeout(() => {
+        Animated.loop(
+          Animated.parallel([
+            Animated.timing(anim.scale, {
+              toValue: 1,
+              duration: RING_DURATION,
+              easing: Easing.out(Easing.ease),
+              useNativeDriver: true,
+            }),
+            Animated.timing(anim.opacity, {
+              toValue: 0,
+              duration: RING_DURATION,
+              easing: Easing.out(Easing.ease),
+              useNativeDriver: true,
+            }),
+          ])
+        ).start();
+      }, delay);
+    });
+
+    // Scan line rotation
+    Animated.loop(
+      Animated.timing(scanRotation, {
+        toValue: 1,
+        duration: 2000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
+
+    // Wifi icon pulse
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(wifiPulse, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(wifiPulse, {
+          toValue: 0.4,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Status text pulse
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(textPulse, {
+          toValue: 0.4,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(textPulse, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [ringAnims, scanRotation, wifiPulse, textPulse]);
+
   const fetchPendingRequests = useCallback(async () => {
     try {
       const res = await apiClient.get<{ success: boolean; requests?: PendingRequest[] }>(
@@ -109,23 +197,22 @@ export default function FindFriendsScreen() {
       setUsers(nearbyUsers);
 
       const statusPromises = nearbyUsers.map(async (u: NearbyUser) => {
-        const userId = u.id;
         try {
           const [statusRes, checkRes] = await Promise.all([
             apiClient.get<{ status: string }>(
-              `${API_PATHS.FRIEND_REQUESTS_STATUS}?userId=${encodeURIComponent(userId)}`
+              `${API_PATHS.FRIEND_REQUESTS_STATUS}?userId=${encodeURIComponent(u.id)}`
             ),
             apiClient.get<{ isFriend: boolean }>(
-              `${API_PATHS.FRIENDS_CHECK}?userId=${encodeURIComponent(userId)}`
+              `${API_PATHS.FRIENDS_CHECK}?userId=${encodeURIComponent(u.id)}`
             ),
           ]);
           return {
-            userId,
+            userId: u.id,
             requestStatus: (statusRes as { status?: string })?.status ?? 'none',
             isFriend: (checkRes as { isFriend?: boolean })?.isFriend ?? false,
           };
         } catch {
-          return { userId, requestStatus: 'none', isFriend: false };
+          return { userId: u.id, requestStatus: 'none', isFriend: false };
         }
       });
 
@@ -149,65 +236,58 @@ export default function FindFriendsScreen() {
 
   useEffect(() => {
     fetchNearbyAndStatuses();
-  }, [fetchNearbyAndStatuses]);
-
-  useEffect(() => {
     fetchPendingRequests();
-  }, [fetchPendingRequests]);
+  }, [fetchNearbyAndStatuses, fetchPendingRequests]);
 
   useEffect(() => {
     if (searchQuery.trim().length === 0) {
       setSearchResults([]);
-    } else {
-      const timer = setTimeout(() => {
-        setSearching(true);
-        apiClient
-          .get<{ success: boolean; users?: SearchUser[] }>(
-            `${API_PATHS.SEARCH_USERS}?query=${encodeURIComponent(searchQuery.trim())}`
-          )
-          .then(async (res) => {
-            const results = res?.users ?? [];
-            setSearchResults(results);
-            const statusPromises = results.map(async (u: SearchUser) => {
-              try {
-                const [statusRes, checkRes] = await Promise.all([
-                  apiClient.get<{ status: string }>(
-                    `${API_PATHS.FRIEND_REQUESTS_STATUS}?userId=${encodeURIComponent(u.id)}`
-                  ),
-                  apiClient.get<{ isFriend: boolean }>(
-                    `${API_PATHS.FRIENDS_CHECK}?userId=${encodeURIComponent(u.id)}`
-                  ),
-                ]);
-                return {
-                  userId: u.id,
-                  requestStatus: (statusRes as { status?: string })?.status ?? 'none',
-                  isFriend: (checkRes as { isFriend?: boolean })?.isFriend ?? false,
-                };
-              } catch {
-                return { userId: u.id, requestStatus: 'none', isFriend: false };
-              }
-            });
-            const statusResults = await Promise.all(statusPromises);
-            setRequestStatuses((prev) => {
-              const next = { ...prev };
-              statusResults.forEach(({ userId, requestStatus }) => {
-                next[userId] = requestStatus;
-              });
-              return next;
-            });
-            setFriendStatuses((prev) => {
-              const next = { ...prev };
-              statusResults.forEach(({ userId, isFriend }) => {
-                next[userId] = isFriend;
-              });
-              return next;
-            });
-          })
-          .catch(() => setSearchResults([]))
-          .finally(() => setSearching(false));
-      }, 300);
-      return () => clearTimeout(timer);
+      return;
     }
+    const timer = setTimeout(() => {
+      setSearching(true);
+      apiClient
+        .get<{ success: boolean; users?: SearchUser[] }>(
+          `${API_PATHS.SEARCH_USERS}?query=${encodeURIComponent(searchQuery.trim())}`
+        )
+        .then(async (res) => {
+          const results = res?.users ?? [];
+          setSearchResults(results);
+          const statusPromises = results.map(async (u: SearchUser) => {
+            try {
+              const [statusRes, checkRes] = await Promise.all([
+                apiClient.get<{ status: string }>(
+                  `${API_PATHS.FRIEND_REQUESTS_STATUS}?userId=${encodeURIComponent(u.id)}`
+                ),
+                apiClient.get<{ isFriend: boolean }>(
+                  `${API_PATHS.FRIENDS_CHECK}?userId=${encodeURIComponent(u.id)}`
+                ),
+              ]);
+              return {
+                userId: u.id,
+                requestStatus: (statusRes as { status?: string })?.status ?? 'none',
+                isFriend: (checkRes as { isFriend?: boolean })?.isFriend ?? false,
+              };
+            } catch {
+              return { userId: u.id, requestStatus: 'none', isFriend: false };
+            }
+          });
+          const statusResults = await Promise.all(statusPromises);
+          setRequestStatuses((prev) => {
+            const next = { ...prev };
+            statusResults.forEach(({ userId, requestStatus }) => { next[userId] = requestStatus; });
+            return next;
+          });
+          setFriendStatuses((prev) => {
+            const next = { ...prev };
+            statusResults.forEach(({ userId, isFriend }) => { next[userId] = isFriend; });
+            return next;
+          });
+        })
+        .catch(() => setSearchResults([]))
+        .finally(() => setSearching(false));
+    }, 300);
+    return () => clearTimeout(timer);
   }, [searchQuery, apiClient]);
 
   const onRefresh = () => {
@@ -261,9 +341,7 @@ export default function FindFriendsScreen() {
         API_PATHS.FRIEND_REQUESTS,
         { receiverId: userId }
       );
-      if (res?.success) {
-        setRequestStatuses((prev) => ({ ...prev, [userId]: 'sent' }));
-      } else if (res?.alreadyExists) {
+      if (res?.success || res?.alreadyExists) {
         setRequestStatuses((prev) => ({ ...prev, [userId]: 'sent' }));
       } else {
         Alert.alert('Error', res?.error ?? 'Failed to send request');
@@ -275,47 +353,45 @@ export default function FindFriendsScreen() {
     }
   };
 
-  const renderUser = ({ item }: { item: NearbyUser }) => {
-    const requestStatus = requestStatuses[item.id] ?? 'none';
-    const isFriend = friendStatuses[item.id] ?? false;
+  const renderUserCard = (
+    item: NearbyUser | SearchUser,
+    subtitle: string
+  ) => {
+    const id = item.id;
+    const requestStatus = requestStatuses[id] ?? 'none';
+    const isFriend = friendStatuses[id] ?? false;
     const canSend = !isFriend && requestStatus === 'none';
-    const isSending = sendingRequest === item.id;
+    const isSending = sendingRequest === id;
+    const imgUri = (item as NearbyUser).image ?? (item as SearchUser).image ?? (item as SearchUser).avatar;
 
     return (
-      <View style={styles.userCard}>
-        <View style={styles.avatarContainer}>
-          {item.image ? (
-            <Image source={{ uri: item.image }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Text style={styles.avatarLetter}>
-                {(item.name ?? 'U').charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          )}
-          {item.isOnline && <View style={styles.onlineDot} />}
-        </View>
+      <View key={id} style={styles.userCard}>
+        <HyveAvatar
+          uri={imgUri}
+          name={item.name}
+          size={46}
+          online={(item as NearbyUser).isOnline}
+        />
         <View style={styles.userInfo}>
           <Text style={styles.userName}>{item.name ?? 'Unknown'}</Text>
-          <Text style={styles.distance}>
-            {item.distance != null ? formatDistance(item.distance) : 'Nearby'}
-          </Text>
+          <Text style={styles.userSub}>{subtitle}</Text>
         </View>
-        <View style={styles.action}>
+        <View style={styles.userAction}>
           {isFriend ? (
-            <Text style={styles.friendBadge}>Friend</Text>
+            <Text style={styles.badge}>Friend</Text>
           ) : requestStatus === 'sent' ? (
-            <Text style={styles.pendingBadge}>Pending</Text>
+            <Text style={[styles.badge, styles.badgePending]}>Pending</Text>
           ) : canSend ? (
             <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => handleSendRequest(item.id)}
+              style={styles.addBtn}
+              onPress={() => handleSendRequest(id)}
               disabled={isSending}
+              activeOpacity={0.8}
             >
               {isSending ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color="#000" />
               ) : (
-                <Text style={styles.addButtonText}>Add</Text>
+                <Text style={styles.addBtnText}>Add</Text>
               )}
             </TouchableOpacity>
           ) : null}
@@ -324,193 +400,192 @@ export default function FindFriendsScreen() {
     );
   };
 
-  if (loading && !refreshing) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#fff" />
-        <Text style={styles.loadingText}>Finding nearby friends...</Text>
-      </View>
-    );
-  }
-
-  if (locationError) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Find Friends</Text>
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{locationError}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
-            <Text style={styles.retryText}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
-  const renderPendingItem = (item: PendingRequest) => {
+  const renderPendingCard = (item: PendingRequest) => {
     const sender = item.sender;
     const isProcessing = processingRequestId === item.id;
     return (
       <View key={item.id} style={styles.userCard}>
-        <View style={styles.avatarContainer}>
-          {sender?.image ? (
-            <Image source={{ uri: sender.image }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Text style={styles.avatarLetter}>
-                {(sender?.name ?? 'U').charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          )}
-        </View>
+        <HyveAvatar uri={sender?.image} name={sender?.name} size={46} />
         <View style={styles.userInfo}>
           <Text style={styles.userName}>{sender?.name ?? 'Someone'}</Text>
-          <Text style={styles.distance}>Wants to be your friend</Text>
+          <Text style={styles.userSub}>Wants to be your friend</Text>
         </View>
         <View style={styles.pendingActions}>
           <TouchableOpacity
-            style={[styles.acceptButton, isProcessing && styles.buttonDisabled]}
+            style={[styles.acceptBtn, isProcessing && styles.actionDisabled]}
             onPress={() => handleAcceptRequest(item.id)}
             disabled={isProcessing}
+            activeOpacity={0.8}
           >
             {isProcessing ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Check color="#fff" size={18} />
+              <Check color="#000" size={16} />
             )}
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.rejectButton, isProcessing && styles.buttonDisabled]}
+            style={[styles.rejectBtn, isProcessing && styles.actionDisabled]}
             onPress={() => handleRejectRequest(item.id)}
             disabled={isProcessing}
+            activeOpacity={0.8}
           >
-            <X color="#fff" size={18} />
+            <X color={Colors.text2} size={16} />
           </TouchableOpacity>
         </View>
       </View>
     );
   };
 
-  const displaySearchResults = searchQuery.trim().length > 0;
-  const searchListData = searchResults;
-  const searchListLoading = searching;
+  const displaySearch = searchQuery.trim().length > 0;
 
-  const renderSearchUser = ({ item }: { item: SearchUser }) => {
-    const requestStatus = requestStatuses[item.id] ?? 'none';
-    const isFriend = friendStatuses[item.id] ?? false;
-    const canSend = !isFriend && requestStatus === 'none';
-    const isSending = sendingRequest === item.id;
-    const avatar = item.image ?? item.avatar;
+  const scanSpin = scanRotation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
 
+  if (loading && !refreshing) {
     return (
-      <View style={styles.userCard}>
-        <View style={styles.avatarContainer}>
-          {avatar ? (
-            <Image source={{ uri: avatar }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Text style={styles.avatarLetter}>
-                {(item.name ?? 'U').charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          )}
+      <View style={styles.loadingContainer}>
+        {/* Background grid */}
+        <View style={styles.gridOverlay}>
+          <View style={styles.gridLineH} />
+          <View style={styles.gridLineV} />
         </View>
-        <View style={styles.userInfo}>
-          <Text style={styles.userName}>{item.name ?? 'Unknown'}</Text>
-          <Text style={styles.distance}>
-            {item.userId ?? item.id}
-          </Text>
+
+        {/* Radar visual */}
+        <View style={styles.radarContainer}>
+          {/* Ping ripple rings */}
+          {ringAnims.map((anim, i) => (
+            <Animated.View
+              key={i}
+              style={[
+                styles.rippleRing,
+                {
+                  transform: [{ scale: anim.scale }],
+                  opacity: anim.opacity,
+                },
+              ]}
+            />
+          ))}
+
+          {/* Rotating scan line */}
+          <Animated.View
+            style={[
+              styles.scanLineWrap,
+              { transform: [{ rotate: scanSpin }] },
+            ]}
+          >
+            <View style={styles.scanLine} />
+          </Animated.View>
+
+          {/* Center node */}
+          <View style={styles.centerNode}>
+            <Animated.View style={{ opacity: wifiPulse }}>
+              <Wifi size={28} color={Colors.gold} />
+            </Animated.View>
+          </View>
         </View>
-        <View style={styles.action}>
-          {isFriend ? (
-            <Text style={styles.friendBadge}>Friend</Text>
-          ) : requestStatus === 'sent' ? (
-            <Text style={styles.pendingBadge}>Pending</Text>
-          ) : canSend ? (
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => handleSendRequest(item.id)}
-              disabled={isSending}
-            >
-              {isSending ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.addButtonText}>Add</Text>
-              )}
-            </TouchableOpacity>
-          ) : null}
+
+        {/* Status text */}
+        <View style={styles.statusTextWrap}>
+          <Animated.Text style={[styles.scanTitle, { opacity: textPulse }]}>
+            SCANNING FREQUENCY
+          </Animated.Text>
+          <Text style={styles.scanSubtitle}>Searching for nearby signals...</Text>
         </View>
       </View>
     );
-  };
+  }
 
-  const listHeader = (
-    <>
-      <View style={styles.searchRow}>
-        <Search color="#666" size={20} />
+  if (locationError && !displaySearch) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.searchBarWrap}>
+          <Search color={Colors.muted} size={16} />
+          <TextInput
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search by ID or name"
+            placeholderTextColor={Colors.muted}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>{locationError}</Text>
+          <HyveButton variant="ghost" onPress={onRefresh} style={{ marginTop: Space.md }}>
+            Try Again
+          </HyveButton>
+        </View>
+      </View>
+    );
+  }
+
+  const listData = displaySearch
+    ? searchResults as unknown[]
+    : users as unknown[];
+
+  return (
+    <View style={styles.container}>
+      {/* Search bar */}
+      <View style={styles.searchBarWrap}>
+        <Search color={Colors.muted} size={16} />
         <TextInput
           style={styles.searchInput}
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholder="Search by ID or name"
-          placeholderTextColor="#666"
+          placeholderTextColor={Colors.muted}
           autoCapitalize="none"
           autoCorrect={false}
         />
+        {searching && <ActivityIndicator size="small" color={Colors.muted} />}
       </View>
-      {!displaySearchResults && pendingRequests.length > 0 && (
-        <>
-          <Text style={styles.sectionHeader}>Friend Requests</Text>
-          {pendingRequests.map(renderPendingItem)}
-          <Text style={styles.sectionHeader}>Nearby</Text>
-        </>
-      )}
-      {displaySearchResults && (
-        <Text style={styles.sectionHeader}>
-          {searching ? 'Searching...' : 'Search results'}
-        </Text>
-      )}
-    </>
-  );
 
-  const listData = displaySearchResults ? searchListData : users;
-  const renderItem = displaySearchResults
-    ? (info: { item: SearchUser }) => renderSearchUser(info)
-    : (info: { item: NearbyUser }) => renderUser(info);
-  const emptyMessage = displaySearchResults
-    ? (searchListLoading ? '' : 'No results found')
-    : 'No nearby friends found. Make sure location services are enabled.';
-
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Find Friends</Text>
-      <Text style={styles.subtitle}>
-        {displaySearchResults
-          ? 'Search for users to add'
-          : 'Discover people nearby who are online'}
-      </Text>
       <FlatList
-        data={listData as NearbyUser[]}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) =>
-          displaySearchResults
-            ? renderSearchUser({ item: item as unknown as SearchUser })
-            : renderUser({ item })
-        }
-        ListHeaderComponent={listHeader}
-        contentContainerStyle={styles.list}
+        data={listData}
+        keyExtractor={(item) => (item as { id: string }).id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
         refreshControl={
-          !displaySearchResults ? (
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
+          !displaySearch ? (
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.gold} />
           ) : undefined
         }
-        ListEmptyComponent={
-          searchListLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#fff" />
+        ListHeaderComponent={
+          !displaySearch && pendingRequests.length > 0 ? (
+            <View>
+              <Text style={styles.sectionLabel}>FRIEND REQUESTS</Text>
+              {pendingRequests.map(renderPendingCard)}
+              <Text style={styles.sectionLabel}>NEARBY</Text>
             </View>
+          ) : displaySearch ? (
+            <Text style={styles.sectionLabel}>
+              {searching ? 'SEARCHING…' : 'RESULTS'}
+            </Text>
           ) : (
-            <Text style={styles.empty}>{emptyMessage}</Text>
+            <Text style={styles.sectionLabel}>NEARBY</Text>
+          )
+        }
+        renderItem={({ item }) => {
+          if (displaySearch) {
+            const u = item as SearchUser;
+            return renderUserCard(u, u.userId ?? u.id ?? '');
+          }
+          const u = item as NearbyUser;
+          return renderUserCard(
+            u,
+            u.distance != null ? formatDistance(u.distance) : 'Nearby'
+          );
+        }}
+        ListEmptyComponent={
+          searching ? null : (
+            <Text style={styles.emptyText}>
+              {displaySearch
+                ? 'No results found'
+                : 'No nearby friends found.\nMake sure location services are enabled.'}
+            </Text>
           )
         }
       />
@@ -521,190 +596,245 @@ export default function FindFriendsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
-    padding: 16,
+    backgroundColor: Colors.bg1,
   },
-  centered: {
+  loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#000',
-  },
-  loadingText: {
-    color: '#888',
-    marginTop: 12,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#888',
-    marginBottom: 16,
-  },
-  errorBox: {
-    alignItems: 'center',
-    padding: 24,
-  },
-  errorText: {
-    color: '#f44',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  retryButton: {
-    backgroundColor: '#4285f4',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  list: {
-    paddingBottom: 24,
-  },
-  userCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#222',
-  },
-  avatarContainer: {
-    position: 'relative',
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#333',
-  },
-  avatarPlaceholder: {
+    backgroundColor: Colors.bg0,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarLetter: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
+
+  // Background grid
+  gridOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.15,
   },
-  onlineDot: {
+  gridLineH: {
     position: 'absolute',
-    bottom: 0,
+    top: '50%',
+    left: 0,
     right: 0,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#22c55e',
-    borderWidth: 2,
-    borderColor: '#1a1a1a',
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.10)',
   },
-  userInfo: {
-    flex: 1,
-    marginLeft: 12,
+  gridLineV: {
+    position: 'absolute',
+    left: '50%',
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.10)',
   },
-  userName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  distance: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 2,
-  },
-  action: {
-    marginLeft: 8,
-  },
-  addButton: {
-    backgroundColor: '#4285f4',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    minWidth: 60,
+
+  // Radar container
+  radarContainer: {
+    width: 256,
+    height: 256,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 48,
   },
-  addButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
+  rippleRing: {
+    position: 'absolute',
+    width: 256,
+    height: 256,
+    borderRadius: 128,
+    borderWidth: 1,
+    borderColor: 'rgba(201,168,106,0.25)',
   },
-  friendBadge: {
-    color: '#888',
-    fontSize: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  scanLineWrap: {
+    position: 'absolute',
+    width: 256,
+    height: 256,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  pendingBadge: {
-    color: '#f59e0b',
-    fontSize: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  scanLine: {
+    width: 128,
+    height: 2,
+    position: 'absolute',
+    top: '50%',
+    right: '50%',
+    backgroundColor: Colors.gold,
+    opacity: 0.5,
+    borderRadius: 1,
   },
-  empty: {
-    color: '#666',
-    fontSize: 14,
-    textAlign: 'center',
-    paddingVertical: 48,
+  centerNode: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Colors.bg1,
+    borderWidth: 1,
+    borderColor: 'rgba(201,168,106,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#C9A86A',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.25,
+        shadowRadius: 30,
+      },
+      android: { elevation: 8 },
+    }),
   },
-  sectionHeader: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#888',
-    marginTop: 16,
+
+  // Status text
+  statusTextWrap: {
+    alignItems: 'center',
+    height: 60,
+  },
+  scanTitle: {
+    fontSize: 16,
+    fontWeight: '300',
+    color: Colors.text1,
+    letterSpacing: 6,
     marginBottom: 8,
   },
-  pendingActions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginLeft: 8,
+  scanSubtitle: {
+    fontSize: 10,
+    color: Colors.text3,
   },
-  acceptButton: {
-    backgroundColor: '#22c55e',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  rejectButton: {
-    backgroundColor: '#ef4444',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  searchRow: {
+
+  // Search
+  searchBarWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 16,
+    gap: Space.sm,
+    backgroundColor: Colors.surface1,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: Colors.glassBorder,
+    borderRadius: Radius.xl,
+    paddingHorizontal: Space.md,
+    paddingVertical: 10,
+    marginHorizontal: Space.lg,
+    marginBottom: Space.sm,
+    marginTop: Space.sm,
   },
   searchInput: {
     flex: 1,
-    color: '#fff',
-    fontSize: 16,
+    color: Colors.text1,
+    fontSize: 14,
     padding: 0,
   },
-  loadingContainer: {
-    paddingVertical: 48,
+
+  // List
+  listContent: {
+    paddingHorizontal: Space.lg,
+    paddingBottom: 32,
+  },
+  sectionLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: Colors.muted,
+    letterSpacing: 1.8,
+    marginTop: Space.lg,
+    marginBottom: Space.md,
+  },
+
+  // User card
+  userCard: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: Space.md,
+    backgroundColor: Colors.surface1,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+    borderRadius: Radius.xxl,
+    padding: Space.md,
+    marginBottom: Space.sm,
+    ...Shadows.soft,
+  },
+  userInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  userName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.text1,
+    letterSpacing: -0.1,
+  },
+  userSub: {
+    fontSize: 11,
+    color: Colors.muted,
+  },
+  userAction: {
+    marginLeft: Space.xs,
+  },
+  badge: {
+    fontSize: 11,
+    color: Colors.muted,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  badgePending: {
+    color: Colors.warning,
+  },
+  addBtn: {
+    backgroundColor: Colors.gold,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: Radius.full,
+    minWidth: 56,
+    alignItems: 'center',
+    ...Shadows.gold,
+  },
+  addBtnText: {
+    color: '#000',
+    fontWeight: '700',
+    fontSize: 12,
+    letterSpacing: 0.3,
+  },
+
+  // Pending request actions
+  pendingActions: {
+    flexDirection: 'row',
+    gap: Space.sm,
+  },
+  acceptBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.gold,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Shadows.gold,
+  },
+  rejectBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.surface2,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionDisabled: {
+    opacity: 0.5,
+  },
+
+  // Error
+  errorBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Space.xxl,
+  },
+  errorText: {
+    color: Colors.error,
+    textAlign: 'center',
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  emptyText: {
+    color: Colors.muted,
+    fontSize: 13,
+    textAlign: 'center',
+    paddingVertical: 48,
+    lineHeight: 22,
   },
 });

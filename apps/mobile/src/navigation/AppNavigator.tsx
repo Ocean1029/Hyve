@@ -2,7 +2,7 @@
  * Root navigator. Shows Login or main app (tabs) based on auth state.
  */
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import type { NavigationContainerRefWithCurrent } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -14,7 +14,6 @@ import DashboardScreen from '../screens/DashboardScreen';
 import MessagesListScreen from '../screens/MessagesListScreen';
 import ChatScreen from '../screens/ChatScreen';
 import FindFriendsScreen from '../screens/FindFriendsScreen';
-import TodayScreen from '../screens/TodayScreen';
 import HappyIndexScreen from '../screens/HappyIndexScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import FocusSessionScreen from '../screens/FocusSessionScreen';
@@ -22,9 +21,21 @@ import SessionSummaryScreen from '../screens/SessionSummaryScreen';
 import PostMemoryScreen from '../screens/PostMemoryScreen';
 import SpringBloomScreen from '../screens/SpringBloomScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import MapScreen from '../screens/MapScreen';
 import FriendProfileScreen from '../screens/FriendProfileScreen';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
-import { Home, MessageCircle, User, Calendar } from '../components/icons';
+import { ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
+import { Home, Users, Map, CircleUser } from '../components/icons';
+import { Colors, Shadows } from '../theme';
+
+const HyveDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: Colors.bg0,
+    card: Colors.bg1,
+    border: Colors.glassBorder,
+  },
+};
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
@@ -35,15 +46,15 @@ function MessagesStack() {
   return (
     <MessagesStackNavigator.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: '#000' },
-        headerTintColor: '#fff',
+        headerStyle: { backgroundColor: Colors.bg1 },
+        headerTintColor: Colors.ivory,
         headerBackButtonDisplayMode: 'minimal',
       }}
     >
       <MessagesStackNavigator.Screen
         name="MessagesList"
         component={MessagesListScreen}
-        options={{ title: 'Messages', headerShown: true }}
+        options={{ title: 'Messages', headerShown: false }}
       />
       <MessagesStackNavigator.Screen
         name="Chat"
@@ -57,49 +68,58 @@ function MessagesStack() {
 function MainTabs() {
   return (
     <Tab.Navigator
+      initialRouteName="Dashboard"
       screenOptions={{
-        headerStyle: { backgroundColor: '#000' },
-        headerTintColor: '#fff',
-        tabBarStyle: { backgroundColor: '#000', borderTopColor: '#222' },
-        tabBarActiveTintColor: '#fff',
-        tabBarInactiveTintColor: '#666',
+        headerShown: false,
+        tabBarShowLabel: false,
+        tabBarStyle: {
+          backgroundColor: Colors.bg1,
+          borderTopColor: Colors.glassBorder,
+          borderTopWidth: 1,
+          height: Platform.OS === 'ios' ? 72 : 56,
+          paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+          paddingTop: 8,
+          ...Platform.select({
+            ios: {
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: -4 },
+              shadowOpacity: 0.4,
+              shadowRadius: 16,
+            },
+            android: { elevation: 16 },
+          }),
+        },
+        tabBarActiveTintColor: Colors.gold,
+        tabBarInactiveTintColor: Colors.text3,
       }}
     >
+      <Tab.Screen
+        name="Friends"
+        component={MessagesStack}
+        options={{
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
+        }}
+      />
       <Tab.Screen
         name="Dashboard"
         component={DashboardScreen}
         options={{
-          title: 'Dashboard',
-          tabBarLabel: 'Dashboard',
           tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
         }}
       />
       <Tab.Screen
-        name="Today"
-        component={TodayScreen}
+        name="Map"
+        component={MapScreen}
         options={{
-          title: 'Today',
-          tabBarLabel: 'Today',
-          tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} />,
-        }}
-      />
-      <Tab.Screen
-        name="Messages"
-        component={MessagesStack}
-        options={{
-          title: 'Messages',
-          tabBarLabel: 'Messages',
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => <MessageCircle color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <Map color={color} size={size} />,
         }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
-          title: 'Profile',
-          tabBarLabel: 'Profile',
-          tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <CircleUser color={color} size={size} />,
         }}
       />
     </Tab.Navigator>
@@ -122,10 +142,11 @@ export default function AppNavigator() {
   return (
     <>
       {isAuthenticated && <SessionPolling navigationRef={navigationRef} />}
-      <NavigationContainer ref={navigationRef}>
+      <NavigationContainer ref={navigationRef} theme={HyveDarkTheme}>
         <Stack.Navigator
         screenOptions={{
           headerShown: false,
+          contentStyle: { backgroundColor: Colors.bg0 },
         }}
       >
         {!isAuthenticated ? (
@@ -139,8 +160,8 @@ export default function AppNavigator() {
               options={{
                 headerShown: true,
                 headerTitle: 'Find Friends',
-                headerStyle: { backgroundColor: '#000' },
-                headerTintColor: '#fff',
+                headerStyle: { backgroundColor: Colors.bg1 },
+                headerTintColor: Colors.ivory,
                 headerBackButtonDisplayMode: 'minimal',
               }}
             />
@@ -150,8 +171,8 @@ export default function AppNavigator() {
               options={{
                 headerShown: true,
                 headerTitle: '',
-                headerStyle: { backgroundColor: '#000' },
-                headerTintColor: '#fff',
+                headerStyle: { backgroundColor: Colors.bg1 },
+                headerTintColor: Colors.ivory,
                 headerBackButtonDisplayMode: 'minimal',
               }}
             />
@@ -161,8 +182,8 @@ export default function AppNavigator() {
               options={{
                 headerShown: true,
                 headerTitle: 'Happy Index',
-                headerStyle: { backgroundColor: '#000' },
-                headerTintColor: '#fff',
+                headerStyle: { backgroundColor: Colors.bg1 },
+                headerTintColor: Colors.ivory,
                 headerBackButtonDisplayMode: 'minimal',
               }}
             />
@@ -172,8 +193,8 @@ export default function AppNavigator() {
               options={{
                 headerShown: true,
                 headerTitle: 'Settings',
-                headerStyle: { backgroundColor: '#000' },
-                headerTintColor: '#fff',
+                headerStyle: { backgroundColor: Colors.bg1 },
+                headerTintColor: Colors.ivory,
                 headerBackButtonDisplayMode: 'minimal',
               }}
             />
@@ -197,8 +218,8 @@ export default function AppNavigator() {
               options={{
                 headerShown: true,
                 headerTitle: 'Add Memory',
-                headerStyle: { backgroundColor: '#000' },
-                headerTintColor: '#fff',
+                headerStyle: { backgroundColor: Colors.bg1 },
+                headerTintColor: Colors.ivory,
                 headerBackButtonDisplayMode: 'minimal',
               }}
             />
@@ -208,8 +229,8 @@ export default function AppNavigator() {
               options={{
                 headerShown: true,
                 headerTitle: 'Spring Bloom',
-                headerStyle: { backgroundColor: '#000' },
-                headerTintColor: '#fff',
+                headerStyle: { backgroundColor: Colors.bg1 },
+                headerTintColor: Colors.ivory,
                 headerBackButtonDisplayMode: 'minimal',
               }}
             />
@@ -226,6 +247,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000',
+    backgroundColor: Colors.bg1,
   },
 });

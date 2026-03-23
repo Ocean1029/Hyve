@@ -1,9 +1,8 @@
 /**
- * Chat screen. Displays conversation with a friend and allows sending messages.
- * Uses GET/POST /api/messages for message history and sending.
- * Also fetches focus sessions and displays "Session Complete" system messages.
+ * Chat screen — v1 MessageScreen style.
+ * Gold bubbles for outgoing, glass bubbles for incoming.
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,6 +15,7 @@ import {
   Platform,
   Image,
   ScrollView,
+  Dimensions,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -23,7 +23,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_PATHS } from '@hyve/shared';
 import { formatMessageTime } from '@hyve/utils';
 import type { Friend } from '@hyve/types';
-import { Clock, MapPin } from '../components/icons';
+import HyveAvatar from '../components/ui/HyveAvatar';
+import { Clock, MapPin, Camera, Smile, Send } from '../components/icons';
+import { Colors, Radius, Space, Shadows } from '../theme';
 
 type MessagesStackParamList = {
   MessagesList: undefined;
@@ -58,7 +60,54 @@ interface FocusSession {
 
 type ChatItem =
   | { type: 'text'; data: ApiMessage }
-  | { type: 'system'; data: { id: string; session: FocusSession; timestamp: string } };
+  | { type: 'system'; data: { id: string; session: FocusSession; timestamp: string } }
+  | { type: 'dateSeparator'; data: { id: string; label: string } };
+
+// Format a date into a separator label
+function getDateLabel(date: Date): string {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.round((today.getTime() - target.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'TODAY';
+  if (diffDays === 1) return 'YESTERDAY';
+
+  const weekday = date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+  const month = date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+  const day = date.getDate();
+  return `${weekday}, ${month} ${day}`;
+}
+
+// Get the date string (YYYY-MM-DD) from a ChatItem for grouping
+function getItemDateKey(item: ChatItem): string {
+  if (item.type === 'dateSeparator') return '';
+  const raw = item.type === 'text' ? item.data.createdAt : item.data.timestamp;
+  if (!raw) return '';
+  const d = new Date(raw);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Insert date separators between items with different dates
+function insertDateSeparators(items: ChatItem[]): ChatItem[] {
+  if (items.length === 0) return items;
+  const result: ChatItem[] = [];
+  let prevDateKey = '';
+
+  for (const item of items) {
+    const dateKey = getItemDateKey(item);
+    if (dateKey && dateKey !== prevDateKey) {
+      const raw = item.type === 'text' ? item.data.createdAt : (item as any).data.timestamp;
+      result.push({
+        type: 'dateSeparator',
+        data: { id: `sep-${dateKey}`, label: getDateLabel(new Date(raw)) },
+      });
+      prevDateKey = dateKey;
+    }
+    result.push(item);
+  }
+  return result;
+}
 
 export default function ChatScreen() {
   const route = useRoute<ChatScreenRouteProp>();
@@ -75,13 +124,28 @@ export default function ChatScreen() {
   useEffect(() => {
     navigation.setOptions({
       headerShown: true,
-      headerTitle: friend.name ?? 'Chat',
-      headerStyle: { backgroundColor: '#000' },
-      headerTintColor: '#fff',
+      headerTitle: () => (
+        <View style={styles.headerTitle}>
+          <HyveAvatar uri={friend.avatar} name={friend.name} size={30} />
+          <View style={styles.headerInfo}>
+            <Text style={styles.headerName}>{friend.name ?? 'Chat'}</Text>
+            <Text
+              style={[
+                styles.headerStatus,
+                { color: (friend as any).isOnline ? Colors.online : Colors.text3 },
+              ]}
+            >
+              {(friend as any).isOnline ? 'Online' : 'Offline'}
+            </Text>
+          </View>
+        </View>
+      ),
+      headerStyle: { backgroundColor: Colors.bg1 },
+      headerTintColor: Colors.ivory,
       headerBackTitleVisible: false,
       headerBackButtonDisplayMode: 'minimal',
     });
-  }, [friend.name, navigation]);
+  }, [friend, navigation]);
 
   const loadMessages = async () => {
     setLoading(true);
@@ -95,17 +159,15 @@ export default function ChatScreen() {
         ),
       ]);
 
-      const textMessages = (messagesRes && 'messages' in messagesRes && Array.isArray(messagesRes.messages)
-        ? messagesRes.messages
-        : []) as ApiMessage[];
+      const textMessages = (
+        messagesRes && 'messages' in messagesRes && Array.isArray(messagesRes.messages)
+          ? messagesRes.messages
+          : []
+      ) as ApiMessage[];
       const sessions = (sessionsRes?.sessions ?? []) as FocusSession[];
 
       const items: ChatItem[] = [];
-
-      textMessages.forEach((msg) => {
-        items.push({ type: 'text', data: msg });
-      });
-
+      textMessages.forEach((msg) => items.push({ type: 'text', data: msg }));
       sessions.forEach((session) => {
         const endTime = session.endTime ?? session.createdAt ?? '';
         const ts = endTime ? new Date(endTime).toISOString() : new Date().toISOString();
@@ -116,14 +178,8 @@ export default function ChatScreen() {
       });
 
       items.sort((a, b) => {
-        const timeA =
-          a.type === 'text'
-            ? a.data.createdAt ?? ''
-            : a.data.timestamp;
-        const timeB =
-          b.type === 'text'
-            ? b.data.createdAt ?? ''
-            : b.data.timestamp;
+        const timeA = a.type === 'text' ? a.data.createdAt ?? '' : (a as any).data.timestamp;
+        const timeB = b.type === 'text' ? b.data.createdAt ?? '' : (b as any).data.timestamp;
         return new Date(timeA).getTime() - new Date(timeB).getTime();
       });
 
@@ -181,18 +237,19 @@ export default function ChatScreen() {
     }
   };
 
+  // Memoize items with date separators inserted
+  const displayItems = useMemo(() => {
+    const withSeps = insertDateSeparators(chatItems);
+    return [...withSeps].reverse();
+  }, [chatItems]);
+
   const renderSystemMessage = (session: FocusSession) => {
     const firstMemory = session.memories?.[0];
     const allPhotoUrls: string[] = [];
     session.memories?.forEach((mem) => {
-      if (mem.photos?.length) {
-        allPhotoUrls.push(...mem.photos);
-      }
+      if (mem.photos?.length) allPhotoUrls.push(...mem.photos);
     });
-    const photoUrls =
-      allPhotoUrls.length > 0
-        ? allPhotoUrls.slice(0, 12)
-        : ['https://picsum.photos/200/200?random=201'];
+    const photoUrls = allPhotoUrls.slice(0, 8);
     const durationMinutes = session.minutes ?? 0;
     const formattedDuration =
       durationMinutes > 0
@@ -204,44 +261,53 @@ export default function ChatScreen() {
 
     return (
       <View style={styles.systemCard}>
-        <Text style={styles.systemCardTitle}>Session Complete</Text>
+        <View style={styles.systemCardHeader}>
+          <View style={styles.systemCardDot} />
+          <Text style={styles.systemCardTitle}>Session Complete</Text>
+        </View>
         <View style={styles.systemCardRow}>
-          <Clock color="#888" size={14} />
+          <Clock color={Colors.muted} size={12} />
           <Text style={styles.systemCardText}>{formattedDuration}</Text>
         </View>
         <View style={styles.systemCardRow}>
-          <MapPin color="#888" size={14} />
-          <Text
-            style={styles.systemCardText}
-            numberOfLines={2}
-            ellipsizeMode="tail"
-          >
+          <MapPin color={Colors.muted} size={12} />
+          <Text style={styles.systemCardText} numberOfLines={1}>
             {location}
           </Text>
         </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.systemCardPhotos}
-          nestedScrollEnabled
-        >
-          {photoUrls.map((uri, idx) => (
-            <Image
-              key={idx}
-              source={{ uri }}
-              style={styles.systemCardPhoto}
-              resizeMode="cover"
-            />
-          ))}
-        </ScrollView>
+        {photoUrls.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.photosScroll}
+            nestedScrollEnabled
+          >
+            {photoUrls.map((uri, idx) => (
+              <Image
+                key={idx}
+                source={{ uri }}
+                style={styles.sessionPhoto}
+                resizeMode="cover"
+              />
+            ))}
+          </ScrollView>
+        )}
       </View>
     );
   };
 
   const renderItem = ({ item }: { item: ChatItem }) => {
+    if (item.type === 'dateSeparator') {
+      return (
+        <View style={styles.dateSeparatorRow}>
+          <Text style={styles.dateSeparatorText}>{item.data.label}</Text>
+        </View>
+      );
+    }
+
     if (item.type === 'system') {
       return (
-        <View style={styles.systemMessageRow}>
+        <View style={styles.systemRow}>
           {renderSystemMessage(item.data.session)}
           <Text style={styles.systemTimestamp}>
             {formatMessageTime(item.data.timestamp)}
@@ -254,17 +320,23 @@ export default function ChatScreen() {
     return (
       <View style={[styles.messageRow, isMe ? styles.messageRowMe : styles.messageRowThem]}>
         <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleThem]}>
-          <Text style={styles.bubbleText}>{msg.content}</Text>
-          <Text style={styles.timestamp}>{formatMessageTime(msg.createdAt)}</Text>
+          <Text style={[styles.bubbleText, isMe && styles.bubbleTextMe]}>
+            {msg.content}
+          </Text>
         </View>
+        <Text style={[styles.timestamp, isMe && styles.timestampMe]}>
+          {formatMessageTime(msg.createdAt)}
+        </Text>
       </View>
     );
   };
 
+  const hasInput = inputValue.trim().length > 0;
+
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#fff" />
+        <ActivityIndicator size="large" color={Colors.gold} />
       </View>
     );
   }
@@ -277,14 +349,14 @@ export default function ChatScreen() {
     >
       <FlatList
         ref={flatListRef}
-        data={[...chatItems].reverse()}
+        data={displayItems}
         inverted
-        keyExtractor={(item) =>
-          item.type === 'text' ? item.data.id : item.data.id
-        }
+        keyExtractor={(item) => {
+          if (item.type === 'dateSeparator') return item.data.id;
+          return item.type === 'text' ? item.data.id : item.data.id;
+        }}
         renderItem={renderItem}
         style={styles.list}
-        contentContainerStyle={styles.listContent}
         onContentSizeChange={() => {
           if (shouldScrollToBottom.current) {
             shouldScrollToBottom.current = false;
@@ -293,29 +365,52 @@ export default function ChatScreen() {
         }}
         keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
-          <Text style={styles.empty}>No messages yet. Say hi!</Text>
+          <View style={styles.listEmpty}>
+            <Text style={styles.empty}>No messages yet. Say hi! 👋</Text>
+          </View>
         }
+        contentContainerStyle={[
+          styles.listContent,
+          { flexGrow: 1, justifyContent: 'flex-end' },
+        ]}
       />
+
+      {/* Input row */}
       <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          value={inputValue}
-          onChangeText={setInputValue}
-          placeholder={`Message ${friend.name ?? 'friend'}...`}
-          placeholderTextColor="#666"
-          multiline
-          maxLength={1000}
-          editable={!sending}
-        />
+        <TouchableOpacity style={styles.mediaButton} activeOpacity={0.7}>
+          <Camera color={Colors.text3} size={22} strokeWidth={1.5} />
+        </TouchableOpacity>
+
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={styles.input}
+            value={inputValue}
+            onChangeText={setInputValue}
+            placeholder="Message..."
+            placeholderTextColor={Colors.muted}
+            multiline
+            maxLength={1000}
+            editable={!sending}
+          />
+          <TouchableOpacity style={styles.emojiButton} activeOpacity={0.7}>
+            <Smile color={Colors.text3} size={20} strokeWidth={1.5} />
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity
-          style={[styles.sendButton, (!inputValue.trim() || sending) && styles.sendButtonDisabled]}
           onPress={handleSend}
-          disabled={!inputValue.trim() || sending}
+          disabled={!hasInput || sending}
+          activeOpacity={0.7}
+          style={styles.sendButton}
         >
           {sending ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color={Colors.text3} />
           ) : (
-            <Text style={styles.sendText}>Send</Text>
+            <Send
+              color={hasInput ? Colors.gold : Colors.text3}
+              size={22}
+              strokeWidth={1.5}
+            />
           )}
         </TouchableOpacity>
       </View>
@@ -326,23 +421,61 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: Colors.bg1,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000',
+    backgroundColor: Colors.bg1,
   },
+
+  // Custom header
+  headerTitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.sm,
+  },
+  headerInfo: {
+    flexDirection: 'column',
+  },
+  headerName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.text1,
+    lineHeight: 18,
+  },
+  headerStatus: {
+    fontSize: 10,
+    fontWeight: '500',
+    lineHeight: 14,
+  },
+  // Date separator
+  dateSeparatorRow: {
+    alignItems: 'center',
+    paddingVertical: Space.lg,
+  },
+  dateSeparatorText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.text3,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+
+  // List
   list: {
     flex: 1,
   },
   listContent: {
-    padding: 16,
-    paddingBottom: 24,
+    paddingHorizontal: Space.lg,
+    paddingVertical: Space.lg,
+    gap: Space.sm,
   },
+
+  // Messages
   messageRow: {
-    marginBottom: 12,
+    marginBottom: 4,
   },
   messageRowMe: {
     alignItems: 'flex-end',
@@ -352,109 +485,147 @@ const styles = StyleSheet.create({
   },
   bubble: {
     maxWidth: '75%',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 18,
+    borderRadius: Radius.xl,
   },
   bubbleMe: {
-    backgroundColor: '#333',
-    borderBottomRightRadius: 4,
+    backgroundColor: Colors.gold,
+    borderTopRightRadius: 4,
   },
   bubbleThem: {
-    backgroundColor: '#1a1a1a',
-    borderBottomLeftRadius: 4,
+    backgroundColor: Colors.surface2,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+    borderTopLeftRadius: 4,
   },
   bubbleText: {
-    color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
+    color: Colors.text1,
+    lineHeight: 21,
+  },
+  bubbleTextMe: {
+    color: '#000',
   },
   timestamp: {
-    color: '#888',
-    fontSize: 11,
+    fontSize: 10,
+    color: Colors.muted,
     marginTop: 4,
+    paddingHorizontal: 2,
+  },
+  timestampMe: {
+    color: Colors.muted,
+  },
+  listEmpty: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    transform: [{ scaleY: -1 }],
   },
   empty: {
-    color: '#666',
+    color: Colors.muted,
     fontSize: 14,
     textAlign: 'center',
-    paddingVertical: 48,
   },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    padding: 12,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 12,
-    backgroundColor: '#000',
-    borderTopWidth: 1,
-    borderTopColor: '#222',
-  },
-  input: {
-    flex: 1,
-    backgroundColor: '#1a1a1a',
-    color: '#fff',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    maxHeight: 100,
-    marginRight: 8,
-  },
-  sendButton: {
-    backgroundColor: '#4285f4',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    justifyContent: 'center',
-    minHeight: 40,
-  },
-  sendButtonDisabled: {
-    opacity: 0.5,
-  },
-  sendText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  systemMessageRow: {
-    marginBottom: 12,
+
+  // System messages
+  systemRow: {
     alignItems: 'center',
+    marginBottom: Space.md,
+    gap: Space.xs,
   },
   systemCard: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 8,
-    padding: 16,
-    maxWidth: '85%',
-    maxHeight: 280,
+    backgroundColor: Colors.surface1,
+    borderRadius: Radius.xl,
+    padding: Space.md,
+    width: Math.round(Dimensions.get('window').width * 0.8),
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: Colors.glassBorder,
+    gap: Space.xs,
+    overflow: 'hidden',
+  },
+  systemCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Space.xs,
+    marginBottom: 4,
+  },
+  systemCardDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.gold,
   },
   systemCardTitle: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '700',
-    color: '#fff',
-    marginBottom: 8,
+    color: Colors.text2,
+    letterSpacing: 0.5,
   },
   systemCardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
+    gap: Space.xs,
   },
   systemCardText: {
-    fontSize: 13,
-    color: '#888',
+    fontSize: 11,
+    color: Colors.text3,
   },
-  systemCardPhotos: {
-    marginTop: 12,
-    height: 64,
+  photosScroll: {
+    marginTop: Space.sm,
+    height: 56,
   },
-  systemCardPhoto: {
-    width: 64,
-    height: 64,
-    borderRadius: 8,
-    marginRight: 8,
+  sessionPhoto: {
+    width: 56,
+    height: 56,
+    borderRadius: Radius.sm,
+    marginRight: Space.xs,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
   },
   systemTimestamp: {
-    fontSize: 11,
-    color: '#666',
-    marginTop: 4,
+    fontSize: 10,
+    color: Colors.muted,
+  },
+
+  // Input
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: Space.md,
+    paddingHorizontal: Space.lg,
+    paddingTop: Space.sm,
+    paddingBottom: Platform.OS === 'ios' ? 28 : Space.md,
+    backgroundColor: Colors.bg0,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+  },
+  mediaButton: {
+    paddingBottom: 10,
+  },
+  inputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    backgroundColor: Colors.surface1,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    borderRadius: Radius.full,
+    paddingLeft: Space.lg,
+    paddingRight: Space.xs,
+  },
+  input: {
+    flex: 1,
+    color: Colors.text1,
+    paddingVertical: 10,
+    maxHeight: 100,
+    fontSize: 14,
+  },
+  emojiButton: {
+    paddingHorizontal: Space.sm,
+    paddingBottom: 10,
+  },
+  sendButton: {
+    paddingBottom: 10,
   },
 });

@@ -41,13 +41,6 @@ function serializeSession(session: {
  *       - Sessions
  *     security:
  *       - cookieAuth: []
- *     parameters:
- *       - in: query
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *         description: User ID (must match authenticated user)
  *     responses:
  *       200:
  *         description: Today's sessions and total minutes
@@ -57,12 +50,6 @@ function serializeSession(session: {
  *               $ref: '#/components/schemas/TodaySessionsResponse'
  *       401:
  *         description: Unauthorized
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       403:
- *         description: Forbidden
  *         content:
  *           application/json:
  *             schema:
@@ -84,22 +71,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'userId is required', sessions: [], totalMinutes: 0 },
-        { status: 400 }
-      );
-    }
-
-    if (session.user.id !== userId) {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden', sessions: [], totalMinutes: 0 },
-        { status: 403 }
-      );
-    }
-
+    const userId = session.user.id;
     const result = await getTodayFocusSessionsService(userId);
     if (!result.success) {
       return NextResponse.json(
